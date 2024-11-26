@@ -43,8 +43,8 @@ class Shield:
                     
                     mdpprog = PrismEncoder.add_initial_state_to_prism_mdp(self.prismStr, -1, action, self.structure[state][action])
                     r1 = self.invokeStorm(mdpprog, prop1)
-                    # r2 = self.invokeStorm(mdpprog, prop2)
-                    r2 = 1
+                    r2 = self.invokeStorm(mdpprog, prop2)
+                    # r2 = 1
                     self.shield.append([state, action, r1 + 1-r2])
                     
         end_total_time = time.time()
