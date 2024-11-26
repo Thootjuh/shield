@@ -519,13 +519,13 @@ class RandomMDPsExperiment(Experiment):
                 self.easter_egg = None
                 self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
             self.traps = []
-            self._set_traps(6, -1)
+            self._set_traps(10, -1)
             self.to_append_run_one_iteration += [self.pi_b_perf, self.pi_rand_perf, self.pi_star_perf]
             print("----------------------------------------------------------------")
             
-            # self.structure = self.reduce_transition_matrix(self.P)
-            # self.shielder = Shield(self.structure, self.traps, [self.garnet.final_state])
-            # self.shielder.calculateShield()
+            self.structure = self.reduce_transition_matrix(self.P)
+            self.shielder = Shield(self.structure, self.traps, [self.garnet.final_state])
+            self.shielder.calculateShield()
             
             print("----------------------------------------------------------------")
 

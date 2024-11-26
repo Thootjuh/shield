@@ -11,6 +11,8 @@ class Shield:
         self.goal = goal
         self.structure = transition_matrix
         self.prismStr = self.createPrismStr()
+        with open("output.txt", 'w') as file:
+            file.write(self.prismStr)
         self.shield = []
 
         
@@ -32,15 +34,29 @@ class Shield:
                 if state in self.goal:
                     self.shield.append([state, action, 0])
                 else:
+                    # How likely are we to step into a trap in the worst case scenario
+                    prop1 = "Pmin=? [  F<4 \"trap\" ]"
+                    # prop1 = "Pmax=? [  F \"trap\" ]"
+                    
+                    # Is it possible to reach the goal
+                    prop2 = "Pmax=? [F \"reach\" & !F<3 \"trap\"]"
+                    
                     mdpprog = PrismEncoder.add_initial_state_to_prism_mdp(self.prismStr, -1, action, self.structure[state][action])
-                    result = self.invokeStorm(mdpprog)
-                    self.shield.append([state, action, result])
+                    r1 = self.invokeStorm(mdpprog, prop1)
+                    # r2 = self.invokeStorm(mdpprog, prop2)
+                    r2 = 1
+                    self.shield.append([state, action, r1 + 1-r2])
                     
         end_total_time = time.time()
-        print("Total time needed to create the Shield:", end_total_time - start_total_time)
-        print(self.shield)
         
-    def invokeStorm(self, mdpprog):
+        self.shield = np.array(self.shield)
+        sorted_arr = self.shield[self.shield[:, 2].argsort()]
+        np.set_printoptions(suppress=True, precision=6)
+        print(sorted_arr)
+        print(self.traps)
+        print("Total time needed to create the Shield:", end_total_time - start_total_time)
+        
+    def invokeStorm(self, mdpprog, prop):
         # write program to RAM
         # print("writing prism program to RAM")
         temp_name = next(tempfile._get_candidate_names())
@@ -57,11 +73,12 @@ class Shield:
         # prop = "Pmin=? [ F<=" + str((self.num_ghosts+1)*STEPS-1) +" \"crash\" ]"
         
         # probability of falling into a trap
-        # prop = "Pmin=? [ F \"trap\" ]"
-        prop = "Pmax=? [ (!F \"trap\" & F \"reach\") ]"
+
+        # prop = "Pmax=? [ (!F \"trap\" & F \"reach\") ]"
         
+        # prop = "Pmax=? [F \"reach\"]"
+        # prop = "Pmax=? [G !F<3 \"trap\ U \"reach\"]"
         # Find something for reach and combine them
-        
         properties = stormpy.parse_properties_for_prism_program(prop, program, None)
 
         # print("Build Model")

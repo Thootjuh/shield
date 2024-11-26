@@ -104,6 +104,34 @@ def add_initial_state_to_prism_mdp(prism_mdp, new_state, action, next_states) :
     
     return "\n".join(lines)
 
+def remove_state_transitions(prism_mdp, states):
+    """
+    Removes all transition functions associated with the specified states in the PRISM MDP string.
+    
+    Parameters:
+        prism_mdp (str): The PRISM MDP module as a string.
+        states (list[int]): The list of states whose transitions should be removed.
+    
+    Returns:
+        str: The modified PRISM MDP module string.
+    """
+    # Generate a set of states to match
+    state_set = set(states)
+    
+    # Split the MDP into lines
+    lines = prism_mdp.splitlines()
+    filtered_lines = []
+    
+    for line in lines:
+        # Check if the line is a transition line (starts with an action and contains "s=")
+        if any(f"s={state}" in line for state in state_set) and "[action" in line:
+            # Skip lines containing transitions for states in `state_set`
+            continue
+        # Otherwise, keep the line
+        filtered_lines.append(line)
+    
+    return "\n".join(filtered_lines)
+
 def add_reach_label(prism_mdp, states):
     """
     Adds a label "reach" to specified states in a PRISM MDP module string.
@@ -118,6 +146,7 @@ def add_reach_label(prism_mdp, states):
     # Generate the label definition
     reach_states = " | ".join(f"s={state}" for state in states)
     reach_label = f'label "reach" = {reach_states};'
+    prism_mdp = remove_state_transitions(prism_mdp, states)
     
     # Append the label definition to the PRISM module
     return prism_mdp.strip() + "\n\n" + reach_label + "\n"
@@ -137,4 +166,7 @@ def add_avoid_label(prism_mdp, states):
     avoid_states = " | ".join([f"s={state}" for state in states])
     avoid_label = f'label "trap" = {avoid_states};'
     # Append the label definition to the PRISM module
+    prism_mdp = remove_state_transitions(prism_mdp, states)
+    
     return prism_mdp.strip() + "\n\n" + avoid_label + "\n"
+
