@@ -34,12 +34,13 @@ class Shield:
                 if state in self.goal:
                     self.shield.append([state, action, 0])
                 else:
-                    # How likely are we to step into a trap in the worst case scenario
+                    # How likely are we to step into a trap
                     prop1 = "Pmin=? [  F<4 \"trap\" ]"
                     # prop1 = "Pmax=? [  F \"trap\" ]"
                     
                     # Is it possible to reach the goal
-                    prop2 = "Pmax=? [F \"reach\" & !F<3 \"trap\"]"
+                    prop2 = "Pmax=? [F \"reach\" & !F<4 \"trap\"]"
+                    # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
                     
                     mdpprog = PrismEncoder.add_initial_state_to_prism_mdp(self.prismStr, -1, action, self.structure[state][action])
                     r1 = self.invokeStorm(mdpprog, prop1)
