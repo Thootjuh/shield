@@ -16,7 +16,9 @@ Where results_path should be the absolute path pointing to the place where the r
 ## Structure
 To run the experiment on the randomMDPs benchmark, one can use 
 
-`python run_experiments.py random_mdps_shield_compare.ini experiment_results 1234 1 4`   
+`python run_experiments.py random_mdps_shield_compare.ini experiment_results 1234 1 4`  
+or
+`python run_experiments.py wet_chicken_full.ini wet_chicken_results 1234 1 4` 
 
 The `random_mdps_shield_full.ini` is the name of the config file used for this experiment. `experiment_results` is the folder name where the results are going to be stored, 1234 is the seed for the experiment, 1 is the number of threads and 4 is the number of iterations performed per thread per algorithm. The previous mentioned config file has to be stored in the folder experiments/ and contains parameters about:
 
