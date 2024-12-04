@@ -21,7 +21,7 @@ from batch_rl_algorithms.duipi import DUIPI
 from batch_rl_algorithms.ramdp import RaMDP
 from batch_rl_algorithms.mbie import MBIE
 
-from shield import Shield
+from shield import ShieldRandomMDP, ShieldWetChicken
 directory = os.path.dirname(os.path.expanduser(__file__))
 
 
@@ -368,6 +368,8 @@ class Experiment:
         :param pi: policy as numpy array with shape (nb_states, nb_actions)
         """
         return policy_evaluation_exact(pi, self.R_state_action, self.P, self.gamma)[0][0]
+    
+    
 
 
 class WetChickenExperiment(Experiment):
@@ -419,11 +421,18 @@ class WetChickenExperiment(Experiment):
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
                                                 'length_trajectory']
 
+        
     def _run_one_iteration(self):
         """
         Runs one iteration on the Wet Chicken benchmark, so iterates through different baseline and data set parameters
         and then starts the computation for each algorithm.
         """
+        print("----------------------------------------------------------------")
+        self.structure = self.reduce_transition_matrix(self.P)
+        falling_states = self.find_falling_states(list(range(len(self.structure) + 1)), self.width)
+        self.shielder = ShieldWetChicken(self.structure, self.width, self.length, falling_states)
+        self.shielder.calculateShield()
+        print("----------------------------------------------------------------")
         for epsilon_baseline in self.epsilons_baseline:
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
                   f' {self.epsilons_baseline}')
@@ -437,6 +446,7 @@ class WetChickenExperiment(Experiment):
                     self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
                     self.to_append = self.to_append_run_one_iteration + [length_trajectory]
                     self._run_algorithms()
+                
 
     def generate_batch(self, nb_steps, env, pi):
         """
@@ -454,8 +464,59 @@ class WetChickenExperiment(Experiment):
             trajectory.append([action_choice, state, next_state, reward])
             state = next_state
         return trajectory
+    
+    
 
+    def reduce_transition_matrix(self, transition_matrix):
+        """
+        Reduces a transition matrix to only include possible end states for each state-action pair.
 
+        Args:
+        - transition_matrix (numpy.ndarray): A 3D numpy array of shape (num_states, num_actions, num_states) 
+        where each element represents the probability of transitioning from one state to another
+        given a certain action.
+
+        Returns:
+        - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
+        where each element contains the indices of possible end states.
+        """
+        num_states = self.nb_states
+        num_actions = self.nb_actions
+        
+        # Prepare the reduced matrix to hold the indices of possible states
+        reduced_matrix = np.empty((num_states, num_actions), dtype=object)
+        
+        # Loop through each state and action to populate the reduced matrix
+        for state in range(num_states):
+            for action in range(num_actions):
+                # Get indices of nonzero probabilities (possible end states)
+                possible_states = np.nonzero(transition_matrix[state, action])[0]
+                reduced_matrix[state, action] = np.array(possible_states)
+        
+        return reduced_matrix
+    
+    def find_falling_states(self, states_list, width):
+        """
+        Given a list of states in single integer representation, identifies the states where the boat
+        falls off the waterfall (i.e., where x > 4).
+
+        Parameters:
+            states (list[int]): List of states in single integer representation.
+            width (int): The width of the river, used to calculate the x-coordinate.
+
+        Returns:
+            list[int]: List of states where the boat would fall off the waterfall.
+        """
+        falling_states = []
+        
+        for state in states_list:
+            x = state // width  # Calculate the x-coordinate (position along the river)
+            
+            if x >= width-1:  # The boat falls off the waterfall if x > 4
+                falling_states.append(state)
+        
+        return falling_states
+    
 class RandomMDPsExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'nb_states', 'nb_actions', 'nb_next_state_transition']
@@ -522,11 +583,9 @@ class RandomMDPsExperiment(Experiment):
             self._set_traps(10, -1)
             self.to_append_run_one_iteration += [self.pi_b_perf, self.pi_rand_perf, self.pi_star_perf]
             print("----------------------------------------------------------------")
-            
             self.structure = self.reduce_transition_matrix(self.P)
-            self.shielder = Shield(self.structure, self.traps, [self.garnet.final_state])
+            self.shielder = ShieldRandomMDP(self.structure, self.traps, [self.garnet.final_state])
             self.shielder.calculateShield()
-            
             print("----------------------------------------------------------------")
 
             for nb_trajectories in self.nb_trajectories_list:
@@ -642,7 +701,7 @@ class RandomMDPsExperiment(Experiment):
         num_states = self.nb_states
         num_actions = self.nb_actions
         max_transitions = self.nb_next_state_transition
-        
+        print("maxtrans = ", max_transitions)
         # Prepare the reduced matrix to hold the indices of possible states
         reduced_matrix = np.zeros((num_states, num_actions, max_transitions), dtype=int)
         
@@ -654,8 +713,7 @@ class RandomMDPsExperiment(Experiment):
                 reduced_matrix[state, action, :len(possible_states)] = possible_states
         
         return reduced_matrix
-
-
+    
 def policy_evaluation_exact(pi, r, p, gamma):
     """
     Evaluate policy (from https://github.com/RomainLaroche/SPIBB, but changed to use

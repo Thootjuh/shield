@@ -1,3 +1,4 @@
+import numpy as np
 def encodeMDP(transition_matrix):
     """
     Generates a PRISM MDP module string from a transition matrix.
@@ -31,6 +32,7 @@ def encodeMDP(transition_matrix):
                 probabilities = [f"{uniform_prob:.3f}" for _ in valid_next_states]
                 
                 # Create PRISM transition command
+                # TODO: edit this to use interval instead of uniform distribution                
                 transitions = " + ".join(
                     f"{prob} : (s'={next_state})" for prob, next_state in zip(probabilities, valid_next_states)
                 )
@@ -41,6 +43,124 @@ def encodeMDP(transition_matrix):
     prism_lines.append("endmodule")
     
     # Return joined lines as a PRISM module string
+    return "\n".join(prism_lines)
+
+def get_state_index(x, y, width):
+    """
+    Reconstructs the state index from the given (x, y) coordinates.
+
+    Parameters:
+        x (int): The x-coordinate (row index).
+        y (int): The y-coordinate (column index).
+        width (int): The width of the grid.
+
+    Returns:
+        int: The corresponding state index.
+    """
+    return x * width + y
+
+def encodeWetChicken(transition_matrix, width, height):
+    """
+    Generates a PRISM MDP representation of the Wet Chicken environment.
+
+    Parameters:
+        transition_matrix (np.ndarray): A 3D matrix of shape (num_states, num_actions, num_next_states),
+                                        where num_states = width * height.
+        width (int): The width of the river.
+        height (int): The height of the river.
+
+    Returns:
+        str: A PRISM MDP module as a string representing the Wet Chicken environment.
+    """
+    
+    actions = [
+        "drift",
+        "hold",
+        "paddle_back",
+        "right",
+        "left",
+    ]
+    num_states, num_actions = transition_matrix.shape
+
+    # Initialize the PRISM MDP module 
+    prism_lines = ["mdp", "", "module WetChicken"]
+
+    # Define the state variables x and y
+    prism_lines.append(f"    s : [0..{width*height - 1}] init 0;  // state-coordinate (position along river)")
+    
+    # Add transitions
+    for state in range(num_states):
+        prism_lines.append(f"    // state s = {state}")
+        for action in range(num_actions):
+            next_states = transition_matrix[state, action]
+            valid_next_states = [int(ns) for ns in next_states if ns >= 0]
+
+            if valid_next_states:
+                # Uniform probability for each next state
+                uniform_prob = 1 / len(valid_next_states)
+                transitions = " + ".join(
+                    f"{uniform_prob:.3f} : (s'={ns})"
+                    for ns in valid_next_states
+                )
+                prism_lines.append(f"    [{actions[action]}] s={state} -> {transitions};")
+
+    # End the module
+    prism_lines.append("endmodule")
+
+    # Return the PRISM MDP as a string
+    return "\n".join(prism_lines)
+def encodeWetChickenXY(transition_matrix, width, height):
+    """
+    Generates a PRISM MDP representation of the Wet Chicken environment.
+
+    Parameters:
+        transition_matrix (np.ndarray): A 3D matrix of shape (num_states, num_actions, num_next_states),
+                                        where num_states = width * height.
+        width (int): The width of the river.
+        height (int): The height of the river.
+
+    Returns:
+        str: A PRISM MDP module as a string representing the Wet Chicken environment.
+    """
+    
+    actions = [
+        "drift",
+        "hold",
+        "paddle_back",
+        "right",
+        "left",
+    ]
+    num_states, num_actions = transition_matrix.shape
+
+    # Initialize the PRISM MDP module 
+    prism_lines = ["mdp", "", "module WetChicken"]
+
+    # Define the state variables x and y
+    prism_lines.append(f"    x : [0..{width - 1}] init 0;  // x-coordinate (position along river)")
+    prism_lines.append(f"    y : [0..{height - 1}] init 0;  // y-coordinate (position across river)")
+    
+    # Add transitions
+    for state in range(num_states):
+        x = state // height
+        y = state % width
+        prism_lines.append(f"    // state x = {x}, y = {y}")
+        for action in range(num_actions):
+            next_states = transition_matrix[state, action]
+            valid_next_states = [int(ns) for ns in next_states if ns >= 0]
+
+            if valid_next_states:
+                # Uniform probability for each next state
+                uniform_prob = 1 / len(valid_next_states)
+                transitions = " + ".join(
+                    f"{uniform_prob:.3f} : (x'={ns // height}) & (y'={ns % width})"
+                    for ns in valid_next_states
+                )
+                prism_lines.append(f"    [{actions[action]}] x={x} & y={y} -> {transitions};")
+
+    # End the module
+    prism_lines.append("endmodule")
+
+    # Return the PRISM MDP as a string
     return "\n".join(prism_lines)
 
 def set_initial_state(prism_mdp, initial_state):

@@ -11,8 +11,6 @@ class Shield:
         self.goal = goal
         self.structure = transition_matrix
         self.prismStr = self.createPrismStr()
-        with open("output.txt", 'w') as file:
-            file.write(self.prismStr)
         self.shield = []
 
         
@@ -20,10 +18,12 @@ class Shield:
         Tempstr = PrismEncoder.encodeMDP(self.structure)
         Tempstr = PrismEncoder.add_reach_label(Tempstr, self.goal)
         Tempstr = PrismEncoder.add_avoid_label(Tempstr, self.traps)
+        with open("output.txt", 'w') as file:
+            file.write(Tempstr)
         return Tempstr
         
     # note: this now only works for simple one variable states. Fix this if we want to work with more complex environments
-    def calculateShield(self):    
+    def calculateShield(self, prop):    
         start_total_time = time.time()
         for state in range(len(self.structure)):
             for action in range(len(self.structure[state])):
@@ -31,31 +31,28 @@ class Shield:
                 # print(state)
                 if state in self.traps:
                     self.shield.append([state, action, 1])
-                if state in self.goal:
+                    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
+                elif state in self.goal:
                     self.shield.append([state, action, 0])
                 else:
-                    # How likely are we to step into a trap
-                    prop1 = "Pmin=? [  F<4 \"trap\" ]"
-                    # prop1 = "Pmax=? [  F \"trap\" ]"
-                    
-                    # Is it possible to reach the goal
-                    prop2 = "Pmax=? [F \"reach\" & !F<4 \"trap\"]"
-                    # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
-                    
                     mdpprog = PrismEncoder.add_initial_state_to_prism_mdp(self.prismStr, -1, action, self.structure[state][action])
-                    r1 = self.invokeStorm(mdpprog, prop1)
-                    r2 = self.invokeStorm(mdpprog, prop2)
+                    r1 = self.invokeStorm(mdpprog, prop)
+                    # r2 = self.invokeStorm(mdpprog, prop2)
                     # r2 = 1
-                    self.shield.append([state, action, r1 + 1-r2])
+                    self.shield.append([state, action, r1])
                     
         end_total_time = time.time()
         
         self.shield = np.array(self.shield)
+        self.printShield()
+
+        print("Total time needed to create the Shield:", end_total_time - start_total_time)
+        
+    def printShield(self):
         sorted_arr = self.shield[self.shield[:, 2].argsort()]
         np.set_printoptions(suppress=True, precision=6)
         print(sorted_arr)
         print(self.traps)
-        print("Total time needed to create the Shield:", end_total_time - start_total_time)
         
     def invokeStorm(self, mdpprog, prop):
         # write program to RAM
@@ -97,8 +94,64 @@ class Shield:
         return result.at(initial_state)
 
 
+class ShieldRandomMDP(Shield):
+    def calculateShield(self):
+        # How likely are we to step into a trap
+        prop = "Pmin=? [  F<4 \"trap\" ]"
+        # prop1 = "Pmax=? [  F \"trap\" ]"
+        
+        # Is it possible to reach the goal
+        prop2 = "Pmax=? [F \"reach\" & !F<4 \"trap\"]"
+        # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
+        prop3 = "Pmin=? [!\"trap\" U \"reach\"]"
+        # prop3 = "Pmin=? [F<=5 \"reach\"]"
+        return super().calculateShield(prop)
 
-# get transition matrix as input
-# Go through all state-action pairs and generate a corresponding MDP
-# Check the MDP
-# Store the probabilities in a lookup table
+class ShieldWetChicken(Shield):
+    def __init__(self, transition_matrix, width, height, traps):
+        self.traps = traps
+        self.goal = []
+        self.width = width
+        self.height = height
+        self.structure = transition_matrix
+        self.prismStr = self.createPrismStr()
+        self.shield = []
+        
+    def createPrismStr(self):
+        Tempstr = PrismEncoder.encodeWetChicken(self.structure, self.width, self.height)
+        Tempstr = PrismEncoder.add_avoid_label(Tempstr, self.traps)
+        with open("output.txt", 'w') as file:
+            file.write(Tempstr)
+        return Tempstr
+    
+    def printShield(self):
+        actions = [
+            "drift",
+            "hold",
+            "paddle_back",
+            "right",
+            "left",
+        ]
+        sorted_arr = self.shield[self.shield[:, 2].argsort()]
+        np.set_printoptions(suppress=True, precision=6)
+        for row in sorted_arr:
+            state = row[0]
+            action = actions[int(row[1])]
+            prob = row[2]
+            x = int(state / self.height)
+            y = int(state % self.width)
+            print(f"State: ({x}, {y}), action: {action}, with probability of falling: {prob}")
+            
+        print("with falling states being")
+        for state in self.traps:
+            x = int(state / self.height)
+            y = int(state % self.width)
+            print(f"({x},{y})")
+            
+    def calculateShield(self):
+        # How likely are we to step into a trap
+        prop = "Pmin=? [  F<=2 \"trap\" ]"
+        return super().calculateShield(prop)
+    
+    
+    
