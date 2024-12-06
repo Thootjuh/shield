@@ -105,7 +105,7 @@ def plot_cvar(cvar_data, filename):
    
 
 # directory_path = "C:\\Users\\thoma\\Documents\\RU\\Internship\\shieldV1\\results\\random_mdps\\shielded\\trap_baseline\\"
-directory_path = "/internship/code/results/random_mdps/shielded/test1/"
+directory_path = "/internship/code/results/wet_chicken/heuristic/wet_chicken_results/"
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
 plot_data(data, 'Baseline.png')
