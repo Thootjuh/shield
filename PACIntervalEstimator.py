@@ -1,0 +1,97 @@
+import numpy as np
+from collections import defaultdict
+import math
+
+class PACIntervalEstimator:
+    def __init__(self, structure, error_tolerance, trajectories, nb_actions, alpha=1, precision=1e-8):
+        self.nb_actions = nb_actions
+        self.alpha = alpha
+        self.precision = precision
+        self.structure = structure
+        self.error_tolerance = error_tolerance
+        self.trajectories = trajectories
+        self.count()
+        self.state_action_state_pairs = self.calculate_intervals()
+        
+        
+        # print(self.state_action_state_pairs)
+    # This function goes over the structure and looks at all possible state-action-state triples 
+    def calculate_intervals(self):
+        state_action_state_pairs = defaultdict(list) # np.zeros((self.structure.size, 3))
+        for state in range(len(self.structure)):
+            for action in range(len(self.structure[state])):
+                for next_state in self.structure[state][action]:
+                    triplet = [state, action, next_state]
+                    interval = self.get_transition_interval(triplet)
+                    state_action_state_pairs[(state, action, next_state)] = interval
+        return state_action_state_pairs
+                    
+    
+    # Something is fucking up here
+    def count(self):
+        state_action_counts = defaultdict(int)
+        state_action_next_state_counts = defaultdict(int)
+
+        for trajectory in self.trajectories:
+            for a, s, ns, _ in trajectory:
+                state_action_counts[(s, a)] += 1
+                state_action_next_state_counts[(s, a, ns)] += 1
+        
+        self.state_action_counts = state_action_counts
+        self.state_action_state_counts = state_action_next_state_counts
+        # print(self.state_action_counts)
+        print(self.state_action_state_counts)
+        
+    # This function calculates the interval around the mode
+    def get_transition_interval(self, triplet):
+        point = self.mode(triplet)
+        confidence_interval = self.computePACBound(triplet)
+        lower_bound = max(point - confidence_interval, self.precision)
+        upper_bound = min(point + confidence_interval, 1-self.precision)
+    
+        return lower_bound, upper_bound
+    
+    # This function calculates the mode based on the trajectories
+    def mode(self, triplet, ):
+        """
+        Calculate the MAP estimate for a given [state, action, next_state] triplet.
+
+        Parameters:
+            triplet (list): A [state, action, next_state] triplet for which MAP is calculated.
+            trajectories (list): A list of trajectories, where each trajectory is a list of 
+                                [state, action, next_state, reward] tuples.
+            alpha (int): The Dirichlet prior parameter (default is 1 for Laplace smoothing).
+
+        Returns:
+            float: The MAP estimate for the given triplet.
+        """
+        # Extract state, action, and next_state from the triplet
+        state, action, next_state = triplet
+
+        # Total counts for (state, action) and the specific (state, action, next_state)
+        total_state_action = self.state_action_counts[(state, action)]
+        total_state_action_next_state = self.state_action_state_counts[(state, action, next_state)]
+
+        # Compute MAP with Dirichlet prior
+        num = total_state_action_next_state + self.alpha - 1
+        denom = total_state_action + self.alpha * len(self.state_action_state_counts.keys()) - len(self.state_action_counts.keys())
+
+        return num / denom if denom > 0 else 0.0
+    
+
+    # This function calculates the pac bound
+    def computePACBound(self, triplet):
+        state, action, next_state = triplet
+        sas_count = self.state_action_state_counts[(state, action, next_state)] + self.alpha
+        total_sa_count  = self.state_action_counts[(state, action)]+self.alpha * self.nb_actions
+        # print("n = ", total_sa_count )
+        alph = (self.error_tolerance*(1/sas_count))/self.nb_actions
+        delta = math.sqrt(math.log(2/alph)/(2*total_sa_count ))
+        return delta
+    
+    def get_intervals(self):
+        return self.state_action_state_pairs
+    
+    def get_specific_interval(self, state, action, next_state):
+        return self.state_action_state_pairs[(state, action, next_state)]
+        
