@@ -40,7 +40,7 @@ class PACIntervalEstimator:
         self.state_action_counts = state_action_counts
         self.state_action_state_counts = state_action_next_state_counts
         # print(self.state_action_counts)
-        print(self.state_action_state_counts)
+        # print(self.state_action_state_counts)
         
     # This function calculates the interval around the mode
     def get_transition_interval(self, triplet):
