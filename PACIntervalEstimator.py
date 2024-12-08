@@ -3,7 +3,7 @@ from collections import defaultdict
 import math
 
 class PACIntervalEstimator:
-    def __init__(self, structure, error_tolerance, trajectories, nb_actions, alpha=1, precision=1e-8):
+    def __init__(self, structure, error_tolerance, trajectories, nb_actions, alpha=2, precision=1e-8):
         self.nb_actions = nb_actions
         self.alpha = alpha
         self.precision = precision
@@ -12,9 +12,6 @@ class PACIntervalEstimator:
         self.trajectories = trajectories
         self.count()
         self.state_action_state_pairs = self.calculate_intervals()
-        
-        
-        # print(self.state_action_state_pairs)
     # This function goes over the structure and looks at all possible state-action-state triples 
     def calculate_intervals(self):
         state_action_state_pairs = defaultdict(list) # np.zeros((self.structure.size, 3))
@@ -39,8 +36,7 @@ class PACIntervalEstimator:
         
         self.state_action_counts = state_action_counts
         self.state_action_state_counts = state_action_next_state_counts
-        # print(self.state_action_counts)
-        # print(self.state_action_state_counts)
+
         
     # This function calculates the interval around the mode
     def get_transition_interval(self, triplet):
@@ -51,42 +47,28 @@ class PACIntervalEstimator:
     
         return lower_bound, upper_bound
     
-    # This function calculates the mode based on the trajectories
-    def mode(self, triplet, ):
-        """
-        Calculate the MAP estimate for a given [state, action, next_state] triplet.
-
-        Parameters:
-            triplet (list): A [state, action, next_state] triplet for which MAP is calculated.
-            trajectories (list): A list of trajectories, where each trajectory is a list of 
-                                [state, action, next_state, reward] tuples.
-            alpha (int): The Dirichlet prior parameter (default is 1 for Laplace smoothing).
-
-        Returns:
-            float: The MAP estimate for the given triplet.
-        """
-        # Extract state, action, and next_state from the triplet
+    def mode(self, triplet):
         state, action, next_state = triplet
-
-        # Total counts for (state, action) and the specific (state, action, next_state)
-        total_state_action = self.state_action_counts[(state, action)]
-        total_state_action_next_state = self.state_action_state_counts[(state, action, next_state)]
-
-        # Compute MAP with Dirichlet prior
-        num = total_state_action_next_state + self.alpha - 1
-        denom = total_state_action + self.alpha * len(self.state_action_state_counts.keys()) - len(self.state_action_counts.keys())
-
-        return num / denom if denom > 0 else 0.0
+        num = self.state_action_state_counts[(state, action, next_state)] + self.alpha - 1
+        denum = 0
+        count = 0
+        successors = self.structure[state][action]
+        for successor in successors:
+            alph = self.state_action_state_counts[(state, action, successor)]+self.alpha
+            denum += alph
+            count += 1
+        denum -= count
+        return num/denum
     
 
     # This function calculates the pac bound
     def computePACBound(self, triplet):
         state, action, next_state = triplet
-        sas_count = self.state_action_state_counts[(state, action, next_state)] + self.alpha
-        total_sa_count  = self.state_action_counts[(state, action)]+self.alpha * self.nb_actions
+        m = self.structure.size
+        n  = self.state_action_counts[(state, action)] + self.alpha * self.nb_actions
         # print("n = ", total_sa_count )
-        alph = (self.error_tolerance*(1/sas_count))/self.nb_actions
-        delta = math.sqrt(math.log(2/alph)/(2*total_sa_count ))
+        alph = self.error_tolerance/(m*self.nb_actions)
+        delta = math.sqrt(math.log(2/alph)/(2*n ))
         return delta
     
     def get_intervals(self):
