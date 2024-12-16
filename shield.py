@@ -4,15 +4,18 @@ import tempfile
 import os
 import time
 import numpy as np
-
+from IntervalMDPBuilder import IntervalMDPBuilder
+import pycarl
+ 
 class Shield:
-    def __init__(self, transition_matrix, traps, goal):
+    def __init__(self, transition_matrix, traps, goal, intervals):
         self.traps = traps
         self.goal = goal
         self.structure = transition_matrix
-        self.prismStr = self.createPrismStr()
+        self.intervals = intervals
+        self.builder = IntervalMDPBuilder(transition_matrix, intervals, goal, traps)
         self.shield = []
-
+    
         
     def createPrismStr(self):
         Tempstr = PrismEncoder.encodeMDP(self.structure)
@@ -23,7 +26,7 @@ class Shield:
         return Tempstr
         
     # note: this now only works for simple one variable states. Fix this if we want to work with more complex environments
-    def calculateShield(self, prop):    
+    def calculateShieldPrism(self, prop):    
         start_total_time = time.time()
         for state in range(len(self.structure)):
             for action in range(len(self.structure[state])):
@@ -31,12 +34,11 @@ class Shield:
                 # print(state)
                 if state in self.traps:
                     self.shield.append([state, action, 1])
-                    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
                 elif state in self.goal:
                     self.shield.append([state, action, 0])
                 else:
                     mdpprog = PrismEncoder.add_initial_state_to_prism_mdp(self.prismStr, -1, action, self.structure[state][action])
-                    r1 = self.invokeStorm(mdpprog, prop)
+                    r1 = self.invokeStormPrism(mdpprog, prop)
                     # r2 = self.invokeStorm(mdpprog, prop2)
                     # r2 = 1
                     self.shield.append([state, action, r1])
@@ -44,9 +46,30 @@ class Shield:
         end_total_time = time.time()
         
         self.shield = np.array(self.shield)
-        self.printShield()
+        # self.printShield()
 
         print("Total time needed to create the Shield:", end_total_time - start_total_time)
+    
+    def calculateShieldInterval(self, prop, model_function):
+        start_total_time = time.time()
+        for state in range(len(self.structure)):
+            for action in range(len(self.structure[state])):
+                # print(self.traps)
+                # print(state)
+                if state in self.traps:
+                    self.shield.append([state, action, 1])
+                elif state in self.goal:
+                    self.shield.append([state, action, 0])
+                else:
+                    next_states = self.structure[state][action]
+                    model = model_function(state, action, next_states)
+                    r1 = self.invokeStorm(model, prop)
+                    self.shield.append([state, action, 1-r1])
+        end_total_time = time.time()
+        self.shield = np.array(self.shield)
+        self.printShield()
+
+        print("Total time needed to create the Shield:", end_total_time - start_total_time)                                 
         
     def printShield(self):
         sorted_arr = self.shield[self.shield[:, 2].argsort()]
@@ -54,7 +77,7 @@ class Shield:
         print(sorted_arr)
         print(self.traps)
         
-    def invokeStorm(self, mdpprog, prop):
+    def invokeStormPrism(self, mdpprog, prop):
         # write program to RAM
         # print("writing prism program to RAM")
         temp_name = next(tempfile._get_candidate_names())
@@ -92,6 +115,20 @@ class Shield:
         os.remove(file_name)
 
         return result.at(initial_state)
+    
+    def get_safe_actions_from_shield(self, state, threshold):
+        print(self.shield)
+    
+    def invokeStorm(self, model, prop):
+        properties = stormpy.parse_properties(prop)
+        env = stormpy.Environment()
+        env.solver_environment.minmax_solver_environment.method = stormpy.MinMaxMethod.value_iteration
+        task = stormpy.CheckTask(properties[0].raw_formula, only_initial_states=True)
+        task.set_produce_schedulers()
+        task.set_robust_uncertainty(True)
+        result = stormpy.check_interval_mdp(model, task, env)
+        initial_state = model.initial_states[0]
+        return result.at(initial_state)
 
 
 class ShieldRandomMDP(Shield):
@@ -101,20 +138,21 @@ class ShieldRandomMDP(Shield):
         # prop1 = "Pmax=? [  F \"trap\" ]"
         
         # Is it possible to reach the goal
-        prop2 = "Pmax=? [F \"reach\" & !F<4 \"trap\"]"
+        prop2 = "Pmax=? [F \"goal\" & !F<4 \"trap\"]"
         # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
-        prop3 = "Pmin=? [!\"trap\" U \"reach\"]"
+        prop3 = "Pmax=? [!\"trap\" U \"goal\"]"
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
-        return super().calculateShield(prop)
+        return super().calculateShieldInterval(prop3, self.builder.build_MDP_model_with_init)
 
 class ShieldWetChicken(Shield):
-    def __init__(self, transition_matrix, width, height, traps):
+    def __init__(self, transition_matrix, width, height, traps, intervals):
         self.traps = traps
         self.goal = []
         self.width = width
         self.height = height
         self.structure = transition_matrix
-        self.prismStr = self.createPrismStr()
+        self.intervals = intervals
+        self.builder = IntervalMDPBuilder(transition_matrix, intervals, self.goal, self.traps)
         self.shield = []
         
     def createPrismStr(self):
@@ -150,8 +188,8 @@ class ShieldWetChicken(Shield):
             
     def calculateShield(self):
         # How likely are we to step into a trap
-        prop = "Pmin=? [  F<=2 \"trap\" ]"
-        return super().calculateShield(prop)
+        prop = "Pmin=? [  F<4\"waterfall\" ]"
+        return super().calculateShieldInterval(prop, self.builder.build_wetChicken_model_with_init)
     
     
     

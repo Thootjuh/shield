@@ -21,10 +21,8 @@ class PACIntervalEstimator:
                     triplet = [state, action, next_state]
                     interval = self.get_transition_interval(triplet)
                     state_action_state_pairs[(state, action, next_state)] = interval
-        return state_action_state_pairs
-                    
+        return state_action_state_pairs                    
     
-    # Something is fucking up here
     def count(self):
         state_action_counts = defaultdict(int)
         state_action_next_state_counts = defaultdict(int)
@@ -36,7 +34,6 @@ class PACIntervalEstimator:
         
         self.state_action_counts = state_action_counts
         self.state_action_state_counts = state_action_next_state_counts
-
         
     # This function calculates the interval around the mode
     def get_transition_interval(self, triplet):
@@ -44,7 +41,8 @@ class PACIntervalEstimator:
         confidence_interval = self.computePACBound(triplet)
         lower_bound = max(point - confidence_interval, self.precision)
         upper_bound = min(point + confidence_interval, 1-self.precision)
-    
+        # print(f"({lower_bound},{upper_bound})")
+        # print("the size of the interval is ", upper_bound-lower_bound)
         return lower_bound, upper_bound
     
     def mode(self, triplet):
@@ -64,10 +62,10 @@ class PACIntervalEstimator:
     # This function calculates the pac bound
     def computePACBound(self, triplet):
         state, action, next_state = triplet
-        m = self.structure.size
-        n  = self.state_action_counts[(state, action)] + self.alpha * self.nb_actions
+        m = self.structure.size # 50*4*4
+        n  = self.state_action_counts[(state, action)] + self.alpha * self.nb_actions #Grows with number of observations
         # print("n = ", total_sa_count )
-        alph = self.error_tolerance/(m*self.nb_actions)
+        alph = (self.error_tolerance*(1/m))/self.nb_actions
         delta = math.sqrt(math.log(2/alph)/(2*n ))
         return delta
     
