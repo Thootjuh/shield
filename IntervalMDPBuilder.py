@@ -18,9 +18,7 @@ class IntervalMDPBuilder:
         counter = 0
         builder.new_row_group(counter)
         for next_state_init in next_states_init:
-            print(f"state = {state_init}, action = {action_init}, next_state = {next_state_init}")
             bounds = self.intervals[(state_init, action_init, next_state_init)]
-            print(bounds)
             builder.add_next_value(counter, next_state_init+1, pycarl.Interval(bounds[0], bounds[1])) 
         counter += 1 
         for state in range(self.num_states):
@@ -57,9 +55,7 @@ class IntervalMDPBuilder:
         builder.new_row_group(counter)
         if(sum(next_states_init) > 0):
             for next_state_init in next_states_init:
-                print(f"state = {state_init}, action = {action_init}, next_state = {next_state_init}")
                 bounds = self.intervals[(state_init, action_init, next_state_init)]
-                print(bounds)
                 builder.add_next_value(counter, next_state_init+1, pycarl.Interval(bounds[0], bounds[1]))
         else:
             builder.add_next_value(counter, 0, pycarl.Interval(1, 1)) 
@@ -116,7 +112,6 @@ class IntervalMDPBuilder:
         for label in labels:
             state_labeling.add_label(label)
         for i in self.traps:
-            print(i)
             state_labeling.add_label_to_state("waterfall", i+1)
         state_labeling.add_label_to_state("init", 0)
         
@@ -200,8 +195,6 @@ class IntervalMDPBuilder:
                       builder.add_next_value(counter, state, pycarl.Interval(1, 1))  
                 counter+=1
         transition_matrix = builder.build()
-        print("matrix: ")
-        print(transition_matrix)
         # Set State Labels
         state_labeling = stormpy.storage.StateLabeling(self.num_states)
         labels = {"goal", "trap"}
