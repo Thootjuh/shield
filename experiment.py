@@ -593,7 +593,7 @@ class RandomMDPsExperiment(Experiment):
             print(f'Process with seed {self.seed} starting with baseline_target_perf_ratio {baseline_target_perf_ratio}'
                   f' out of {self.baseline_target_perf_ratios}')
             self.garnet = garnets.Garnets(self.nb_states, self.nb_actions, self.nb_next_state_transition,
-                                          env_type=self.env_type, self_transitions=self.self_transitions)
+                                          env_type=self.env_type, self_transitions=self.self_transitions, nb_traps=5)
 
             softmax_target_perf_ratio = (baseline_target_perf_ratio + 1) / 2
             self.to_append_run_one_iteration = self.to_append_run + [softmax_target_perf_ratio,
@@ -604,8 +604,8 @@ class RandomMDPsExperiment(Experiment):
                                                      baseline_target_perf_ratio=baseline_target_perf_ratio)
             self.R_state_state = self.garnet.compute_reward()
             self.P = self.garnet.transition_function
-            self.traps = []
-            self._set_traps(10, -1)
+            self.traps = self.garnet.get_traps()
+            
             if self.env_type == 2:  # easter
                 self._set_easter_egg(reward=1)
             elif self.env_type == 3:
@@ -713,7 +713,7 @@ class RandomMDPsExperiment(Experiment):
             is_done = False
             while nb_steps < max_steps and not is_done:
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
-                state, reward, next_state, is_done = env.step(action_choice, easter_egg, self.traps)
+                state, reward, next_state, is_done = env.step(action_choice, easter_egg)
                 trajectorY.append([action_choice, state, next_state, reward])
                 state = next_state
                 nb_steps += 1

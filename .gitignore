@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+SPIBBmaster/__pycache__/
 *.py[cod]git 
 
 # Ignore specific files

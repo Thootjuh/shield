@@ -4,7 +4,7 @@ from . import spibb_utils
 
 
 class Garnets:
-    def __init__(self, nb_states, nb_actions, nb_next_state_transition, env_type=1, self_transitions=0):
+    def __init__(self, nb_states, nb_actions, nb_next_state_transition, env_type=1, self_transitions=0, nb_traps = 0):
         self.nb_states = nb_states
         self.nb_actions = nb_actions
         self.nb_next_state_transition = nb_next_state_transition
@@ -14,6 +14,8 @@ class Garnets:
         self.self_transitions = self_transitions
         self.current_state = self.initial_state
         self.final_state = nb_states - 1
+        self.punishment = -1
+        self._set_traps(nb_traps)
         self._generate_transition_function()
         self.env_type = env_type
 
@@ -34,7 +36,18 @@ class Garnets:
                 probabilities = np.ediff1d(partition)
                 choice_state = np.random.choice(self.nb_states, self.nb_next_state_transition, replace=False)
                 self.transition_function[id_state, id_action, choice_state] = probabilities
-
+                
+    def _set_traps(self, n):
+        # set n traps
+        self.traps = []
+        potential_final_states = [s for s in range(self.nb_states) if s != self.final_state and s != 0]
+        for _ in range(n):
+            trap = np.random.choice(potential_final_states)
+            self.traps.append(trap)
+            potential_final_states.remove(trap)
+            
+    def get_traps(self):
+        return self.traps
     def reset(self):
         self.current_state = self.initial_state
         return int(self.current_state)
@@ -45,10 +58,12 @@ class Garnets:
     def _get_reward(self, state, action, next_state):
         if next_state == self.final_state:
             return 1
+        elif next_state in self.traps:
+            return self.punishment
         else:
             return 0
 
-    def step(self, action, easter_egg, traps=[]):
+    def step(self, action, easter_egg):
         if self.transition_function[int(self.current_state), action, :].squeeze().sum() != 1:
             print(self.transition_function[int(self.current_state), action, :].squeeze())
             print(self.current_state)
@@ -62,9 +77,9 @@ class Garnets:
         state = self.current_state
         if self.env_type == 2:  # easter
             self.is_done = (next_state == self.final_state or next_state == easter_egg)
-        elif next_state in traps:
+        elif next_state in self.traps:
             self.is_done = True
-            reward = -10
+            reward = self.punishment
         else:
             self.is_done = (next_state == self.final_state)
         self.current_state = next_state
@@ -75,12 +90,16 @@ class Garnets:
         R = np.zeros((self.nb_states, self.nb_states))
         for s in range(self.nb_states):
             R[s, self.final_state] = 1
+            for trap in self.traps:
+                R[s, trap] = self.punishment
         return R
 
     # Transition function matrix
     def compute_transition_function(self):
         t = self.transition_function.copy()
         t[self.final_state, :, :] = 0
+        for trap in self.traps:
+            t[trap, :, :] = 0
         return t
 
     def start_state(self):
