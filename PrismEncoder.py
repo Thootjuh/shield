@@ -1,4 +1,5 @@
 import numpy as np
+
 def encodeMDP(transition_matrix):
     """
     Generates a PRISM MDP module string from a transition matrix.

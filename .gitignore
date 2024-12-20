@@ -5,6 +5,9 @@ __pycache__/
 # Ignore specific files
 paths.ini
 output.txt
+stormpy_test.py
+test.py
+tiny-01.drn
 
 # Ignore all .png files except those in the graphs folder
 *.png

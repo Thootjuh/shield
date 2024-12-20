@@ -14,7 +14,10 @@ class Shield:
         self.structure = transition_matrix
         self.intervals = intervals
         self.builder = IntervalMDPBuilder(transition_matrix, intervals, goal, traps)
-        self.shield = []
+        self.num_states= len(self.structure)
+        self.num_actions = len(self.structure[0])
+        self.shield = np.full((self.num_states, self.num_actions), -1, dtype=np.float64)
+        # self.shield2 = []
     
         
     def createPrismStr(self):
@@ -25,7 +28,6 @@ class Shield:
             file.write(Tempstr)
         return Tempstr
         
-    # note: this now only works for simple one variable states. Fix this if we want to work with more complex environments
     def calculateShieldPrism(self, prop):    
         start_total_time = time.time()
         for state in range(len(self.structure)):
@@ -57,22 +59,24 @@ class Shield:
                 # print(self.traps)
                 # print(state)
                 if state in self.traps:
-                    self.shield.append([state, action, 1])
+                    # self.shield2.append([state, action, 1])
+                    self.shield[state][action] = 1
                 elif state in self.goal:
-                    self.shield.append([state, action, 0])
+                    # self.shield2.append([state, action, 0])
+                    self.shield[state][action] = 0
                 else:
                     next_states = self.structure[state][action]
                     model = model_function(state, action, next_states)
                     r1 = self.invokeStorm(model, prop)
-                    self.shield.append([state, action, 1-r1])
+                    # self.shield2.append([int(state), int(action), 1-r1])
+                    self.shield[state][action] = 1-r1
         end_total_time = time.time()
-        self.shield = np.array(self.shield)
-        self.printShield()
+        
 
         print("Total time needed to create the Shield:", end_total_time - start_total_time)                                 
         
     def printShield(self):
-        sorted_arr = self.shield[self.shield[:, 2].argsort()]
+        sorted_arr = self.shield2[self.shield2[:, 2].argsort()]
         np.set_printoptions(suppress=True, precision=6)
         print(sorted_arr)
         print(self.traps)
@@ -116,8 +120,20 @@ class Shield:
 
         return result.at(initial_state)
     
+ 
     def get_safe_actions_from_shield(self, state, threshold):
-        print(self.shield)
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            min_value = np.min(probs)
+            safe_actions = np.where(probs == min_value)[0].tolist()
+        return safe_actions
+            
+                
     
     def invokeStorm(self, model, prop):
         properties = stormpy.parse_properties(prop)

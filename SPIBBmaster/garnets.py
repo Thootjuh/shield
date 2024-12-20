@@ -63,7 +63,6 @@ class Garnets:
         if self.env_type == 2:  # easter
             self.is_done = (next_state == self.final_state or next_state == easter_egg)
         elif next_state in traps:
-            
             self.is_done = True
             reward = -10
         else:

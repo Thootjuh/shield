@@ -4,6 +4,7 @@ import ast
 import time
 from distutils import util
 import configparser
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -20,8 +21,13 @@ from batch_rl_algorithms.soft_spibb import ApproxSoftSPIBB, ExactSoftSPIBB, Lowe
 from batch_rl_algorithms.duipi import DUIPI
 from batch_rl_algorithms.ramdp import RaMDP
 from batch_rl_algorithms.mbie import MBIE
+from batch_rl_algorithms.pi_star import PiStar
+from batch_rl_algorithms.shielded.shielded_spibb import Shield_SPIBB, Shield_Lower_SPIBB
+
 
 from shield import ShieldRandomMDP, ShieldWetChicken
+from PACIntervalEstimator import PACIntervalEstimator
+from IntervalMDPBuilder import IntervalMDPBuilder
 directory = os.path.dirname(os.path.expanduser(__file__))
 
 
@@ -176,6 +182,8 @@ class Experiment:
                 self._run_ramdp(key)
             elif key in {MBIE.NAME}:
                 self._run_mbie(key)
+            elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
+                self._run_spibb_shielded(key)
 
     def _run_duipi(self, key):
         """
@@ -213,6 +221,25 @@ class Experiment:
                 else:
                     self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
 
+    def _run_spibb_shielded(self, key):
+        """
+        Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
+        :param key: SPIBB.NAME or Lower_SPIBB.NAME, depending on which algorithm is supposed to be run
+        """
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict)
+            t_0 = time.time()
+            spibb.fit()
+            t_1 = time.time()
+            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            method = spibb.NAME
+            method_perf = spibb_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+            
     def _run_spibb(self, key):
         """
         Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
@@ -427,12 +454,7 @@ class WetChickenExperiment(Experiment):
         Runs one iteration on the Wet Chicken benchmark, so iterates through different baseline and data set parameters
         and then starts the computation for each algorithm.
         """
-        print("----------------------------------------------------------------")
-        self.structure = self.reduce_transition_matrix(self.P)
-        falling_states = self.find_falling_states(list(range(len(self.structure) + 1)), self.width)
-        self.shielder = ShieldWetChicken(self.structure, self.width, self.length, falling_states)
-        self.shielder.calculateShield()
-        print("----------------------------------------------------------------")
+
         for epsilon_baseline in self.epsilons_baseline:
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
                   f' {self.epsilons_baseline}')
@@ -445,6 +467,15 @@ class WetChickenExperiment(Experiment):
                     print(f'Starting with length_trajectory {length_trajectory} out of {self.lengths_trajectory}.')
                     self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
                     self.to_append = self.to_append_run_one_iteration + [length_trajectory]
+                    # print("----------------------------------------------------------------")
+                    # print(self.P)      
+                    self.structure = self.reduce_transition_matrix(self.P)
+                    falling_states = self.find_falling_states(list(range(len(self.structure))), self.length)
+                    self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
+                    intervals = self.estimator.get_intervals()
+                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, falling_states, intervals)
+                    self.shielder.calculateShield()
+                    # print("----------------------------------------------------------------")
                     self._run_algorithms()
                 
 
@@ -495,7 +526,7 @@ class WetChickenExperiment(Experiment):
         
         return reduced_matrix
     
-    def find_falling_states(self, states_list, width):
+    def find_falling_states(self, states_list, length):
         """
         Given a list of states in single integer representation, identifies the states where the boat
         falls off the waterfall (i.e., where x > 4).
@@ -510,9 +541,9 @@ class WetChickenExperiment(Experiment):
         falling_states = []
         
         for state in states_list:
-            x = state // width  # Calculate the x-coordinate (position along the river)
+            x = state // length  # Calculate the x-coordinate (position along the river)
             
-            if x >= width-1:  # The boat falls off the waterfall if x > 4
+            if x >= length-1:  # The boat falls off the waterfall if x > 4
                 falling_states.append(state)
         
         return falling_states
@@ -563,6 +594,7 @@ class RandomMDPsExperiment(Experiment):
                   f' out of {self.baseline_target_perf_ratios}')
             self.garnet = garnets.Garnets(self.nb_states, self.nb_actions, self.nb_next_state_transition,
                                           env_type=self.env_type, self_transitions=self.self_transitions)
+
             softmax_target_perf_ratio = (baseline_target_perf_ratio + 1) / 2
             self.to_append_run_one_iteration = self.to_append_run + [softmax_target_perf_ratio,
                                                                      baseline_target_perf_ratio]
@@ -572,6 +604,8 @@ class RandomMDPsExperiment(Experiment):
                                                      baseline_target_perf_ratio=baseline_target_perf_ratio)
             self.R_state_state = self.garnet.compute_reward()
             self.P = self.garnet.transition_function
+            self.traps = []
+            self._set_traps(10, -1)
             if self.env_type == 2:  # easter
                 self._set_easter_egg(reward=1)
             elif self.env_type == 3:
@@ -579,14 +613,8 @@ class RandomMDPsExperiment(Experiment):
             else:
                 self.easter_egg = None
                 self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
-            self.traps = []
-            self._set_traps(10, -1)
             self.to_append_run_one_iteration += [self.pi_b_perf, self.pi_rand_perf, self.pi_star_perf]
-            print("----------------------------------------------------------------")
-            self.structure = self.reduce_transition_matrix(self.P)
-            self.shielder = ShieldRandomMDP(self.structure, self.traps, [self.garnet.final_state])
-            self.shielder.calculateShield()
-            print("----------------------------------------------------------------")
+
 
             for nb_trajectories in self.nb_trajectories_list:
                 print(
@@ -595,8 +623,16 @@ class RandomMDPsExperiment(Experiment):
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.garnet, self.pi_b,
                                                             easter_egg=self.easter_egg)
-
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
+
+                # print("----------------------------------------------------------------")                
+                self.structure = self.reduce_transition_matrix(self.P)
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                self.estimator.calculate_intervals()
+                intervals = self.estimator.get_intervals()
+                self.shielder = ShieldRandomMDP(self.structure, self.traps, [self.garnet.final_state], intervals)
+                self.shielder.calculateShield()
+                # print("----------------------------------------------------------------")
                 self._run_algorithms()
 
 
@@ -620,7 +656,6 @@ class RandomMDPsExperiment(Experiment):
         self.pi_b_perf = self._policy_evaluation_exact(self.pi_b)
         self.pi_rand_perf = self._policy_evaluation_exact(self.pi_rand)
         if self.log:
-
             print(f"Optimal perf in trapped environment:\t\t\t" + str(self.pi_star_perf))
             print(f"Baseline perf in trapped environment:\t\t\t" + str(self.pi_b_perf))
             
@@ -669,6 +704,7 @@ class RandomMDPsExperiment(Experiment):
         :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
         :return: data batch as a list of sublists of the form [state, action, next_state, reward]
         """
+        print(self.traps)
         trajectories = []
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
@@ -701,7 +737,6 @@ class RandomMDPsExperiment(Experiment):
         num_states = self.nb_states
         num_actions = self.nb_actions
         max_transitions = self.nb_next_state_transition
-        print("maxtrans = ", max_transitions)
         # Prepare the reduced matrix to hold the indices of possible states
         reduced_matrix = np.zeros((num_states, num_actions, max_transitions), dtype=int)
         
@@ -742,8 +777,9 @@ algorithm_name_dict = {SPIBB.NAME: SPIBB, Lower_SPIBB.NAME: Lower_SPIBB,
                        ApproxSoftSPIBB.NAME: ApproxSoftSPIBB, ExactSoftSPIBB.NAME: ExactSoftSPIBB,
                        AdvApproxSoftSPIBB.NAME: AdvApproxSoftSPIBB,
                        LowerApproxSoftSPIBB.NAME: LowerApproxSoftSPIBB,
-                       DUIPI.NAME: DUIPI, Basic_rl.NAME: Basic_rl, RMin.NAME: RMin, MBIE.NAME: MBIE, RaMDP.NAME: RaMDP
-                       }
+                       DUIPI.NAME: DUIPI, Basic_rl.NAME: Basic_rl, RMin.NAME: RMin, MBIE.NAME: MBIE, RaMDP.NAME: RaMDP,
+                       Shield_SPIBB.NAME: Shield_SPIBB, Shield_Lower_SPIBB.NAME: Shield_Lower_SPIBB,
+                       PiStar.NAME: PiStar}
 
 
 def compute_r_state_action(P, R):

@@ -1,11 +1,11 @@
 import numpy as np
 
-from batch_rl_algorithms.batch_rl_algorithm import BatchRLAlgorithm 
+from batch_rl_algorithms.shielded.shielded_batch_rl_algorithm import shieldedBatchRLAlgorithm 
 
  
-class SPIBB_abstract(BatchRLAlgorithm):
+class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
     # Abstract base class for SPIBB (Pi_b-SPIBB) and Lower-SPIBB (Pi_<=b-SPIBB)
-    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, zero_unseen=True, checks=False,
+    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, shield,  zero_unseen=True, checks=False,
                  max_nb_it=5000, speed_up_dict=None):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
@@ -35,7 +35,7 @@ class SPIBB_abstract(BatchRLAlgorithm):
         """
         self.N_wedge = N_wedge
         super().__init__(pi_b=pi_b, gamma=gamma, nb_states=nb_states, nb_actions=nb_actions, data=data, R=R,
-                         zero_unseen=zero_unseen, max_nb_it=max_nb_it, episodic=episodic, checks=checks,
+                         zero_unseen=zero_unseen, max_nb_it=max_nb_it, episodic=episodic, shield=shield, checks=checks,
                          speed_up_dict=speed_up_dict)
         self.pi_b_masked = self.pi_b.copy()
         self.pi_b_masked[self.mask] = 0
@@ -54,11 +54,11 @@ class SPIBB_abstract(BatchRLAlgorithm):
         self.mask = self.count_state_action > self.N_wedge
 
 
-class SPIBB(SPIBB_abstract):
+class Shield_SPIBB(Shield_SPIBB_abstract):
     # Code and algorithm from 'Safe Policy Improvement with Baseline Bootstrapping' by Romain Laroche, Paul Trichelair
     # and Remi Tachet des Combes which implements Pi_b-SPIBB.
     # (Their code is available under: https://github.com/RomainLaroche/SPIBB)
-    NAME = 'SPIBB'
+    NAME = 'SPIBB-shield'
 
     def _policy_improvement(self):
         """
@@ -72,11 +72,11 @@ class SPIBB(SPIBB_abstract):
         self.pi = pi
 
 
-class Lower_SPIBB(SPIBB_abstract):
+class Shield_Lower_SPIBB(Shield_SPIBB_abstract):
     # Code and algorithm from 'Safe Policy Improvement with Baseline Bootstrapping' by Romain Laroche, Paul Trichelair
     # and Remi Tachet des Combeswhich implements Pi_<=b-SPIBB.
     #     # (Their code is available under: https://github.com/RomainLaroche/SPIBB)
-    NAME = 'Lower-SPIBB'
+    NAME = 'Lower-SPIBB-Shield'
 
     def _policy_improvement(self):
         """
