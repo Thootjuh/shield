@@ -53,7 +53,6 @@ class SPIBB_abstract(BatchRLAlgorithm):
         """
         self.mask = self.count_state_action > self.N_wedge
 
-
 class SPIBB(SPIBB_abstract):
     # Code and algorithm from 'Safe Policy Improvement with Baseline Bootstrapping' by Romain Laroche, Paul Trichelair
     # and Remi Tachet des Combes which implements Pi_b-SPIBB.

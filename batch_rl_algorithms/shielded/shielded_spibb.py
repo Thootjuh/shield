@@ -39,6 +39,8 @@ class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
                          speed_up_dict=speed_up_dict)
         self.pi_b_masked = self.pi_b.copy()
         self.pi_b_masked[self.mask] = 0
+        self.shield_actions()
+        self.mask = self.mask & self.allowed
 
     def _initial_calculations(self):
         """
@@ -52,6 +54,14 @@ class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
         Computes a boolean mask indicating whether a state-action pair has been more than N_wedge times.
         """
         self.mask = self.count_state_action > self.N_wedge
+        
+    def shield_actions(self):
+        self.allowed = np.full((self.mask.shape), False, dtype=bool)
+        for s in range(len(self.allowed)):
+            allowed_actions = self.shield.get_safe_actions_from_shield(s, 0.2)
+            for a in allowed_actions:
+                self.allowed[s][a]=True
+        
 
 
 class Shield_SPIBB(Shield_SPIBB_abstract):

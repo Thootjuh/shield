@@ -107,7 +107,7 @@ class DUIPI(BatchRLAlgorithm):
                                     self.variance_P) + \
                           np.einsum('ijk,ijk->ij', self.transition_model ** 2, self.variance_R)
         self.variance_q = np.nan_to_num(self.variance_q, nan=np.inf, posinf=np.inf)
-
+ 
     def _policy_improvement(self):
         """
         Updates the current policy self.pi.

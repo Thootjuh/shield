@@ -5,6 +5,7 @@ import os
 import glob
 import numpy as np
 
+
 def read_data(filepath):
     # Reload the new CSV file
     new_data = pd.read_csv(filepath)
@@ -65,7 +66,7 @@ def plot_positive_data(data, filename):
         plt.plot(method_data['length_trajectory'], method_data['method_perf'], label=method)
 
     # Set plot labels and legend
-    plt.ylim(0, 1)
+    plt.ylim(bottom=0)
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance')
     plt.title('Average Performance vs. Length Trajectory by Method (New Dataset)')
@@ -74,6 +75,77 @@ def plot_positive_data(data, filename):
     plt.savefig(filename)
     plt.show()
 
+def plot_data_interval(data, filename):
+    grouped_data = data.groupby(['method', 'length_trajectory'])
+    
+    # Calculate mean, lower, and upper bounds of the 90% confidence interval
+    summary = grouped_data['method_perf'].agg(
+        mean='mean',
+        lower=lambda x: np.percentile(x, 10),  # Lower 5th percentile
+        upper=lambda x: np.percentile(x, 90) # Upper 95th percentile
+    ).reset_index()
+    
+    # Plot average performance with confidence intervals
+    plt.figure(figsize=(12, 8))
+    for method in summary['method'].unique():
+        method_data = summary[summary['method'] == method]
+        plt.plot(
+            method_data['length_trajectory'], 
+            method_data['mean'], 
+            label=method
+        )
+        plt.fill_between(
+            method_data['length_trajectory'], 
+            method_data['lower'], 
+            method_data['upper'], 
+            alpha=0.2
+        )
+
+    # Set plot labels and legend
+    plt.xlabel('Length Trajectory')
+    plt.ylabel('Average Method Performance')
+    plt.title('Average Performance vs. Length Trajectory by Method (New Dataset)')
+    plt.legend(title='Method')
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.show()
+
+def plot_positive_data_interval(data, filename):
+    grouped_data = data.groupby(['method', 'length_trajectory'])
+    
+    # Calculate mean, lower, and upper bounds of the 90% confidence interval
+    summary = grouped_data['method_perf'].agg(
+        mean='mean',
+        lower=lambda x: np.percentile(x, 10),  # Lower 5th percentile
+        upper=lambda x: np.percentile(x, 90) # Upper 95th percentile
+    ).reset_index()
+    
+    # Plot average performance with confidence intervals
+    plt.figure(figsize=(12, 8))
+    for method in summary['method'].unique():
+        method_data = summary[summary['method'] == method]
+        plt.plot(
+            method_data['length_trajectory'], 
+            method_data['mean'], 
+            label=method
+        )
+        plt.fill_between(
+            method_data['length_trajectory'], 
+            method_data['lower'], 
+            method_data['upper'], 
+            alpha=0.2
+        )
+
+    # Set plot labels and legend
+    plt.ylim(bottom=0)  # Ensure y-axis starts at 0
+    plt.xlabel('Length Trajectory')
+    plt.ylabel('Average Method Performance')
+    plt.title('Average Performance vs. Length Trajectory by Method (New Dataset)')
+    plt.legend(title='Method')
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.show()
+    
 def calculate_cvar(data, alpha=0.01):
     # Calculate CVaR for each method and trajectory
     cvar_results = []
@@ -105,11 +177,13 @@ def plot_cvar(cvar_data, filename):
    
 
 #TODO: make it so that you can pass this path as an argument in the commandline
-directory_path = "/internship/code/results/random_mdps/shielded/mod_baseline_only/experiment_results/"
+directory_path = "/internship/code/results/random_mdps/shielded/mod_baseline_only/thest/experiment_results/"
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
 plot_data(data, 'Baseline.png')
 plot_positive_data(data, 'BaselinePositive.png')
+plot_data_interval(data, 'BaselineInterval.png')
+plot_positive_data_interval(data, 'BaselinePositiveInterval.png')
 cvar = calculate_cvar(data)
 plot_cvar(cvar, "BaselineCvar")
 

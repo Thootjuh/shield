@@ -1,7 +1,7 @@
 import numpy as np
 from . import spibb
 from . import spibb_utils
-
+from collections import defaultdict, deque
 
 class Garnets:
     def __init__(self, nb_states, nb_actions, nb_next_state_transition, env_type=1, self_transitions=0, nb_traps = 0):
@@ -9,16 +9,19 @@ class Garnets:
         self.nb_actions = nb_actions
         self.nb_next_state_transition = nb_next_state_transition
         self.transition_function = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+        self.nb_traps = nb_traps
         self.is_done = False
         self.initial_state = 0
         self.self_transitions = self_transitions
+        self._generate_transition_function()
         self.current_state = self.initial_state
         self.final_state = nb_states - 1
-        self.punishment = -1
+        self.punishment = -10
         self._set_traps(nb_traps)
-        self._generate_transition_function()
-        self.env_type = env_type
+        print("traps are: ", self.traps)
 
+        self.env_type = env_type
+    
     def _generate_transition_function(self):
         for id_state in range(self.nb_states):
             for id_action in range(self.self_transitions):
@@ -39,15 +42,50 @@ class Garnets:
                 
     def _set_traps(self, n):
         # set n traps
-        self.traps = []
-        potential_final_states = [s for s in range(self.nb_states) if s != self.final_state and s != 0]
-        for _ in range(n):
-            trap = np.random.choice(potential_final_states)
-            self.traps.append(trap)
-            potential_final_states.remove(trap)
+
+        isReachable = False
+        while not isReachable:
+            self.traps = []
+            potential_final_states = [s for s in range(self.nb_states) if s != self.final_state and s != 0]
+            for _ in range(n):
+                trap = np.random.choice(potential_final_states)
+                self.traps.append(trap)
+                potential_final_states.remove(trap)
+            t = self.transition_function.copy()
+            for trap in self.traps:
+                t[trap, :, :] = 0
+            isReachable = self.all_states_reachable(t)
+        # self.traps = [6, 9, 45, 21, 42]
+        # Check if it is possible to make the end:
+        
+    def all_states_reachable(self, transition_matrix):
+        # Convert transition matrix to adjacency list
+        adjacency_list = defaultdict(list)
+        num_states, num_actions, _ = transition_matrix.shape
+        
+        for i in range(num_states):
+            for a in range(num_actions):
+                for j in range(num_states):
+                    if transition_matrix[i][a][j] > 0:
+                        adjacency_list[i].append(j)
+        
+        # Perform BFS to find all reachable states
+        visited = set()
+        queue = deque([self.initial_state])
+        
+        while queue:
+            current = queue.popleft()
+            if current not in visited:
+                visited.add(current)
+                queue.extend(adjacency_list[current])
+        
+        # Check if all states are reachable
+        return len(visited) == num_states
+
             
     def get_traps(self):
         return self.traps
+    
     def reset(self):
         self.current_state = self.initial_state
         return int(self.current_state)
@@ -112,6 +150,14 @@ class Garnets:
             softmax_target_perf_ratio = baseline_target_perf_ratio
 
         farther_state, pi_star_perf, q_star, pi_rand_perf = self._find_farther_state(gamma)
+        
+        while isinstance(q_star, int):
+            print("regenerating transitions and traps")
+            self.transition_function = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+            self._generate_transition_function()
+            self._set_traps(self.nb_traps)
+            farther_state, pi_star_perf, q_star, pi_rand_perf = self._find_farther_state(gamma)
+            
         p, r = self._set_temporary_final_state(farther_state)
         self.transition_function = p.copy()
         r_reshaped = spibb_utils.get_reward_model(p, r)
@@ -132,15 +178,19 @@ class Garnets:
     def _perturb_policy(self, pi, q_star, p, r_reshaped, baseline_target_perf,
                         reduction_factor, gamma):
         v = np.ones(1)
-        while v[0] > baseline_target_perf:
+        counter = 0
+        while v[0] > baseline_target_perf and counter <= 10000:
             x = np.random.randint(self.nb_states)
             pi[x, np.argmax(q_star[x, :])] *= reduction_factor
             pi[x, :] /= np.sum(pi[x, :])
             v, q = spibb.policy_evaluation_exact(pi, r_reshaped, p, gamma)
+            counter+=1
+        if counter >= 10000:
+            print("exited after 10000 iterations")
 
-        avg_time_to_goal = np.log(v[0]) / np.log(gamma)
+        # avg_time_to_goal = np.log(v[0]) / np.log(gamma)
         print("Perturbed policy performance : " + str(v[0]))
-        print("Perturbed policy average time to goal: " + str(avg_time_to_goal))
+        # print("Perturbed policy average time to goal: " + str(avg_time_to_goal))
         return pi, v, q
 
     def _generate_softmax_policy(self, q_star, p, r_reshaped, softmax_target_perf,
@@ -152,10 +202,10 @@ class Garnets:
             pi = spibb.softmax(q_star, temp)
             v, q = spibb.policy_evaluation_exact(pi, r_reshaped, p, gamma)
 
-        avg_time_to_goal = np.log(v[0]) / np.log(gamma)
+        # avg_time_to_goal = np.log(v[0]) / np.log(gamma)
         print("Softmax performance : " + str(v[0]))
         print("Softmax temperature : " + str(temp))
-        print("Softmax average time to goal: " + str(avg_time_to_goal))
+        # print("Softmax average time to goal: " + str(avg_time_to_goal))
         return pi, v, q
 
     def _set_temporary_final_state(self, final_state):

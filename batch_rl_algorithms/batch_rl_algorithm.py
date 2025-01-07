@@ -1,6 +1,6 @@
 import numpy as np 
 
- 
+  
 class BatchRLAlgorithm:
     # Base class for all batch RL algorithms, which implements the general framework and the PE and PI step for
     # Dynamic Programming following 'Reinforcement Learning - An Introduction' by Sutton and Barto and
