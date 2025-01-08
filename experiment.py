@@ -200,7 +200,7 @@ class Experiment:
                 duipi = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                                  nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
                                                  xi=xi, episodic=self.episodic, bayesian=bayesian,
-                                                 speed_up_dict=self.speed_up_dict)
+                                                 speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
                 t_0 = time.time()
                 duipi.fit()
                 t_1 = time.time()
@@ -229,7 +229,8 @@ class Experiment:
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict)
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
@@ -248,7 +249,7 @@ class Experiment:
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, speed_up_dict=self.speed_up_dict)
+                                             N_wedge=N_wedge, episodic=self.episodic, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
@@ -290,7 +291,8 @@ class Experiment:
                                                               episodic=self.episodic,
                                                               delta=delta, max_nb_it=max_nb_it,
                                                               speed_up_dict=self.speed_up_dict, g_max=self.g_max,
-                                                              ensure_independence=self.theoretical_safety)
+                                                              ensure_independence=self.theoretical_safety,
+                                                              estimate_baseline=self.estimate_baseline)
                         t_0 = time.time()
                         soft_spibb.fit()
                         t_1 = time.time()
@@ -313,7 +315,7 @@ class Experiment:
         """
         basic_rl = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                            episodic=self.episodic, speed_up_dict=self.speed_up_dict)
+                                            episodic=self.episodic, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
         t_0 = time.time()
         basic_rl.fit()
         t_1 = time.time()
@@ -332,7 +334,8 @@ class Experiment:
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             r_min = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, speed_up_dict=self.speed_up_dict)
+                                             N_wedge=N_wedge, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
+                                             estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
             r_min.fit()
             t_1 = time.time()
@@ -355,7 +358,8 @@ class Experiment:
         for delta in deltas:
             mbie = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                            delta=delta, episodic=self.episodic, speed_up_dict=self.speed_up_dict)
+                                            delta=delta, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
+                                            estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
             mbie.fit()
             t_1 = time.time()
@@ -378,7 +382,8 @@ class Experiment:
         for kappa in self.algorithms_dict[key]['hyperparam']:
             ramdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             kappa=kappa, episodic=self.episodic, speed_up_dict=self.speed_up_dict)
+                                             kappa=kappa, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
+                                             estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
             ramdp.fit()
             t_1 = time.time()
@@ -568,7 +573,7 @@ class RandomMDPsExperiment(Experiment):
         self.self_transitions = int(self.experiment_config['ENV_PARAMETERS']['self_transitions'])
         self.fixed_params_exp_list = [self.seed, self.gamma, self.nb_states, self.nb_actions,
                                       self.nb_next_state_transition]
-
+        self.estimate_baseline=bool((self.experiment_config['ENV_PARAMETERS']['estimate_baseline']))
         self.initial_state = 0
         self.pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
 

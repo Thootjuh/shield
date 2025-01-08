@@ -2,7 +2,7 @@ from batch_rl_algorithms.batch_rl_algorithm import BatchRLAlgorithm
 import numpy as np
 class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen=True, max_nb_it=5000,
-                 checks=False, speed_up_dict=None):
+                 checks=False, speed_up_dict=None, estimate_baseline=False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -49,6 +49,10 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         else:
             self._count()
         self._initial_calculations()
+        if estimate_baseline:
+            self.pi_b = self.estimate_baseline()
+            self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
+            self.pi = self.pi_b.copy()
         
     def modifyPolicyWithShield(self, policy):
         for i, state in enumerate(policy):

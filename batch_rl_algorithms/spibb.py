@@ -6,7 +6,7 @@ from batch_rl_algorithms.batch_rl_algorithm import BatchRLAlgorithm
 class SPIBB_abstract(BatchRLAlgorithm):
     # Abstract base class for SPIBB (Pi_b-SPIBB) and Lower-SPIBB (Pi_<=b-SPIBB)
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, zero_unseen=True, checks=False,
-                 max_nb_it=5000, speed_up_dict=None):
+                 max_nb_it=5000, speed_up_dict=None, estimate_baseline=False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -36,7 +36,7 @@ class SPIBB_abstract(BatchRLAlgorithm):
         self.N_wedge = N_wedge
         super().__init__(pi_b=pi_b, gamma=gamma, nb_states=nb_states, nb_actions=nb_actions, data=data, R=R,
                          zero_unseen=zero_unseen, max_nb_it=max_nb_it, episodic=episodic, checks=checks,
-                         speed_up_dict=speed_up_dict)
+                         speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
         self.pi_b_masked = self.pi_b.copy()
         self.pi_b_masked[self.mask] = 0
 

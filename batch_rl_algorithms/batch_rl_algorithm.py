@@ -7,7 +7,7 @@ class BatchRLAlgorithm:
     # https://github.com/RomainLaroche/SPIBB. Additionally, it also implements the estimations of the transition
     # probabilities and reward matrix and some validation checks.
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen=True, max_nb_it=5000,
-                 checks=False, speed_up_dict=None):
+                 checks=False, speed_up_dict=None, estimate_baseline = False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -52,6 +52,26 @@ class BatchRLAlgorithm:
         else:
             self._count()
         self._initial_calculations()
+        if estimate_baseline:
+            self.pi_b = self.estimate_baseline()
+            self.pi = self.pi_b.copy()
+            
+    def estimate_baseline(self):
+        num_states, num_actions = self.count_state_action.shape
+
+        # Calculate n(s) for each state
+        n_s = np.sum(self.count_state_action, axis=1)  # Sum of actions per state
+
+        # Create an output array for normalized probabilities
+        result = np.zeros_like(self.count_state_action, dtype=float)
+
+        for state in range(num_states):
+            if n_s[state] == 0:  # If n(s) == 0, assign uniform probabilities
+                result[state] = 1 / num_actions
+            else:  # Otherwise, calculate n(s, a) / n(s)
+                result[state] = self.count_state_action[state] / n_s[state]
+        
+        return result         
 
     def _initial_calculations(self):
         """

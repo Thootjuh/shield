@@ -9,7 +9,7 @@ class MBIE(BatchRLAlgorithm):
     NAME = 'MBIE'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, delta, zero_unseen=True, max_nb_it=5000,
-                 checks=False, speed_up_dict=None):
+                 checks=False, speed_up_dict=None, estimate_baseline = False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -37,7 +37,7 @@ class MBIE(BatchRLAlgorithm):
         """
         self.delta = delta
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen, max_nb_it, checks,
-                         speed_up_dict)
+                         speed_up_dict, estimate_baseline)
 
     def _initial_calculations(self):
         '''

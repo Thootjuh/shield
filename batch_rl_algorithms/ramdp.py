@@ -10,7 +10,7 @@ class RaMDP(BatchRLAlgorithm):
     NAME = 'RaMDP'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, kappa, zero_unseen=True, max_nb_it=5000,
-                 checks=False, speed_up_dict=None):
+                 checks=False, speed_up_dict=None, estimate_baseline=False):
         '''
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -39,7 +39,7 @@ class RaMDP(BatchRLAlgorithm):
         '''
         self.kappa = kappa
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen, max_nb_it, checks,
-                         speed_up_dict=speed_up_dict)
+                         speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
 
     def _compute_R_state_action(self):
         '''

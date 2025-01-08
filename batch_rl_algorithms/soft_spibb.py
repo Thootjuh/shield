@@ -10,7 +10,7 @@ class SoftSPIBB(BatchRLAlgorithm):
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, error_kind, delta, epsilon, episodic,
                  zero_unseen=True, max_nb_it=5000, checks=False, speed_up_dict=None, g_max=None,
-                 ensure_independence=False, allowed_correlation=0.01):
+                 ensure_independence=False, allowed_correlation=0.01, estimate_baseline=False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -70,7 +70,7 @@ class SoftSPIBB(BatchRLAlgorithm):
         self.g_max = g_max
         super().__init__(pi_b=pi_b, gamma=gamma, nb_states=nb_states, nb_actions=nb_actions, data=data, R=R,
                          zero_unseen=zero_unseen, max_nb_it=max_nb_it, episodic=episodic, checks=checks,
-                         speed_up_dict=speed_up_dict)
+                         speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
         self.old_pi = None
 
     def _initial_calculations(self):

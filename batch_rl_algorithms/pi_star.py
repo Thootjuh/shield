@@ -11,7 +11,7 @@ class PiStar(BatchRLAlgorithm):
     NAME = 'PI_STAR'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, P, episodic, checks=False, zero_unseen=True,
-                 max_nb_it=5000, speed_up_dict=None):
+                 max_nb_it=5000, speed_up_dict=None, estimate_baseline = False):
         """
         As this class does not really implement a Batch RL algorithm, some of the input parameters can be set to None
         :param pi_b: not necessary, choice is not important
