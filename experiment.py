@@ -452,6 +452,7 @@ class WetChickenExperiment(Experiment):
             self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
                                                 'length_trajectory']
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
 
         
     def _run_one_iteration(self):
@@ -472,13 +473,12 @@ class WetChickenExperiment(Experiment):
                     print(f'Starting with length_trajectory {length_trajectory} out of {self.lengths_trajectory}.')
                     self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
                     self.to_append = self.to_append_run_one_iteration + [length_trajectory]
-                    # print("----------------------------------------------------------------")
-                    # print(self.P)      
+                    # print("----------------------------------------------------------------")    
                     self.structure = self.reduce_transition_matrix(self.P)
-                    falling_states = self.find_falling_states(list(range(len(self.structure))), self.length)
+                    goal_states = self.find_closest_states(list(range(len(self.structure))), self.length)
                     self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
                     intervals = self.estimator.get_intervals()
-                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, falling_states, intervals)
+                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, goal_states, intervals)
                     self.shielder.calculateShield()
                     # print("----------------------------------------------------------------")
                     self._run_algorithms()
@@ -531,7 +531,7 @@ class WetChickenExperiment(Experiment):
         
         return reduced_matrix
     
-    def find_falling_states(self, states_list, length):
+    def find_closest_states(self, states_list, length):
         """
         Given a list of states in single integer representation, identifies the states where the boat
         falls off the waterfall (i.e., where x > 4).
@@ -573,7 +573,7 @@ class RandomMDPsExperiment(Experiment):
         self.self_transitions = int(self.experiment_config['ENV_PARAMETERS']['self_transitions'])
         self.fixed_params_exp_list = [self.seed, self.gamma, self.nb_states, self.nb_actions,
                                       self.nb_next_state_transition]
-        self.estimate_baseline=bool((self.experiment_config['ENV_PARAMETERS']['estimate_baseline']))
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         self.initial_state = 0
         self.pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
 

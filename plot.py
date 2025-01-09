@@ -177,7 +177,7 @@ def plot_cvar(cvar_data, filename):
    
 
 #TODO: make it so that you can pass this path as an argument in the commandline
-directory_path = "/internship/code/results/random_mdps/shielded/mod_baseline_only/thest/experiment_results/"
+directory_path = "/internship/code/results/wet_chicken/shield/wet_chicken_results/"
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
 plot_data(data, 'Baseline.png')

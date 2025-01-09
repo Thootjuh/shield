@@ -16,20 +16,32 @@ class IntervalMDPBuilder:
         
         # Create sparse matrix
         counter = 0
+        # Build Initial state
         builder.new_row_group(counter)
         for next_state_init in next_states_init:
             bounds = self.intervals[(state_init, action_init, next_state_init)]
             builder.add_next_value(counter, next_state_init+1, pycarl.Interval(bounds[0], bounds[1])) 
         counter += 1 
+        
+        # Build 25x25 grid
         for state in range(self.num_states):
             builder.new_row_group(counter)
             for action in range(self.num_actions):
                 next_states = self.transitions[state][action]
-                # check if next state is a terminal state. If so, only add a transition to itself
                 for next_state in next_states:
                     bounds = self.intervals[(state, action, next_state)]
-                    builder.add_next_value(counter, next_state+1, pycarl.Interval(bounds[0], bounds[1]))
+                    # Check if you have fallen of the waterfall
+                    if next_state == 0 and all(item not in next_states for item in [5, 10, 15, 20]) and not state in [0, 1, 2, 3, 4]:
+                        builder.add_next_value(counter, self.num_states+1, pycarl.Interval(1, 1))
+                    else:
+                        builder.add_next_value(counter, next_state+1, pycarl.Interval(bounds[0], bounds[1]))
                 counter+=1
+                
+        # Build the waterfall
+        builder.new_row_group(counter) 
+        builder.add_next_value(counter, 1, pycarl.Interval(1, 1))
+       
+        
 
         transition_matrix = builder.build()
         state_labels = self.set_state_labels_with_init_WetChicken()
@@ -46,6 +58,7 @@ class IntervalMDPBuilder:
         # Build the model
         mdp = stormpy.storage.SparseIntervalMdp(components)
         return mdp
+    
     def build_MDP_model_with_init(self, state_init, action_init, next_states_init):
         # initialize builder
         builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
@@ -106,13 +119,38 @@ class IntervalMDPBuilder:
         
         return state_labeling
     
+    
+    def find_closest_states(self, states_list, length):
+        """
+        Given a list of states in single integer representation, identifies the states where the boat
+        is on the edge off the waterfall (i.e., where x = 4).
+
+        Parameters:
+            states (list[int]): List of states in single integer representation.
+            width (int): The width of the river, used to calculate the x-coordinate.
+
+        Returns:
+            list[int]: List of states where the boat would fall off the waterfall.
+        """
+        falling_states = []
+        
+        for state in states_list:
+            x = state // length  # Calculate the x-coordinate (position along the river)
+            
+            if x >= length-1:  # The boat falls off the waterfall if x > 4
+                falling_states.append(state)
+        
+        return falling_states
     def set_state_labels_with_init_WetChicken(self):
-        state_labeling = stormpy.storage.StateLabeling(self.num_states+1)
-        labels = {"waterfall", "init"}
+        state_labeling = stormpy.storage.StateLabeling(self.num_states+2)
+        labels = {"waterfall", "init", "goal"}
         for label in labels:
             state_labeling.add_label(label)
-        for i in self.traps:
-            state_labeling.add_label_to_state("waterfall", i+1)
+        edge_states = self.find_closest_states(range(self.num_states), 5)
+        for i in edge_states:
+            state_labeling.add_label_to_state("goal", i+1)
+        state_labeling.add_label_to_state("waterfall", self.num_states+1)
+        
         state_labeling.add_label_to_state("init", 0)
         
         return state_labeling
@@ -143,8 +181,8 @@ class IntervalMDPBuilder:
         return choice_labeling
     
     def set_choice_labels_with_init_WetChicken(self, action):    
-        choice_labeling = stormpy.storage.ChoiceLabeling(self.num_actions*self.num_states+1)
-        choice_labels = {"drift", "hold", "paddle_back", "right", "left"}
+        choice_labeling = stormpy.storage.ChoiceLabeling(self.num_actions*self.num_states+2)
+        choice_labels = {"drift", "hold", "paddle_back", "right", "left", "reset"}
         for label in choice_labels:
             choice_labeling.add_label(label)
             
@@ -155,7 +193,7 @@ class IntervalMDPBuilder:
             choice_labeling.add_label_to_choice("right", 1+i*5+3) 
             choice_labeling.add_label_to_choice("left", 1+i*5+4) 
         
-        
+        choice_labeling.add_label_to_choice("reset", self.num_actions*self.num_states+1)
         init_action = ""
         match action:
             case 0:

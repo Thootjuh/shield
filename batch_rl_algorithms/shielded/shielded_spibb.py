@@ -40,7 +40,7 @@ class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
         self.pi_b_masked = self.pi_b.copy()
         self.pi_b_masked[self.mask] = 0
         self.shield_actions()
-        # self.mask = self.mask & self.allowed
+        self.mask = self.mask & self.allowed
 
     def _initial_calculations(self):
         """
@@ -58,7 +58,7 @@ class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
     def shield_actions(self):
         self.allowed = np.full((self.mask.shape), False, dtype=bool)
         for s in range(len(self.allowed)):
-            allowed_actions = self.shield.get_safe_actions_from_shield(s, 0.2)
+            allowed_actions = self.shield.get_safe_actions_from_shield(s)
             for a in allowed_actions:
                 self.allowed[s][a]=True
         

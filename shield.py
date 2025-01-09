@@ -17,7 +17,6 @@ class Shield:
         self.num_states= len(self.structure)
         self.num_actions = len(self.structure[0])
         self.shield = np.full((self.num_states, self.num_actions), -1, dtype=np.float64)
-        # self.shield2 = []
     
         
     def createPrismStr(self):
@@ -56,19 +55,14 @@ class Shield:
         start_total_time = time.time()
         for state in range(len(self.structure)):
             for action in range(len(self.structure[state])):
-                # print(self.traps)
-                # print(state)
                 if state in self.traps:
-                    # self.shield2.append([state, action, 1])
                     self.shield[state][action] = 1
                 elif state in self.goal:
-                    # self.shield2.append([state, action, 0])
                     self.shield[state][action] = 0
                 else:
                     next_states = self.structure[state][action]
                     model = model_function(state, action, next_states)
                     r1 = self.invokeStorm(model, prop)
-                    # self.shield2.append([int(state), int(action), 1-r1])
                     self.shield[state][action] = 1-r1
         end_total_time = time.time()
         
@@ -83,7 +77,6 @@ class Shield:
         
     def invokeStormPrism(self, mdpprog, prop):
         # write program to RAM
-        # print("writing prism program to RAM")
         temp_name = next(tempfile._get_candidate_names())
         file_name = "/dev/shm/prism-" + temp_name + ".nm"
         text_file = open(file_name, "w")
@@ -91,22 +84,9 @@ class Shield:
         text_file.close()
 
         # read program from RAM
-        # print("parse prism program from RAM")
         program = stormpy.parse_prism_program(file_name)
-
-        # print("parse properties")
-        # prop = "Pmin=? [ F<=" + str((self.num_ghosts+1)*STEPS-1) +" \"crash\" ]"
-        
-        # probability of falling into a trap
-
-        # prop = "Pmax=? [ (!F \"trap\" & F \"reach\") ]"
-        
-        # prop = "Pmax=? [F \"reach\"]"
-        # prop = "Pmax=? [G !F<3 \"trap\ U \"reach\"]"
-        # Find something for reach and combine them
         properties = stormpy.parse_properties_for_prism_program(prop, program, None)
 
-        # print("Build Model")
         start = time.time()
         model = stormpy.build_model(program, properties)
         initial_state = model.initial_states[0]
@@ -119,20 +99,6 @@ class Shield:
         os.remove(file_name)
 
         return result.at(initial_state)
-    
- 
-    def get_safe_actions_from_shield(self, state, threshold):
-        probs = self.shield[state]
-        safe_actions = []
-        for i, prob in enumerate(probs):
-            if prob >= 0 and prob <= threshold:
-                safe_actions.append(i)
-
-        if len(safe_actions) == 0:
-            min_value = np.min(probs)
-            safe_actions = np.where(probs == min_value)[0].tolist()
-        return safe_actions
-            
                 
     
     def invokeStorm(self, model, prop):
@@ -159,20 +125,27 @@ class ShieldRandomMDP(Shield):
         prop3 = "Pmax=? [!\"trap\" U \"goal\"]"
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
         return super().calculateShieldInterval(prop3, self.builder.build_MDP_model_with_init)
+    
+    def get_safe_actions_from_shield(self, state, threshold=0.2):
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            min_value = np.min(probs)
+            safe_actions = np.where(probs == min_value)[0].tolist()
+        return safe_actions
 
 class ShieldWetChicken(Shield):
-    def __init__(self, transition_matrix, width, height, traps, intervals):
-        self.traps = traps
-        self.goal = []
+    def __init__(self, transition_matrix, width, length, goals, intervals):
         self.width = width
-        self.height = height
-        self.structure = transition_matrix
-        self.intervals = intervals
-        self.builder = IntervalMDPBuilder(transition_matrix, intervals, self.goal, self.traps)
-        self.shield = []
+        self.length = length
+        super().__init__(transition_matrix, [], [], intervals)
         
     def createPrismStr(self):
-        Tempstr = PrismEncoder.encodeWetChicken(self.structure, self.width, self.height)
+        Tempstr = PrismEncoder.encodeWetChicken(self.structure, self.width, self.length)
         Tempstr = PrismEncoder.add_avoid_label(Tempstr, self.traps)
         with open("output.txt", 'w') as file:
             file.write(Tempstr)
@@ -186,26 +159,44 @@ class ShieldWetChicken(Shield):
             "right",
             "left",
         ]
-        sorted_arr = self.shield[self.shield[:, 2].argsort()]
-        np.set_printoptions(suppress=True, precision=6)
-        for row in sorted_arr:
-            state = row[0]
-            action = actions[int(row[1])]
-            prob = row[2]
-            x = int(state / self.height)
-            y = int(state % self.width)
-            print(f"State: ({x}, {y}), action: {action}, with probability of falling: {prob}")
+        state_action_prob_pairs = []
+        for state in range(len(self.shield)):
+            for action in range(len(self.shield[state])):
+                prob = self.shield[state][action]
+                state_action_prob_pairs.append([state, action, prob])
+        state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        
+        for pair in state_action_prob_pairs:
+                state = pair[0]
+                action = actions[pair[1]]
+                prob = pair[2]
+                x = int(state / self.length)
+                y = int(state % self.width)
+                print(f"State: ({x}, {y}), action: {action}, with probability of falling: {prob}")
             
         print("with falling states being")
         for state in self.traps:
-            x = int(state / self.height)
+            x = int(state / self.length)
             y = int(state % self.width)
             print(f"({x},{y})")
             
     def calculateShield(self):
         # How likely are we to step into a trap
-        prop = "Pmin=? [  F<4\"waterfall\" ]"
+        prop = "Pmin=? [  !\"waterfall\" U \"goal\"]"
+        prop = "Pmax=? [  !F<2\"waterfall\"]"
         return super().calculateShieldInterval(prop, self.builder.build_wetChicken_model_with_init)
+    
+    def get_safe_actions_from_shield(self, state, threshold=0.50):
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            min_value = np.min(probs)
+            safe_actions = np.where(probs == min_value)[0].tolist()
+        return safe_actions
     
     
     

@@ -56,7 +56,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         
     def modifyPolicyWithShield(self, policy):
         for i, state in enumerate(policy):
-            allowed_actions = self.shield.get_safe_actions_from_shield(i, 0.2)
+            allowed_actions = self.shield.get_safe_actions_from_shield(i)
             temp = np.zeros(len(state))
             for action in allowed_actions:
                 temp[action] = state[action]
