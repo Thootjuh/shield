@@ -4,6 +4,7 @@ import configparser
 import os
 import glob
 import numpy as np
+import sys
 
 
 def read_data(filepath):
@@ -176,14 +177,17 @@ def plot_cvar(cvar_data, filename):
     plt.show()
    
 
-#TODO: make it so that you can pass this path as an argument in the commandline
-directory_path = "/internship/code/results/wet_chicken/shield/wet_chicken_results/"
+# pass this path as an argument in the commandline
+if len(sys.argv) > 1:
+    directory_path = sys.argv[1]
+else:
+    directory_path = "/internship/code/results/wet_chicken/shield/wet_chicken_results/"
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
-plot_data(data, 'Baseline.png')
-plot_positive_data(data, 'BaselinePositive.png')
-plot_data_interval(data, 'BaselineInterval.png')
-plot_positive_data_interval(data, 'BaselinePositiveInterval.png')
+plot_data(data, 'Results.png')
+plot_positive_data(data, 'Results_positive.png')
+plot_data_interval(data, 'Results_interval.png')
+plot_positive_data_interval(data, 'Results_positive_Interval.png')
 cvar = calculate_cvar(data)
-plot_cvar(cvar, "BaselineCvar")
+plot_cvar(cvar, "Results_CVAR")
 
