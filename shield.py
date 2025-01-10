@@ -64,6 +64,7 @@ class Shield:
                     model = model_function(state, action, next_states)
                     r1 = self.invokeStorm(model, prop)
                     self.shield[state][action] = 1-r1
+                # time.sleep(100)
         end_total_time = time.time()
         
 
@@ -164,7 +165,7 @@ class ShieldWetChicken(Shield):
             for action in range(len(self.shield[state])):
                 prob = self.shield[state][action]
                 state_action_prob_pairs.append([state, action, prob])
-        state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
         
         for pair in state_action_prob_pairs:
                 state = pair[0]
@@ -182,8 +183,9 @@ class ShieldWetChicken(Shield):
             
     def calculateShield(self):
         # How likely are we to step into a trap
-        prop = "Pmin=? [  !\"waterfall\" U \"goal\"]"
-        prop = "Pmax=? [  !F<2\"waterfall\"]"
+        prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
+        # prop = "Pmin=? [  F\"waterfall\"]"
+        # prop = "Pmax=? [  !F<2\"waterfall\"]"
         return super().calculateShieldInterval(prop, self.builder.build_wetChicken_model_with_init)
     
     def get_safe_actions_from_shield(self, state, threshold=0.50):

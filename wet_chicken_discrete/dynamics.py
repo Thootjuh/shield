@@ -45,6 +45,8 @@ class WetChicken:
 
     def step(self, action):
         # action_coordinates = ACTION_TRANSLATOR[action]
+
+            
         action_coordinates = list(ACTION_TRANSLATOR.values())[action]
         x_hat = self._state[0] + action_coordinates[0] + self._velocity() + self._turbulence()
         y_hat = self._state[1] + action_coordinates[1]
@@ -54,9 +56,15 @@ class WetChicken:
             y_hat = round(y_hat)
         else:
             old_state = self._state.copy()
+        
+        if self._state[0] == 5:
+            self._state[0] = 0
+            self._state[1] = 1
+            new_state = self.get_state_int()
+            return old_state, 0, new_state
 
         if x_hat >= self.length:
-            self._state[0] = 0
+            self._state[0] = 5
         elif x_hat < 0:
             self._state[0] = 0
         else:
@@ -81,7 +89,7 @@ class WetChicken:
     def get_transition_function(self):
         if not self.discrete:
             raise AssertionError('You chose a continuous MDP, but requested the transition function.')
-        nb_states = self.width * self.length
+        nb_states = self.width * self.length + 1
         nb_actions = len(ACTION_TRANSLATOR)
         P = np.zeros((nb_states, nb_actions, nb_states))
         for state in range(nb_states):
@@ -109,7 +117,7 @@ class WetChicken:
                 else:
                     y_new = y_hat
                 y_new = int(y_new)
-                P[state, action_nb, 0] += prob_mass_waterfall
+                P[state, action_nb, nb_states-1] += prob_mass_waterfall
                 P[state, action_nb, y_new] += prob_mass_on_land
                 for x_hat in range(self.width):
                     x_hat_interval = [x_hat - 0.5, x_hat + 0.5]
@@ -121,11 +129,13 @@ class WetChicken:
     def get_reward_function(self):
         if not self.discrete:
             raise AssertionError('You chose a continuous MDP, but requested the reward function.')
-        nb_states = self.width * self.length
+        nb_states = self.width * self.length +1
         R = np.zeros((nb_states, nb_states))
         for state in range(nb_states):
             for next_state in range(nb_states):
                 R[state, next_state] = int(next_state / self.width)
+        R[:, nb_states-1] = 0
+        # print(R)
         return R
 
     def evaluate_policy(self, nb_evaluations):

@@ -420,7 +420,7 @@ class WetChickenExperiment(Experiment):
         self.max_turbulence = float(self.experiment_config['ENV_PARAMETERS']['MAX_TURBULENCE'])
         self.max_velocity = float(self.experiment_config['ENV_PARAMETERS']['MAX_VELOCITY'])
 
-        self.nb_states = self.length * self.width
+        self.nb_states = self.length * self.width + 1
         self.nb_actions = 5
 
         self.env = WetChicken(length=self.length, width=self.width, max_turbulence=self.max_turbulence,
@@ -475,11 +475,24 @@ class WetChickenExperiment(Experiment):
                     self.to_append = self.to_append_run_one_iteration + [length_trajectory]
                     # print("----------------------------------------------------------------")    
                     self.structure = self.reduce_transition_matrix(self.P)
+                    # actions = [
+                    #     "drift",
+                    #     "hold",
+                    #     "paddle_back",
+                    #     "right",
+                    #     "left",
+                    # ]
+                    # for state in range(len(self.structure)):
+                    #     for action in range(len(self.structure[state])):
+                    #         x = int(state / 5)
+                    #         y = state % 5
+                    #         print(f"In state ({x},{y}), using action {actions[action]} has the following possible next states: {self.structure[state][action]}")
                     goal_states = self.find_closest_states(list(range(len(self.structure))), self.length)
                     self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
                     intervals = self.estimator.get_intervals()
                     self.shielder = ShieldWetChicken(self.structure, self.width, self.length, goal_states, intervals)
                     self.shielder.calculateShield()
+                    # self.shielder.printShield()
                     # print("----------------------------------------------------------------")
                     self._run_algorithms()
                 
@@ -499,8 +512,11 @@ class WetChickenExperiment(Experiment):
             state, reward, next_state = env.step(action_choice)
             trajectory.append([action_choice, state, next_state, reward])
             state = next_state
+            if state == self.length * self.width:
+                state, reward, next_state = env.step(action_choice)
+                trajectory.append([0, state, next_state, reward])
         return trajectory
-    
+            
     
 
     def reduce_transition_matrix(self, transition_matrix):
@@ -518,7 +534,6 @@ class WetChickenExperiment(Experiment):
         """
         num_states = self.nb_states
         num_actions = self.nb_actions
-        
         # Prepare the reduced matrix to hold the indices of possible states
         reduced_matrix = np.empty((num_states, num_actions), dtype=object)
         

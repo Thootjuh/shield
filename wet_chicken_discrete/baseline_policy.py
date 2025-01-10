@@ -7,7 +7,7 @@ class WetChickenBaselinePolicy:
                  order_epsilon=3, order_learning_rate=3):
         self.env = env
         self.gamma = gamma
-        self.nb_states = env.width * env.length
+        self.nb_states = env.width * env.length + 1
         self.nb_actions = 5
         self.pi = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         self.epsilon = epsilon

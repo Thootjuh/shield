@@ -13,7 +13,13 @@ class IntervalMDPBuilder:
         
     def build_wetChicken_model_with_init(self, state_init, action_init, next_states_init):
         builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
-        
+        actions = [
+            "drift",
+            "hold",
+            "paddle_back",
+            "right",
+            "left",
+        ]
         # Create sparse matrix
         counter = 0
         # Build Initial state
@@ -22,20 +28,25 @@ class IntervalMDPBuilder:
             bounds = self.intervals[(state_init, action_init, next_state_init)]
             builder.add_next_value(counter, next_state_init+1, pycarl.Interval(bounds[0], bounds[1])) 
         counter += 1 
-        
         # Build 25x25 grid
-        for state in range(self.num_states):
+        for state in range(self.num_states-1):
             builder.new_row_group(counter)
             for action in range(self.num_actions):
                 next_states = self.transitions[state][action]
                 for next_state in next_states:
                     bounds = self.intervals[(state, action, next_state)]
                     # Check if you have fallen of the waterfall
-                    if next_state == 0 and all(item not in next_states for item in [5, 10, 15, 20]) and not state in [0, 1, 2, 3, 4]:
-                        builder.add_next_value(counter, self.num_states+1, pycarl.Interval(1, 1))
-                    else:
-                        builder.add_next_value(counter, next_state+1, pycarl.Interval(bounds[0], bounds[1]))
+                    # if next_state == 25:
+                    #     x = int(state / 5)
+                    #     y = state % 5
+                    #     print(f"In state ({x},{y}), using action {actions[action]} has a chance of falling off the waterfall between {bounds[0]} and {bounds[1]}")
+                    #     builder.add_next_value(counter, self.num_states+1, pycarl.Interval(bounds[0], bounds[1]))
+                    # else:
+                    builder.add_next_value(counter, next_state+1, pycarl.Interval(bounds[0], bounds[1]))
+                    
+                    # print(next_state)
                 counter+=1
+        
                 
         # Build the waterfall
         builder.new_row_group(counter) 
@@ -57,6 +68,7 @@ class IntervalMDPBuilder:
         
         # Build the model
         mdp = stormpy.storage.SparseIntervalMdp(components)
+        
         return mdp
     
     def build_MDP_model_with_init(self, state_init, action_init, next_states_init):
@@ -141,15 +153,16 @@ class IntervalMDPBuilder:
                 falling_states.append(state)
         
         return falling_states
+    
     def set_state_labels_with_init_WetChicken(self):
-        state_labeling = stormpy.storage.StateLabeling(self.num_states+2)
+        state_labeling = stormpy.storage.StateLabeling(self.num_states+1)
         labels = {"waterfall", "init", "goal"}
         for label in labels:
             state_labeling.add_label(label)
-        edge_states = self.find_closest_states(range(self.num_states), 5)
+        edge_states = self.find_closest_states(range(self.num_states-1), 5)
         for i in edge_states:
             state_labeling.add_label_to_state("goal", i+1)
-        state_labeling.add_label_to_state("waterfall", self.num_states+1)
+        state_labeling.add_label_to_state("waterfall", self.num_states)
         
         state_labeling.add_label_to_state("init", 0)
         
@@ -181,19 +194,19 @@ class IntervalMDPBuilder:
         return choice_labeling
     
     def set_choice_labels_with_init_WetChicken(self, action):    
-        choice_labeling = stormpy.storage.ChoiceLabeling(self.num_actions*self.num_states+2)
+        choice_labeling = stormpy.storage.ChoiceLabeling(self.num_actions*(self.num_states-1)+2)
         choice_labels = {"drift", "hold", "paddle_back", "right", "left", "reset"}
         for label in choice_labels:
             choice_labeling.add_label(label)
             
-        for i in range(self.num_states):
+        for i in range(self.num_states-1):
             choice_labeling.add_label_to_choice("drift", 1+i*5)
             choice_labeling.add_label_to_choice("hold", 1+i*5+1)
             choice_labeling.add_label_to_choice("paddle_back", 1+i*5+2)
             choice_labeling.add_label_to_choice("right", 1+i*5+3) 
             choice_labeling.add_label_to_choice("left", 1+i*5+4) 
         
-        choice_labeling.add_label_to_choice("reset", self.num_actions*self.num_states+1)
+        choice_labeling.add_label_to_choice("reset", self.num_actions*(self.num_states-1)+1)
         init_action = ""
         match action:
             case 0:
