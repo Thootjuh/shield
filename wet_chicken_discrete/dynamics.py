@@ -4,7 +4,7 @@ LENGTH = 5
 WIDTH = 5
 MAX_TURBULENCE = 3.5
 MAX_VELOCITY = 3
-
+FALL_REWARD = -100
 ACTION_TRANSLATOR = {
     'Drift': np.zeros(2),
     'Neutral': np.array([-1, 0]),
@@ -61,7 +61,7 @@ class WetChicken:
             self._state[0] = 0
             self._state[1] = 1
             new_state = self.get_state_int()
-            return old_state, 0, new_state
+            return old_state, FALL_REWARD, new_state
 
         if x_hat >= self.length:
             self._state[0] = 5
@@ -134,7 +134,7 @@ class WetChicken:
         for state in range(nb_states):
             for next_state in range(nb_states):
                 R[state, next_state] = int(next_state / self.width)
-        R[:, nb_states-1] = 0
+        R[:, nb_states-1] = FALL_REWARD
         # print(R)
         return R
 

@@ -188,7 +188,7 @@ class ShieldWetChicken(Shield):
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
         return super().calculateShieldInterval(prop, self.builder.build_wetChicken_model_with_init)
     
-    def get_safe_actions_from_shield(self, state, threshold=0.50):
+    def get_safe_actions_from_shield(self, state, threshold=0.2):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):
