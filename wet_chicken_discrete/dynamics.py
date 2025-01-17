@@ -124,6 +124,11 @@ class WetChicken:
                     prob_mass = 1 / (2 * turbulence) * self._get_overlap(
                         x_hat_interval, target_interval)
                     P[state, action_nb, x_hat * self.length + y_new] += prob_mass
+                P[nb_states-1, action_nb, :] = 0
+                P[nb_states-1, action_nb, 0] = 1
+        # for state in range(len(P)):
+        #     for action in range(len(P[state])):
+        #         print(P[state][action])
         return P
 
     def get_reward_function(self):
@@ -135,7 +140,6 @@ class WetChicken:
             for next_state in range(nb_states):
                 R[state, next_state] = int(next_state / self.width)
         R[:, nb_states-1] = FALL_REWARD
-        # print(R)
         return R
 
     def evaluate_policy(self, nb_evaluations):

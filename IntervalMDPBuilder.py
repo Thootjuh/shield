@@ -77,6 +77,7 @@ class IntervalMDPBuilder:
         
         # Create sparse matrix
         counter = 0
+        # Add initial state corresponding to the given state-action pair
         builder.new_row_group(counter)
         if(sum(next_states_init) > 0):
             for next_state_init in next_states_init:
@@ -114,6 +115,51 @@ class IntervalMDPBuilder:
         # Build the model
         mdp = stormpy.storage.SparseIntervalMdp(components)
         return mdp
+    
+    def build_airplane_model_with_init(self, state_init, action_init, next_states_init):
+        builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
+        
+        counter = 0
+        
+        builder.new_row_group(counter)
+        if(sum(next_states_init) > 0):
+            for next_state_init in next_states_init:
+                bounds = self.intervals[(state_init, action_init, next_state_init)]
+                builder.add_next_value(counter, next_state_init+1, pycarl.Interval(bounds[0], bounds[1]))
+            
+        else:
+            builder.add_next_value(counter, 0, pycarl.Interval(1, 1)) 
+            
+        # Add the rest of the model
+        counter += 1 
+        for state in range(self.num_states):
+            builder.new_row_group(counter)
+            for action in range(self.num_actions):
+                next_states = self.transitions[state][action]
+                # check if next state is a terminal state. If so, only add a transition to itself
+                if(sum(next_states) > 0):
+                    for next_state in next_states:
+                        bounds = self.intervals[(state, action, next_state)]
+                        builder.add_next_value(counter, next_state+1, pycarl.Interval(bounds[0], bounds[1]))
+                else:
+                      builder.add_next_value(counter, state+1, pycarl.Interval(1, 1))  
+                counter+=1
+                
+        transition_matrix = builder.build()
+        state_labels = self.set_state_labels_with_init_airplane()
+        choice_labels = self.set_choice_labels_with_init_airplane(action_init)
+        # choice_labels = self.set_choice_labels_MDP()
+        reward_model = self.set_reward_model_MDP()
+        
+        # Collect components
+        components = stormpy.SparseIntervalModelComponents(
+            transition_matrix=transition_matrix, state_labeling=state_labels, reward_models=reward_model, rate_transitions=False
+        )
+        components.choice_labeling = choice_labels
+        
+        # Build the model
+        mdp = stormpy.storage.SparseIntervalMdp(components)
+        return mdp
 
     def get_nr_groups(self):
         return self.groups_nr
@@ -127,6 +173,19 @@ class IntervalMDPBuilder:
             state_labeling.add_label_to_state("trap", i+1)
         for i in self.goal:
             state_labeling.add_label_to_state("goal", i+1)
+        state_labeling.add_label_to_state("init", 0)
+        
+        return state_labeling
+    
+    def set_state_labels_with_init_airplane(self):
+        state_labeling = stormpy.storage.StateLabeling(self.num_states+1)
+        labels = {"success", "crash", "init"}
+        for label in labels:
+            state_labeling.add_label(label)
+        for i in self.traps:
+            state_labeling.add_label_to_state("crash", i+1)
+        for i in self.goal:
+            state_labeling.add_label_to_state("success", i+1)
         state_labeling.add_label_to_state("init", 0)
         
         return state_labeling
@@ -219,6 +278,28 @@ class IntervalMDPBuilder:
                 init_action = "right"
             case 4: 
                 init_action = "left"
+        choice_labeling.add_label_to_choice(init_action, 0)
+        return choice_labeling
+    
+    def set_choice_labels_with_init_airplane(self, action):    
+        choice_labeling = stormpy.storage.ChoiceLabeling(self.num_actions*self.num_states+1)
+        choice_labels = {"down", "up", "stay"}
+        for label in choice_labels:
+            choice_labeling.add_label(label)
+            
+        for i in range(self.num_states):
+            choice_labeling.add_label_to_choice("down", 1+i*3)
+            choice_labeling.add_label_to_choice("up", 1+i*3+1)
+            choice_labeling.add_label_to_choice("stay", 1+i*3+2)
+        
+        init_action = ""
+        match action:
+            case 0:
+                init_action = "down"
+            case 1:
+                init_action = "up"
+            case 2:
+                init_action = "stay"
         choice_labeling.add_label_to_choice(init_action, 0)
         return choice_labeling
             

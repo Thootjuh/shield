@@ -200,5 +200,65 @@ class ShieldWetChicken(Shield):
             safe_actions = np.where(probs == min_value)[0].tolist()
         return safe_actions
     
+class ShieldAirplane(Shield):
+    def __init__(self, transition_matrix, traps, goal, intervals, maxX, maxY):
+        self.maxX = maxX
+        self.maxY = maxY
+        super().__init__(transition_matrix, traps, goal, intervals)
+        
+    def calculateShield(self):
+        # How likely are we to step into a trap
+        prop = "Pmax=? [  !\"crash\" U \"success\"]"
+        # prop = "Pmin=? [  F\"waterfall\"]"
+        # prop = "Pmax=? [  !F<2\"waterfall\"]"
+        return super().calculateShieldInterval(prop, self.builder.build_airplane_model_with_init)
+    
+    def decode_int(self, state_int):   
+        ay = state_int % self.maxY
+        state_int //= self.maxY
+        
+        y = state_int % self.maxY
+        state_int //= self.maxY
+        
+        x = state_int % self.maxX
+        
+        return x, y, ay
+    
+    def printShield(self):
+        actions = [
+            "down",
+            "up",
+            "stay",
+        ]
+        state_action_prob_pairs = []
+        for state in range(len(self.shield)):
+            for action in range(len(self.shield[state])):
+                prob = self.shield[state][action]
+                state_action_prob_pairs.append([state, action, prob])
+        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        
+        for pair in state_action_prob_pairs:
+            state = pair[0]
+            action = actions[pair[1]]
+            prob = pair[2]
+            
+            x, y, ay = self.decode_int(state)
+            
+            print(f"State: {state}: {x}, {y}, {ay}), action: {action}, with probability of crashing: {prob}")
+        print(f"with crash states being {self.traps} and success states being {self.goal}")
+                
+    def get_safe_actions_from_shield(self, state, threshold=0.2):
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            min_value = np.min(probs)
+            safe_actions = np.where(probs == min_value)[0].tolist()
+        return safe_actions
+    
+    
     
     

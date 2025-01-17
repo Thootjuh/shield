@@ -93,7 +93,7 @@ class WetChickenBaselinePolicy:
                 self.pi = epsilon * np.ones((self.nb_states, self.nb_actions)) / 5
                 for s in range(self.nb_states):
                     self.pi[s, np.argmax(q[s, :])] += 1 - epsilon
-        elif self.method == 'heuristic':
+        elif self.method == 'heuristic': 
             # Try to get to in the middle of the river and then paddle as strong as possible against the stream
             # I.e. try to get to state (2,2), as a number 12, and then choose action 2
             pi = np.zeros((self.nb_states, self.nb_actions))

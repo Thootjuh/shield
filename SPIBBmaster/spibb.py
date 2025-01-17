@@ -140,7 +140,7 @@ class spibb():
             nb_it += 1
             if nb_it > 1000:
                 with open("notconverging.txt", "a") as myfile:
-                    myfile.write(str(self.space) + " epsilon=" + str(self.epsilon) + " nb_traj=" + str(self.nb_traj) + " is not converging. \n")
+                    myfile.write(str(self.space) + " epsilon=" + str(self.epsilon) + " nb_traj=" + str(1) + " is not converging. \n")
                 break
         self.pi = pi
         self.q = q

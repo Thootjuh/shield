@@ -39,8 +39,8 @@ class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
                          speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
         self.pi_b_masked = self.pi_b.copy()
         self.pi_b_masked[self.mask] = 0
-        self.shield_actions()
-        self.mask = self.mask & self.allowed
+        # self.shield_actions()
+        # self.mask = self.mask & self.allowed
 
     def _initial_calculations(self):
         """

@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import WetChickenExperiment, RandomMDPsExperiment
+from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
@@ -39,9 +39,12 @@ def run_experiment(seed):
     if environment == 'wet_chicken':
         experiment = WetChickenExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
-    else:
+    elif environment == 'random_mdps':
         experiment = RandomMDPsExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
+    elif environment == 'airplane':
+        experiment = AirplaneExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
     experiment.run()
 
 
