@@ -26,6 +26,9 @@ from batch_rl_algorithms.ramdp import RaMDP
 from batch_rl_algorithms.mbie import MBIE
 from batch_rl_algorithms.pi_star import PiStar
 from batch_rl_algorithms.shielded.shielded_spibb import Shield_SPIBB, Shield_Lower_SPIBB
+from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
+from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
+from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 
 
 from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane
@@ -178,14 +181,20 @@ class Experiment:
                 self._run_soft_spibb(key)
             elif key in {DUIPI.NAME}:
                 self._run_duipi(key)
+            elif key in {shield_DUIPI.NAME}:
+                self._run_duipi_shielded(key)
             elif key in {Basic_rl.NAME}:
                 self._run_basic_rl(key)
             elif key in {RMin.NAME}:
                 self._run_r_min(key)
             elif key in {RaMDP.NAME}:
                 self._run_ramdp(key)
+            elif key in {Shield_RaMDP.NAME}:
+                self._run_ramdp_shielded(key)
             elif key in {MBIE.NAME}:
                 self._run_mbie(key)
+            elif key in {shield_MBIE.NAME}:
+                self._run_mbie_shielded(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
                 self._run_spibb_shielded(key)
 
@@ -224,11 +233,47 @@ class Experiment:
                                               duipi.variance_v[self.initial_state])])
                 else:
                     self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+                    
+    def _run_duipi_shielded(self, key):
+        """
+        Runs DUIPI for one data set, with all hyper-parameters and in bayesian and frequentist mode.
+        :param key: shield_DUIPI.NAME
+        """
+        for bayesian_notifier in self.algorithms_dict[key].keys():
+            bayesian = bayesian_notifier == 'bayesian'
+            if self.safety_deltas:
+                xis = [norm.ppf(1 - delta) for delta in self.safety_deltas]
+            else:
+                xis = self.algorithms_dict[key][bayesian_notifier]
+            for i, xi in enumerate(xis):
+                duipi = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                                 nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                                 xi=xi, episodic=self.episodic, shield=self.shielder, bayesian=bayesian,
+                                                 speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
+                t_0 = time.time()
+                duipi.fit()
+                t_1 = time.time()
+                duipi_perf = self._policy_evaluation_exact(duipi.pi)
+                if bayesian:
+                    name_addition = '_bayesian'
+                else:
+                    name_addition = '_frequentist'
+                method = duipi.NAME + name_addition
+                method_perf = duipi_perf
+                hyperparam = xi
+                run_time = t_1 - t_0
+                if self.safety_deltas:
+                    self.results.append(
+                        self.to_append + [method, hyperparam, method_perf, run_time, self.safety_deltas[i],
+                                          duipi.v[self.initial_state] - xi * np.sqrt(
+                                              duipi.variance_v[self.initial_state])])
+                else:
+                    self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
 
     def _run_spibb_shielded(self, key):
         """
         Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
-        :param key: SPIBB.NAME or Lower_SPIBB.NAME, depending on which algorithm is supposed to be run
+        :param key: shield_SPIBB.NAME or shield_Lower_SPIBB.NAME, depending on which algorithm is supposed to be run
         """
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
@@ -377,6 +422,34 @@ class Experiment:
                 self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, delta, bound])
             else:
                 self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+                
+    def _run_mbie_shielded(self, key):
+        """
+        Runs MBIE for one data set, with all hyper-parameters.
+        :param key: MBIE.NAME
+        """
+        if self.safety_deltas:
+            deltas = self.safety_deltas
+        else:
+            deltas = self.algorithms_dict[key]['deltas']
+        for delta in deltas:
+            mbie = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            delta=delta, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict,
+                                            estimate_baseline=self.estimate_baseline)
+            t_0 = time.time()
+            mbie.fit()
+            t_1 = time.time()
+            mbie_perf = self._policy_evaluation_exact(mbie.pi)
+            method = mbie.NAME
+            method_perf = mbie_perf
+            hyperparam = delta
+            run_time = t_1 - t_0
+            if self.safety_deltas:
+                bound = mbie.get_v[self.initial_state]
+                self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, delta, bound])
+            else:
+                self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
 
     def _run_ramdp(self, key):
         """
@@ -387,6 +460,26 @@ class Experiment:
             ramdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
                                              kappa=kappa, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
+                                             estimate_baseline=self.estimate_baseline)
+            t_0 = time.time()
+            ramdp.fit()
+            t_1 = time.time()
+            ramdp_perf = self._policy_evaluation_exact(ramdp.pi)
+            method = ramdp.NAME
+            method_perf = ramdp_perf
+            hyperparam = kappa
+            run_time = t_1 - t_0
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+            
+    def _run_ramdp_shielded(self, key):
+        """
+        Runs RaMDP for one data set, with all hyper-parameters.
+        :param key: RaMDP.NAME
+        """
+        for kappa in self.algorithms_dict[key]['hyperparam']:
+            ramdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             kappa=kappa, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict,
                                              estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
             ramdp.fit()
@@ -409,7 +502,7 @@ class Experiment:
 class AirplaneExperiment(Experiment):
     fixed_params_exp_columns = ['seed', 'gamma', 'maxX', 'maxY', 'response', 'adv_prob', 'pi_rand_perf', 'pi_star_perf']   
     variable_params_exp_columns = ['iteration', 'epsilon_baseline', 'pi_b_perf', 'nb_trajectories']
-    
+
     def _set_env_params(self):
         self.episodic = True
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
@@ -424,6 +517,7 @@ class AirplaneExperiment(Experiment):
         self.env = Airplane(self.maxY, self.maxX, self.response, self.adv_prob)
         self.initial_state = self.env.get_state_int()
         self.P = self.env.get_transition_function()
+        print("real transition model = ")
         # print(self.P)
         # for state in range(len(self.P)):
         #     print(f"in state {self.env.decode_int(state)}, we have the following actions")
@@ -433,7 +527,6 @@ class AirplaneExperiment(Experiment):
         # print(self.R_state_state)
         self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
         self.set_success_and_crash_states()
-        # print(self.R_state_action)
         self.fixed_params_exp_list = [self.seed, self.gamma, self.maxX, self.maxY, self.response, self.adv_prob]
         
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
@@ -959,7 +1052,8 @@ algorithm_name_dict = {SPIBB.NAME: SPIBB, Lower_SPIBB.NAME: Lower_SPIBB,
                        ApproxSoftSPIBB.NAME: ApproxSoftSPIBB, ExactSoftSPIBB.NAME: ExactSoftSPIBB,
                        AdvApproxSoftSPIBB.NAME: AdvApproxSoftSPIBB,
                        LowerApproxSoftSPIBB.NAME: LowerApproxSoftSPIBB,
-                       DUIPI.NAME: DUIPI, Basic_rl.NAME: Basic_rl, RMin.NAME: RMin, MBIE.NAME: MBIE, RaMDP.NAME: RaMDP,
+                       DUIPI.NAME: DUIPI, shield_DUIPI.NAME: shield_DUIPI, Basic_rl.NAME: Basic_rl, RMin.NAME: RMin, 
+                       MBIE.NAME: MBIE, shield_MBIE.NAME : shield_MBIE, RaMDP.NAME: RaMDP, Shield_RaMDP.NAME : Shield_RaMDP,
                        Shield_SPIBB.NAME: Shield_SPIBB, Shield_Lower_SPIBB.NAME: Shield_Lower_SPIBB,
                        PiStar.NAME: PiStar}
 

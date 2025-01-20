@@ -125,6 +125,7 @@ class BatchRLAlgorithm:
             self.transition_model = np.nan_to_num(self.transition_model)
         else:
             self.transition_model[np.isnan(self.transition_model)] = 1. / self.nb_states
+        
 
     def _compute_R_state_action(self):
         """
@@ -133,6 +134,7 @@ class BatchRLAlgorithm:
         expected reward when choosing action a in state s in the estimated MDP.
         """
         self.R_state_action = np.einsum('ijk,ik->ij', self.transition_model, self.R_state_state)
+        # print(f"estimated R_state_action = {self.R_state_action}")
 
     def _policy_improvement(self):
         """
