@@ -57,9 +57,9 @@ class WetChicken:
         else:
             old_state = self._state.copy()
         
-        if self._state[0] == 5:
+        if self._state[0] == self.width:
             self._state[0] = 0
-            self._state[1] = 1
+            self._state[1] = 0
             new_state = self.get_state_int()
             return old_state, FALL_REWARD, new_state
 

@@ -38,26 +38,40 @@ class Shield_RaMDP(shieldedBatchRLAlgorithm):
         :param kappa: hyper-parameter of RaMDP
         '''
         self.kappa = kappa
+        
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen, max_nb_it, checks,
                          speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
+
+        # print("raMDP")
+        # print(self.allowed.shape)
+        
+        
 
     def _compute_R_state_action(self):
         '''
         Applies the estimated transition probabilities and the reward matrix with shape (nb_states, nb_states) to
         estimate a new reward matrix in the shape (nb_states, nb_actions) such that self.R_state_action[s, a] is the
         expected reward when choosing action a in state s in the estimated MDP. Additionally, it adjusts the reward
-        matrix by the rules of RaMDP.
+        matrix by the rules of RaMDP. It also applies a maximum negative reward to the actions that are not allowed by the shield
         :return:
         '''
         super()._compute_R_state_action()
         self.R_state_action -= self.kappa / np.sqrt(self.count_state_action)
         self.R_state_action[self.count_state_action == 0] = np.min(self.R_state_state) * (1 / (1 - self.gamma))
-        self.shield_actions()
+        self.R_state_action[~self.allowed] = np.min(self.R_state_state) * (1 / (1 - self.gamma))
+        # print("in shielded")
+        # print(self.R_state_action)
        
     def _policy_improvement(self):
         """
         Updates the current policy self.pi (Here: greedy update).
         """
-        for s in range(self.nb_states):
-            self.pi[s, np.argmax(self.q[s, self.allowed[s]])] = 1   
+        
+        self.q_shield = self.q.copy()
+        self.q_shield[~self.allowed] = -np.inf
+        self.pi = np.zeros([self.nb_states, self.nb_actions])
+        for s in range(self.nb_states):    
+            self.pi[s, np.argmax(self.q_shield[s, :])] = 1
+        # print(self.pi)
+            
              
