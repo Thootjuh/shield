@@ -7,7 +7,7 @@ class Shield_RaMDP(shieldedBatchRLAlgorithm):
     # Algorithm from 'Safe policy improvement by minimizing robust baseline regret' by Marek Petrik, Yinlam Chow and
     # Mohammad Ghavamzadeh, which is also equivalent to MBIE-EB from 'An analysis of model-based Interval
     # Estimation for Markov Decision Processes' by Alexander L. Strehl and Michael L. Littman
-    NAME = 'RaMDP-shield'
+    NAME = 'shield-RaMDP'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, kappa, zero_unseen=True, max_nb_it=5000,
                  checks=False, speed_up_dict=None, estimate_baseline=False):

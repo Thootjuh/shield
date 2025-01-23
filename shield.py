@@ -127,7 +127,7 @@ class ShieldRandomMDP(Shield):
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
         return super().calculateShieldInterval(prop3, self.builder.build_MDP_model_with_init)
     
-    def get_safe_actions_from_shield(self, state, threshold=0.2):
+    def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):
@@ -136,7 +136,7 @@ class ShieldRandomMDP(Shield):
 
         if len(safe_actions) == 0:
             min_value = np.min(probs)
-            safe_actions = np.where(probs == min_value)[0].tolist()
+            safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
         return safe_actions
 
 class ShieldWetChicken(Shield):
@@ -188,7 +188,7 @@ class ShieldWetChicken(Shield):
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
         return super().calculateShieldInterval(prop, self.builder.build_wetChicken_model_with_init)
     
-    def get_safe_actions_from_shield(self, state, threshold=0.2):
+    def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):
@@ -197,7 +197,7 @@ class ShieldWetChicken(Shield):
 
         if len(safe_actions) == 0:
             min_value = np.min(probs)
-            safe_actions = np.where(probs == min_value)[0].tolist()
+            safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
         return safe_actions
     
 class ShieldAirplane(Shield):
@@ -247,7 +247,7 @@ class ShieldAirplane(Shield):
             print(f"State: {state}: {x}, {y}, {ay}), action: {action}, with probability of crashing: {prob}")
         print(f"with crash states being {self.traps} and success states being {self.goal}")
                 
-    def get_safe_actions_from_shield(self, state, threshold=0.2):
+    def get_safe_actions_from_shield(self, state, threshold=0.5, buffer = 0.05):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):
@@ -256,7 +256,7 @@ class ShieldAirplane(Shield):
 
         if len(safe_actions) == 0:
             min_value = np.min(probs)
-            safe_actions = np.where(probs == min_value)[0].tolist()
+            safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
         return safe_actions
     
     

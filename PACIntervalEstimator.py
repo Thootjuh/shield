@@ -62,9 +62,8 @@ class PACIntervalEstimator:
     # This function calculates the pac bound
     def computePACBound(self, triplet):
         state, action, next_state = triplet
-        m = self.structure.size # 50*4*4
+        m = self.structure.size 
         n  = self.state_action_counts[(state, action)] + self.alpha * self.nb_actions #Grows with number of observations
-        # print("n = ", total_sa_count )
         alph = (self.error_tolerance*(1/m))/self.nb_actions
         delta = math.sqrt(math.log(2/alph)/(2*n ))
         return delta

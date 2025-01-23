@@ -580,7 +580,7 @@ class AirplaneExperiment(Experiment):
 
                 # print("----------------------------------------------------------------")                
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=0.1)
                 self.estimator.calculate_intervals()
                 intervals = self.estimator.get_intervals()
                 # print(intervals)

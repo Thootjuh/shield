@@ -6,7 +6,7 @@ from batch_rl_algorithms.shielded.shielded_batch_rl_algorithm import shieldedBat
 class shield_MBIE(shieldedBatchRLAlgorithm):
     # Pessimistic offline adaption of the optimistic online algorithm MBIE from 'An analysis of model-based Interval
     # Estimation for Markov Decision Processes' by Alexander L. Strehl and Michael L. Littman
-    NAME = 'MBIE-shield'
+    NAME = 'shield-MBIE'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, delta, zero_unseen=True, max_nb_it=5000,
                  checks=False, speed_up_dict=None, estimate_baseline = False):

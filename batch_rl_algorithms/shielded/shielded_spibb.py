@@ -64,7 +64,7 @@ class Shield_SPIBB(Shield_SPIBB_abstract):
     # Code and algorithm from 'Safe Policy Improvement with Baseline Bootstrapping' by Romain Laroche, Paul Trichelair
     # and Remi Tachet des Combes which implements Pi_b-SPIBB.
     # (Their code is available under: https://github.com/RomainLaroche/SPIBB)
-    NAME = 'SPIBB-shield'
+    NAME = 'shield-SPIBB'
 
     def _policy_improvement(self):
         """
@@ -82,7 +82,7 @@ class Shield_Lower_SPIBB(Shield_SPIBB_abstract):
     # Code and algorithm from 'Safe Policy Improvement with Baseline Bootstrapping' by Romain Laroche, Paul Trichelair
     # and Remi Tachet des Combeswhich implements Pi_<=b-SPIBB.
     #     # (Their code is available under: https://github.com/RomainLaroche/SPIBB)
-    NAME = 'Lower-SPIBB-Shield'
+    NAME = 'shield-Lower-SPIBB'
 
     def _policy_improvement(self):
         """

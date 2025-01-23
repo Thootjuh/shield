@@ -7,7 +7,7 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
     # Algorithm implemented following 'Uncertainty Propagation for Efficient Exploration in Reinforcement Learning'
     # by Alexander Hans and Steffen Udluft; a small modification has been added see the Master's thesis
     # 'Evaluation of Safe Policy Improvement with Soft Baseline Bootstrapping'
-    NAME = 'DUIPI-shield'
+    NAME = 'shield-DUIPI'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, bayesian, xi, alpha_prior=0.1,
                  zero_unseen=True, max_nb_it=5000, checks=False, speed_up_dict=None, estimate_baseline = True):
