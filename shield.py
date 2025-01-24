@@ -247,7 +247,7 @@ class ShieldAirplane(Shield):
             print(f"State: {state}: {x}, {y}, {ay}), action: {action}, with probability of crashing: {prob}")
         print(f"with crash states being {self.traps} and success states being {self.goal}")
                 
-    def get_safe_actions_from_shield(self, state, threshold=0.5, buffer = 0.05):
+    def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.1):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):

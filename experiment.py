@@ -25,6 +25,7 @@ from batch_rl_algorithms.duipi import DUIPI
 from batch_rl_algorithms.ramdp import RaMDP
 from batch_rl_algorithms.mbie import MBIE
 from batch_rl_algorithms.pi_star import PiStar
+from batch_rl_algorithms.rmdp import WorstCaseRMDP
 from batch_rl_algorithms.shielded.shielded_spibb import Shield_SPIBB, Shield_Lower_SPIBB
 from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
@@ -197,7 +198,25 @@ class Experiment:
                 self._run_mbie_shielded(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
                 self._run_spibb_shielded(key)
+            elif key in {WorstCaseRMDP.NAME}:
+                self._run_rmdp(key)
 
+    def _run_rmdp(self, key):
+        """
+        Runs rmdp for one data set.
+        """
+        rmdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            episodic=self.episodic, intervals=self.intervals, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
+        t_0 = time.time()
+        rmdp.fit()
+        t_1 = time.time()
+        basic_rl_perf = self._policy_evaluation_exact(rmdp.pi)
+        method = rmdp.NAME
+        method_perf = basic_rl_perf
+        hyperparam = None
+        run_time = t_1 - t_0
+        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
     def _run_duipi(self, key):
         """
         Runs DUIPI for one data set, with all hyper-parameters and in bayesian and frequentist mode.
@@ -580,11 +599,11 @@ class AirplaneExperiment(Experiment):
 
                 # print("----------------------------------------------------------------")                
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=0.1)
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
-                intervals = self.estimator.get_intervals()
+                self.intervals = self.estimator.get_intervals()
                 # print(intervals)
-                self.shielder = ShieldAirplane(self.structure, self.crash, self.success, intervals, self.maxX, self.maxY)
+                self.shielder = ShieldAirplane(self.structure, self.crash, self.success, self.intervals, self.maxX, self.maxY)
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
                 # print("----------------------------------------------------------------")
@@ -742,8 +761,8 @@ class WetChickenExperiment(Experiment):
                     #         print(f"In state ({x},{y}), using action {actions[action]} has the following possible next states: {self.structure[state][action]}")
                     goal_states = self.find_closest_states(list(range(len(self.structure))), self.length)
                     self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
-                    intervals = self.estimator.get_intervals()
-                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, goal_states, intervals)
+                    self.intervals = self.estimator.get_intervals()
+                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, goal_states, self.intervals)
                     self.shielder.calculateShield()
                     # self.shielder.printShield()
                     # print("----------------------------------------------------------------")
@@ -906,8 +925,8 @@ class RandomMDPsExperiment(Experiment):
                 self.structure = self.reduce_transition_matrix(self.P)
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
-                intervals = self.estimator.get_intervals()
-                self.shielder = ShieldRandomMDP(self.structure, self.traps, [self.garnet.final_state], intervals)
+                self.intervals = self.estimator.get_intervals()
+                self.shielder = ShieldRandomMDP(self.structure, self.traps, [self.garnet.final_state], self.intervals)
                 self.shielder.calculateShield()
                 # print("----------------------------------------------------------------")
                 self._run_algorithms()
@@ -1057,7 +1076,7 @@ algorithm_name_dict = {SPIBB.NAME: SPIBB, Lower_SPIBB.NAME: Lower_SPIBB,
                        DUIPI.NAME: DUIPI, shield_DUIPI.NAME: shield_DUIPI, Basic_rl.NAME: Basic_rl, RMin.NAME: RMin, 
                        MBIE.NAME: MBIE, shield_MBIE.NAME : shield_MBIE, RaMDP.NAME: RaMDP, Shield_RaMDP.NAME : Shield_RaMDP,
                        Shield_SPIBB.NAME: Shield_SPIBB, Shield_Lower_SPIBB.NAME: Shield_Lower_SPIBB,
-                       PiStar.NAME: PiStar}
+                       WorstCaseRMDP.NAME : WorstCaseRMDP, PiStar.NAME: PiStar}
 
 
 def compute_r_state_action(P, R):

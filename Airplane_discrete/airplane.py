@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 CRASH_PENALTY = -10
-SUCCEED_REWARD = 1
+SUCCEED_REWARD = 5
 
 ACTION_TRANSLATOR = [
     -1, # Action 1: Go down
