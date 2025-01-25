@@ -26,10 +26,12 @@ from batch_rl_algorithms.ramdp import RaMDP
 from batch_rl_algorithms.mbie import MBIE
 from batch_rl_algorithms.pi_star import PiStar
 from batch_rl_algorithms.rmdp import WorstCaseRMDP
+from batch_rl_algorithms.shielded.shielded_rmdp import Shield_WorstCaseRMDP
 from batch_rl_algorithms.shielded.shielded_spibb import Shield_SPIBB, Shield_Lower_SPIBB
 from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
 from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
+from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
 
 
 from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane
@@ -188,6 +190,8 @@ class Experiment:
                 self._run_basic_rl(key)
             elif key in {RMin.NAME}:
                 self._run_r_min(key)
+            elif key in {Shield_RMin.NAME}:
+                self._run_r_min_shielded(key)
             elif key in {RaMDP.NAME}:
                 self._run_ramdp(key)
             elif key in {Shield_RaMDP.NAME}:
@@ -200,7 +204,26 @@ class Experiment:
                 self._run_spibb_shielded(key)
             elif key in {WorstCaseRMDP.NAME}:
                 self._run_rmdp(key)
+            elif key in {Shield_WorstCaseRMDP.NAME}:
+                self._run_rmdp_shielded(key)
 
+    def _run_rmdp_shielded(self, key):
+        """
+        Runs rmdp for one data set.
+        """
+        rmdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            episodic=self.episodic, shield=self.shielder, intervals=self.intervals, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
+        t_0 = time.time()
+        rmdp.fit()
+        t_1 = time.time()
+        basic_rl_perf = self._policy_evaluation_exact(rmdp.pi)
+        method = rmdp.NAME
+        method_perf = basic_rl_perf
+        hyperparam = None
+        run_time = t_1 - t_0
+        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+    
     def _run_rmdp(self, key):
         """
         Runs rmdp for one data set.
@@ -217,6 +240,7 @@ class Experiment:
         hyperparam = None
         run_time = t_1 - t_0
         self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        
     def _run_duipi(self, key):
         """
         Runs DUIPI for one data set, with all hyper-parameters and in bayesian and frequentist mode.
@@ -403,6 +427,26 @@ class Experiment:
             r_min = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
                                              N_wedge=N_wedge, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
+                                             estimate_baseline=self.estimate_baseline)
+            t_0 = time.time()
+            r_min.fit()
+            t_1 = time.time()
+            r_min_perf = self._policy_evaluation_exact(r_min.pi)
+            method = r_min.NAME
+            method_perf = r_min_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+            
+    def _run_r_min_shielded(self, key):
+        """
+        Runs R-MIN for one data set, with all hyper-parameters.
+        :param key: RMIN.NAME
+        """
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            r_min = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict,
                                              estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
             r_min.fit()
@@ -1071,12 +1115,12 @@ def policy_evaluation_exact(pi, r, p, gamma):
 # Translate the names from the algorithms to the class.
 algorithm_name_dict = {SPIBB.NAME: SPIBB, Lower_SPIBB.NAME: Lower_SPIBB,
                        ApproxSoftSPIBB.NAME: ApproxSoftSPIBB, ExactSoftSPIBB.NAME: ExactSoftSPIBB,
-                       AdvApproxSoftSPIBB.NAME: AdvApproxSoftSPIBB,
-                       LowerApproxSoftSPIBB.NAME: LowerApproxSoftSPIBB,
-                       DUIPI.NAME: DUIPI, shield_DUIPI.NAME: shield_DUIPI, Basic_rl.NAME: Basic_rl, RMin.NAME: RMin, 
-                       MBIE.NAME: MBIE, shield_MBIE.NAME : shield_MBIE, RaMDP.NAME: RaMDP, Shield_RaMDP.NAME : Shield_RaMDP,
-                       Shield_SPIBB.NAME: Shield_SPIBB, Shield_Lower_SPIBB.NAME: Shield_Lower_SPIBB,
-                       WorstCaseRMDP.NAME : WorstCaseRMDP, PiStar.NAME: PiStar}
+                       AdvApproxSoftSPIBB.NAME: AdvApproxSoftSPIBB, LowerApproxSoftSPIBB.NAME: LowerApproxSoftSPIBB,
+                       DUIPI.NAME: DUIPI, shield_DUIPI.NAME: shield_DUIPI, Basic_rl.NAME: Basic_rl, 
+                       RMin.NAME: RMin, Shield_RMin.NAME: Shield_RMin, MBIE.NAME: MBIE, shield_MBIE.NAME : shield_MBIE, 
+                       RaMDP.NAME: RaMDP, Shield_RaMDP.NAME : Shield_RaMDP, Shield_SPIBB.NAME: Shield_SPIBB, 
+                       Shield_Lower_SPIBB.NAME: Shield_Lower_SPIBB,
+                       WorstCaseRMDP.NAME : WorstCaseRMDP, Shield_WorstCaseRMDP.NAME : Shield_WorstCaseRMDP, PiStar.NAME: PiStar}
 
 
 def compute_r_state_action(P, R):
