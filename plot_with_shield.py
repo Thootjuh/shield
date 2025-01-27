@@ -163,6 +163,7 @@ def plot_all_methods(data, filename):
 # Group by method/method-shield
 directory_path = sys.argv[1]
 data = read_data_from_directory(directory_path)
+column_names = data.columns
 data = extract_data(data)
 data_list = group_by_methods(data)
     
