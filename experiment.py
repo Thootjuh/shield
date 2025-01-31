@@ -16,6 +16,9 @@ from wet_chicken_discrete.dynamics import WetChicken
 from Airplane_discrete.airplane import Airplane
 from Airplane_discrete.airplane_baseline_policy import AirplaneBaselinePolicy
 
+from Slippery_gridworld.gridworld import gridWorld
+from Slippery_gridworld.gridworld_heuristic_policy import GridworldBaselinePolicy
+
 from batch_rl_algorithms.basic_rl import Basic_rl
 from batch_rl_algorithms.pi_star import PiStar
 from batch_rl_algorithms.spibb import SPIBB, Lower_SPIBB
@@ -701,7 +704,138 @@ class Experiment:
         :param pi: policy as numpy array with shape (nb_states, nb_actions)
         """
         return policy_evaluation_exact(pi, self.R_state_action, self.P, self.gamma)[0][0]
+
+class SlipperyGridworldExperiment(Experiment):
+    fixed_params_exp_columns = ['seed', 'gamma', 'width', 'height', 'slip_p', 'escape_p', 'pi_rand_perf', 'pi_star_perf']   
+    variable_params_exp_columns = ['iteration', 'epsilon_baseline', 'pi_b_perf', 'nb_trajectories']     
     
+    def _set_env_params(self):
+        self.episodic = True
+        self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
+        self.width = int(self.experiment_config['ENV_PARAMETERS']['WIDTH'])
+        self.height = int(self.experiment_config['ENV_PARAMETERS']['HEIGHT'])
+        self.slip_p = float(self.experiment_config['ENV_PARAMETERS']['SLIP_P'])
+        self.escape_p = float(self.experiment_config['ENV_PARAMETERS']['ESCAPE_P'])
+        
+        self.nb_states = self.width * self.height
+        self.nb_actions = 4
+        
+        self.env = gridWorld(self.height, self.width, self.slip_p, self.escape_p)
+        self.initial_state = self.env.get_state_int()
+        self.P = self.env.get_transition_function()
+        # print("real transition model = ")
+        # print(self.P)
+        # for state in range(len(self.P)):
+        #     print(f"in state {self.env.decode_int(state)}, we have the following actions")
+        #     for action in range(len(self.P[state])):
+        #         print(self.P[state][action])
+        self.R_state_state = self.env.get_reward_function()
+        # print(self.R_state_state)
+        self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
+        self.fixed_params_exp_list = [self.seed, self.gamma, self.width, self.height, self.slip_p, self.escape_p]
+        
+        pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
+        pi_rand_perf = self._policy_evaluation_exact(pi_rand)
+        print("pi_Rand_perf:", pi_rand_perf)
+        self.fixed_params_exp_list.append(pi_rand_perf)
+        
+        pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        pi_star.fit()
+        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        print("pi_star_perf:", pi_star_perf)
+        self.fixed_params_exp_list.append(pi_star_perf)
+
+        self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
+        self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
+
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        
+    def generate_batch(self, nb_trajectories, env, pi, max_steps=50):
+        """
+        Generates a data batch for an episodic MDP.
+        :param nb_steps: number of steps in the data batch
+        :param env: environment to be used to generate the batch on
+        :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
+        :return: data batch as a list of sublists of the form [state, action, next_state, reward]
+        """
+        trajectories = []
+        # print(pi)
+        for _ in np.arange(nb_trajectories):
+            nb_steps = 0
+            trajectorY = []
+            env.reset()
+            state = env.get_state_int()
+            is_done = False
+            while nb_steps < max_steps and not is_done:
+                # print(pi[state])
+                action_choice = np.random.choice(pi.shape[1], p=pi[state])
+                state, next_state, reward = env.step(action_choice)
+                # print(f"in state {env.decode_int(state)}, action {action_choice} leads to state {env.decode_int(next_state)} with reward of {reward}")
+                is_done = env.is_finished()
+                # print(is_done)
+                trajectorY.append([action_choice, state, next_state, reward])
+                state = next_state
+                nb_steps += 1
+            trajectories.append(trajectorY)
+        batch_traj = [val for sublist in trajectories for val in sublist]
+        return trajectories, batch_traj  
+
+    def _run_one_iteration(self):
+        for epsilon_baseline in self.epsilons_baseline:
+            print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
+                  f' {self.epsilons_baseline}')
+            
+            self.pi_b = GridworldBaselinePolicy(env=self.env, epsilon=epsilon_baseline).pi
+            self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+                                                                        self._policy_evaluation_exact(self.pi_b)]
+            
+            for nb_trajectories in self.nb_trajectories_list:
+                print(
+                    f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
+                    f'{self.nb_trajectories_list}')
+                # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
+                self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
+
+                # print("----------------------------------------------------------------")                
+                self.structure = self.reduce_transition_matrix(self.P)   
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()
+                # print(intervals)
+                # self.shielder = ShieldAirplane(self.structure, self.crash, self.success, self.intervals, self.maxX, self.maxY)
+                # self.shielder.calculateShield()
+                # self.shielder.printShield()
+                # print("----------------------------------------------------------------")
+                self._run_algorithms()
+                
+    def reduce_transition_matrix(self, transition_matrix):
+        """
+        Reduces a transition matrix to only include possible end states for each state-action pair.
+
+        Args:
+        - transition_matrix (numpy.ndarray): A 3D numpy array of shape (num_states, num_actions, num_states) 
+        where each element represents the probability of transitioning from one state to another
+        given a certain action.
+
+        Returns:
+        - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
+        where each element contains the indices of possible end states.
+        """
+        num_states = self.nb_states
+        num_actions = self.nb_actions
+        # Prepare the reduced matrix to hold the indices of possible states
+        reduced_matrix = np.empty((num_states, num_actions), dtype=object)
+        
+        # Loop through each state and action to populate the reduced matrix
+        for state in range(num_states):
+            for action in range(num_actions):
+                # Get indices of nonzero probabilities (possible end states)
+                possible_states = np.nonzero(transition_matrix[state, action])[0]
+                reduced_matrix[state, action] = np.array(possible_states)
+        
+        return reduced_matrix
 
 class AirplaneExperiment(Experiment):
     fixed_params_exp_columns = ['seed', 'gamma', 'maxX', 'maxY', 'response', 'adv_prob', 'pi_rand_perf', 'pi_star_perf']   

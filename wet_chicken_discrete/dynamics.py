@@ -45,8 +45,6 @@ class WetChicken:
 
     def step(self, action):
         # action_coordinates = ACTION_TRANSLATOR[action]
-
-            
         action_coordinates = list(ACTION_TRANSLATOR.values())[action]
         x_hat = self._state[0] + action_coordinates[0] + self._velocity() + self._turbulence()
         y_hat = self._state[1] + action_coordinates[1]
