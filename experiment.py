@@ -201,7 +201,8 @@ class Experiment:
             elif key in {shield_MBIE.NAME}:
                 self._run_mbie_shielded(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
-                self._run_spibb_shielded(key)
+                # self._run_spibb_shielded(key)
+                self._run_spibb_experiment(key)
             elif key in {WorstCaseRMDP.NAME}:
                 self._run_rmdp(key)
             elif key in {Shield_WorstCaseRMDP.NAME}:
@@ -312,17 +313,17 @@ class Experiment:
                                               duipi.variance_v[self.initial_state])])
                 else:
                     self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-
     def _run_spibb_shielded(self, key):
         """
         Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
         :param key: shield_SPIBB.NAME or shield_Lower_SPIBB.NAME, depending on which algorithm is supposed to be run
         """
+        # 1. Modified data
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
-                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline)
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=True)
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
@@ -331,7 +332,147 @@ class Experiment:
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
+            
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+            
+    def _run_spibb_experiment(self, key):
+        """
+        Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
+        :param key: shield_SPIBB.NAME or shield_Lower_SPIBB.NAME, depending on which algorithm is supposed to be run
+        """
+        # 1. Modified data
+        # print("modified data")
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=True, shield_data=True, shield_action=False)
+            t_0 = time.time()
+            spibb.fit()
+            t_1 = time.time()
+            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            method = spibb.NAME + "_Modified_Data"
+            method_perf = spibb_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        
+        # 2. Shield on Actions 
+        # print("shield Actions")
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=True, 
+                                             shield_baseline = False, shield_data=False, shield_action=True)
+            t_0 = time.time()
+            spibb.fit()
+            t_1 = time.time()
+            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            method = spibb.NAME + "_Shield_Actions"
+            method_perf = spibb_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        
+        # 3. Shield on Actions + Modified Data
+        # print("shield_actions + modified data")
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=True, 
+                                             shield_baseline = False, shield_data=True, shield_action=True)
+            t_0 = time.time()
+            spibb.fit()
+            t_1 = time.time()
+            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            method = spibb.NAME + "_Shield_Actions+Modified_Data"
+            method_perf = spibb_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        
+        # 4. Shield on Baseline
+        # print("shield baseline")
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=True, 
+                                             shield_baseline = True, shield_data=False, shield_action=False)
+            t_0 = time.time()
+            spibb.fit()
+            t_1 = time.time()
+            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            method = spibb.NAME + "_Shield_Baseline"
+            method_perf = spibb_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        
+        # 5. Shield on Baseline + Modified Data
+        # print("shield baseline + modified data")
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=True, 
+                                             shield_baseline = True, shield_data=True, shield_action=False)
+            t_0 = time.time()
+            spibb.fit()
+            t_1 = time.time()
+            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            method = spibb.NAME + "_Shield_Baseline+Modified_Data"
+            method_perf = spibb_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        
+        # 6. Shield on Baseline + Shield on sactions
+        # print("shield baseline + shield actions")
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=True, 
+                                             shield_baseline = True, shield_data=False, shield_action=True)
+            t_0 = time.time()
+            spibb.fit()
+            t_1 = time.time()
+            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            method = spibb.NAME + "_Shield_Baseline+Shield_Actions"
+            method_perf = spibb_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        
+        # 7. Shield on Baseline + Shield on actions + Modified Data
+        # print("shield baseline + shield actions + modified data")
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=True, 
+                                             shield_baseline = True, shield_data=True, shield_action=True)
+            t_0 = time.time()
+            spibb.fit()
+            t_1 = time.time()
+            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            method = spibb.NAME + "_Shield_Baseline+Shield_Actions+Modified_Data"
+            method_perf = spibb_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        
+    
             
     def _run_spibb(self, key):
         """
@@ -924,12 +1065,11 @@ class RandomMDPsExperiment(Experiment):
         spibb_path = path_config['PATHS']['spibb_path']
         sys.path.append(spibb_path)
         import SPIBBmaster.garnets as garnets
-
+        self.garnet = garnets.Garnets(self.nb_states, self.nb_actions, self.nb_next_state_transition,
+                                env_type=self.env_type, self_transitions=self.self_transitions, nb_traps=5, gamma=self.gamma)
         for baseline_target_perf_ratio in self.baseline_target_perf_ratios:
             print(f'Process with seed {self.seed} starting with baseline_target_perf_ratio {baseline_target_perf_ratio}'
                   f' out of {self.baseline_target_perf_ratios}')
-            self.garnet = garnets.Garnets(self.nb_states, self.nb_actions, self.nb_next_state_transition,
-                                          env_type=self.env_type, self_transitions=self.self_transitions, nb_traps=5)
 
             softmax_target_perf_ratio = (baseline_target_perf_ratio + 1) / 2
             self.to_append_run_one_iteration = self.to_append_run + [softmax_target_perf_ratio,

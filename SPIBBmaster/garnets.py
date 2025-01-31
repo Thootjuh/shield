@@ -4,7 +4,7 @@ from . import spibb_utils
 from collections import defaultdict, deque
 
 class Garnets:
-    def __init__(self, nb_states, nb_actions, nb_next_state_transition, env_type=1, self_transitions=0, nb_traps = 0):
+    def __init__(self, nb_states, nb_actions, nb_next_state_transition, env_type=1, self_transitions=0, nb_traps = 0, gamma=0.95):
         self.nb_states = nb_states
         self.nb_actions = nb_actions
         self.nb_next_state_transition = nb_next_state_transition
@@ -13,13 +13,24 @@ class Garnets:
         self.is_done = False
         self.initial_state = 0
         self.self_transitions = self_transitions
+        self.gamma = gamma
+        
         self._generate_transition_function()
+
+            
         self.current_state = self.initial_state
         self.final_state = nb_states - 1
         self.punishment = -10
         self._set_traps(nb_traps)
         print("traps are: ", self.traps)
-
+        
+        _, _, q_star, _ = self._find_farther_state(self.gamma)
+        while isinstance(q_star, int):
+            print("regenerating transitions and traps")
+            self.transition_function = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+            self._generate_transition_function()
+            self._set_traps(self.nb_traps)
+            _, _, q_star, _ = self._find_farther_state(self.gamma)
         self.env_type = env_type
     
     def _generate_transition_function(self):
@@ -46,19 +57,23 @@ class Garnets:
         isReachable = False
         while not isReachable:
             self.traps = []
-            potential_final_states = [s for s in range(self.nb_states) if s != self.final_state and s != 0]
+            potential_trap_states = [s for s in range(self.nb_states) if s != self.final_state and s != 0]
             for _ in range(n):
-                trap = np.random.choice(potential_final_states)
+                trap = np.random.choice(potential_trap_states)
                 self.traps.append(trap)
-                potential_final_states.remove(trap)
+                potential_trap_states.remove(trap)
             t = self.transition_function.copy()
             for trap in self.traps:
                 t[trap, :, :] = 0
-            isReachable = self.all_states_reachable(t)
+            isReachable = True
+            for i in range(self.nb_states):
+                if i not in self.traps and i != self.final_state:
+                    if not self.all_states_reachable(t, i):
+                        isReachable = False
         # self.traps = [6, 9, 45, 21, 42]
         # Check if it is possible to make the end:
         
-    def all_states_reachable(self, transition_matrix):
+    def all_states_reachable(self, transition_matrix, init):
         # Convert transition matrix to adjacency list
         adjacency_list = defaultdict(list)
         num_states, num_actions, _ = transition_matrix.shape
@@ -71,7 +86,7 @@ class Garnets:
         
         # Perform BFS to find all reachable states
         visited = set()
-        queue = deque([self.initial_state])
+        queue = deque([init])
         
         while queue:
             current = queue.popleft()
@@ -103,10 +118,11 @@ class Garnets:
 
     def step(self, action, easter_egg):
         if self.transition_function[int(self.current_state), action, :].squeeze().sum() != 1:
-            print(self.transition_function[int(self.current_state), action, :].squeeze())
-            print(self.current_state)
-            print(easter_egg)
-            print(self.final_state)
+            print("function:", self.transition_function[int(self.current_state), action, :].squeeze())
+            print("Current state:", self.current_state)
+            print("egg: ", easter_egg)
+            print("final state = ", self.final_state)
+            print("trap: ", self.traps)
         next_state = np.random.choice(self.nb_states, 1,
                                       p=self.transition_function[int(self.current_state), action, :].squeeze())
         reward = self._get_reward(self.current_state, action, next_state)
@@ -150,16 +166,9 @@ class Garnets:
             softmax_target_perf_ratio = baseline_target_perf_ratio
 
         farther_state, pi_star_perf, q_star, pi_rand_perf = self._find_farther_state(gamma)
-        
-        while isinstance(q_star, int):
-            print("regenerating transitions and traps")
-            self.transition_function = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
-            self._generate_transition_function()
-            self._set_traps(self.nb_traps)
-            farther_state, pi_star_perf, q_star, pi_rand_perf = self._find_farther_state(gamma)
             
         p, r = self._set_temporary_final_state(farther_state)
-        self.transition_function = p.copy()
+
         r_reshaped = spibb_utils.get_reward_model(p, r)
 
         softmax_target_perf = softmax_target_perf_ratio * (pi_star_perf - pi_rand_perf) \
@@ -173,6 +182,8 @@ class Garnets:
         pi, v, q = self._perturb_policy(pi, q_star, p, r_reshaped, baseline_target_perf,
                                         perturbation_reduction_factor, gamma)
 
+        # print("trans = ", self.transition_function)
+        # print("final = ", self.final_state)
         return pi, q, pi_star_perf, v[0], pi_rand_perf
 
     def _perturb_policy(self, pi, q_star, p, r_reshaped, baseline_target_perf,

@@ -2,7 +2,7 @@ from batch_rl_algorithms.batch_rl_algorithm import BatchRLAlgorithm
 import numpy as np
 class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen=True, max_nb_it=5000,
-                 checks=False, speed_up_dict=None, estimate_baseline=False):
+                 checks=False, speed_up_dict=None, estimate_baseline=False, shield_baseline=False, shield_data=False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -29,14 +29,19 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         times a state-action-next-state triplet has been visited 
         """
         self.shield = shield
-        # self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
+        if(shield_baseline):
+            self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
+            # print("shield baseline")
         self.pi_b = pi_b
         self.gamma = gamma
         self.nb_states = nb_states
         self.nb_actions = nb_actions
-        self.data = data
         self.zero_unseen = zero_unseen
         self.episodic = episodic
+        self.data = data
+        if shield_data:
+            self.data = self._modify_data()
+            # print("shield data")
         self.max_nb_it = max_nb_it
         self.pi = self.pi_b.copy()
         self.q = np.zeros([nb_states, nb_actions])
@@ -52,8 +57,20 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         self._initial_calculations()
         if estimate_baseline:
             self.pi_b = self.estimate_baseline()
-            self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
+            # self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
             self.pi = self.pi_b.copy()
+    
+    def _modify_data(self):
+        safe_data = []
+        if self.episodic:
+            batch_trajectory = [val for sublist in self.data for val in sublist]
+        else:
+            batch_trajectory = self.data.copy()
+        for [action, state, next_state, reward] in batch_trajectory:
+            safe_actions = self.shield.get_safe_actions_from_shield(state)
+            if action in safe_actions:
+                safe_data.append([[action,state,next_state,reward]])
+        return safe_data
     
     def shield_actions(self):
         self.allowed = np.full((self.nb_states, self.nb_actions), False, dtype=bool)
