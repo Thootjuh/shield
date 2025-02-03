@@ -6,6 +6,7 @@ ACTION_TRANSLATOR = [
      (0,-1), # Action 3: Go South
      (-1,0),  # Action 4: Go West
 ]
+
 TRAPS = [ # 10 x 10 grid
     (0,4),
     (1,4),
@@ -59,6 +60,7 @@ class gridWorld:
         self.goal = np.array([self.width, 0])
         self.traps = self.get_traps()
         self.reset()
+        self.init = self._state.copy()
     
     def get_traps(self):
         traps=[]
@@ -89,8 +91,8 @@ class gridWorld:
         return False
     
     def reset(self):
-        self._state[0] = 0 
-        self._state[1] = self.height
+        self._state[0] = self.init[0]
+        self._state[1] = self.init[1]
     
     def step(self, action):
         x = self._state[0]
@@ -138,8 +140,8 @@ class gridWorld:
                     x_hat = min(max(x-1, 0), self.width)
                     y_hat = min(max(y, 0), self.height)      
             else: # Do the reset action
-                x_hat = 0
-                y_hat = 0
+                x_hat = self.init[0]
+                y_hat = self.init[1]
         self._state[0] = x_hat
         self._state[1] = y_hat
         new_state = self.get_state_int()
@@ -156,6 +158,7 @@ class gridWorld:
     
     def get_transition_function(self):
         transition_function = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+        init = self.get_int_from_state(self.init)
         for state in range(len(transition_function)):
             if state not in self.traps: #If we are in an non-trapped state
                 for action in range(len(transition_function[state])): 
@@ -191,8 +194,9 @@ class gridWorld:
                     transition_function[state][1][next_state] += self.escape_p
                         
                 # Action Reset
-                transition_function[state][2][0] = 1
-                transition_function[state][3][0] = 1
+                
+                transition_function[state][2][init] = 1
+                transition_function[state][3][init] = 1
         goal = self.get_int_from_state(self.goal)
         transition_function[goal][:][:] = 0
         transition_function[goal][:][:] = 0
