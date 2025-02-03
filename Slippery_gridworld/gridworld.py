@@ -6,31 +6,45 @@ ACTION_TRANSLATOR = [
      (0,-1), # Action 3: Go South
      (-1,0),  # Action 4: Go West
 ]
-# TRAPS = [
-#     (0,4),
-#     (1,4),
-#     (3,4),
-#     (4,4),
-#     (5,4),
-#     (8,4),
-#     (9,4),
-#     (4,0),
-#     (4,1),
-#     (4,3),
-#     (4,5),
-#     (4,8),
-#     (4,9)   
-# ]
-TRAPS = [
-    (0,0),
-    (1,2),
+TRAPS = [ # 10 x 10 grid
+    (0,4),
     (1,4),
-    (2,2),
-    (3,0),
-    (3,3),
-    (4,2)
+    (3,4),
+    (4,4),
+    (5,4),
+    (8,4),
+    (9,4),
+    (4,0),
+    (4,1),
+    (4,3),
+    (4,5),
+    (4,8),
+    (4,9)   
 ]
+
+# TRAPS = [ #7 x 7 grid
+#     (0,0),
+#     (0,3),
+#     (2,0),
+#     (2,2),
+#     (2,3),
+#     (2,6),
+#     (3,0),
+#     (3,2),
+#     (3,3),
+#     (3,6),
+#     (6,3),
+#     (6,4)
+# ]
+
+# TRAPS = [  #5 x 5
+#     (0,2),
+#     (2,2),
+#     (2,0)
+# ]
+
 REWARD = 10
+NEGATIVE_REWARD = -1
 
 
 class gridWorld:
@@ -41,8 +55,8 @@ class gridWorld:
         self.escape_p = escape_p
         self.nb_states = width * height
         self.nb_actions = len(ACTION_TRANSLATOR)
-        self._state = np.zeros(2)
-        self.goal = np.array([self.width, self.height])
+        self._state = np.zeros(2, dtype=int)
+        self.goal = np.array([self.width, 0])
         self.traps = self.get_traps()
         self.reset()
     
@@ -65,11 +79,12 @@ class gridWorld:
         return x, y
     
     def get_reward(self):
-        if self._state[0]==self.goal[0] and self._state[1] == self._state[1]:
+        if self._state[0]==self.goal[0] and self._state[1]==self.goal[1]: 
             return REWARD
         return 0
+    
     def is_finished(self):
-        if self._state[0]==self.goal[0] and self._state[1] == self._state[1]:
+        if self._state[0] == self.goal[0] and self._state[1]==self.goal[1]:
             return True
         return False
     
@@ -81,7 +96,7 @@ class gridWorld:
         x = self._state[0]
         y = self._state[1]
         old_state = self.get_state_int()
-        
+
         # Free
         if self.get_int_from_state([x,y]) not in self.traps:
             action_coordinates = ACTION_TRANSLATOR[action]
@@ -128,6 +143,8 @@ class gridWorld:
         self._state[0] = x_hat
         self._state[1] = y_hat
         new_state = self.get_state_int()
+        # if new_state > 21:
+        #     print("new state", new_state)
         return old_state, new_state, self.get_reward()
     
     def get_reward_function(self):

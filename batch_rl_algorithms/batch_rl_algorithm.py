@@ -99,6 +99,12 @@ class BatchRLAlgorithm:
             if self.checks:
                 self._check_if_valid_policy()
 
+        # actions = ["north", "east", "south", "west"]
+        # for state in range(len(self.pi)):
+        #     x = state // 7
+        #     y = state % 7
+        #     action = np.argmax(self.pi[state])
+        #     print(f"in state {state}({x},{y}), we pick the action {actions[action]}")
         if self.nb_it > self.max_nb_it:
             with open("notconverging.txt", "a") as myfile:
                 myfile.write(f"{self.NAME} is not converging. \n")

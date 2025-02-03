@@ -79,19 +79,19 @@ class IntervalMDPBuilder:
         counter = 0
         # Add initial state corresponding to the given state-action pair
         builder.new_row_group(counter)
-        if(sum(next_states_init) > 0):
+        if(len(next_states_init) > 0):
             for next_state_init in next_states_init:
                 bounds = self.intervals[(state_init, action_init, next_state_init)]
                 builder.add_next_value(counter, next_state_init+1, pycarl.Interval(bounds[0], bounds[1]))
         else:
-            builder.add_next_value(counter, 0, pycarl.Interval(1, 1)) 
+            builder.add_next_value(counter, state_init+1, pycarl.Interval(1, 1)) 
         counter += 1 
         for state in range(self.num_states):
             builder.new_row_group(counter)
             for action in range(self.num_actions):
                 next_states = self.transitions[state][action]
                 # check if next state is a terminal state. If so, only add a transition to itself
-                if(sum(next_states) > 0):
+                if(len(next_states) > 0):
                     for next_state in next_states:
                         bounds = self.intervals[(state, action, next_state)]
                         builder.add_next_value(counter, next_state+1, pycarl.Interval(bounds[0], bounds[1]))
@@ -122,13 +122,12 @@ class IntervalMDPBuilder:
         counter = 0
         
         builder.new_row_group(counter)
-        if(sum(next_states_init) > 0):
+        if(len(next_states_init) > 0):
             for next_state_init in next_states_init:
                 bounds = self.intervals[(state_init, action_init, next_state_init)]
                 builder.add_next_value(counter, next_state_init+1, pycarl.Interval(bounds[0], bounds[1]))
-            
         else:
-            builder.add_next_value(counter, 0, pycarl.Interval(1, 1)) 
+            builder.add_next_value(counter, state_init+1, pycarl.Interval(1, 1)) 
             
         # Add the rest of the model
         counter += 1 
@@ -137,7 +136,7 @@ class IntervalMDPBuilder:
             for action in range(self.num_actions):
                 next_states = self.transitions[state][action]
                 # check if next state is a terminal state. If so, only add a transition to itself
-                if(sum(next_states) > 0):
+                if(len(next_states) > 0):
                     for next_state in next_states:
                         bounds = self.intervals[(state, action, next_state)]
                         builder.add_next_value(counter, next_state+1, pycarl.Interval(bounds[0], bounds[1]))
@@ -148,6 +147,53 @@ class IntervalMDPBuilder:
         transition_matrix = builder.build()
         state_labels = self.set_state_labels_with_init_airplane()
         choice_labels = self.set_choice_labels_with_init_airplane(action_init)
+        # choice_labels = self.set_choice_labels_MDP()
+        reward_model = self.set_reward_model_MDP()
+        
+        # Collect components
+        components = stormpy.SparseIntervalModelComponents(
+            transition_matrix=transition_matrix, state_labeling=state_labels, reward_models=reward_model, rate_transitions=False
+        )
+        components.choice_labeling = choice_labels
+        
+        # Build the model
+        mdp = stormpy.storage.SparseIntervalMdp(components)
+        return mdp
+    
+    def build_gridworld_model_with_init(self, state_init, action_init, next_states_init):
+        # initialize builder
+        # print(next_states_init)
+        builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
+        
+        # Create sparse matrix
+        counter = 0
+        # Add initial state corresponding to the given state-action pair
+        builder.new_row_group(counter)
+        if(len(next_states_init) > 0):
+            for next_state_init in next_states_init:
+                bounds = self.intervals[(state_init, action_init, next_state_init)]
+                builder.add_next_value(counter, next_state_init+1, pycarl.Interval(bounds[0], bounds[1]))
+        else:
+            builder.add_next_value(counter, state_init+1, pycarl.Interval(1, 1)) 
+            # print(f"we do this for init state {state_init}")
+        counter += 1 
+        for state in range(self.num_states):
+            builder.new_row_group(counter)
+            for action in range(self.num_actions):
+                next_states = self.transitions[state][action]
+                if(len(next_states) > 0):
+                    for next_state in next_states:
+                        bounds = self.intervals[(state, action, next_state)]
+                        builder.add_next_value(counter, next_state+1, pycarl.Interval(bounds[0], bounds[1]))
+                else:
+                      builder.add_next_value(counter, state+1, pycarl.Interval(1, 1))
+                    #   print(f"We do this for state {state}")  
+                counter+=1
+                
+
+        transition_matrix = builder.build()
+        state_labels = self.set_state_labels_with_init_Gridworld()
+        choice_labels = self.set_choice_labels_with_init_Gridworld(state_init, action_init)
         # choice_labels = self.set_choice_labels_MDP()
         reward_model = self.set_reward_model_MDP()
         
@@ -173,6 +219,22 @@ class IntervalMDPBuilder:
             state_labeling.add_label_to_state("trap", i+1)
         for i in self.goal:
             state_labeling.add_label_to_state("goal", i+1)
+        state_labeling.add_label_to_state("init", 0)
+        
+        return state_labeling
+    
+    def set_state_labels_with_init_Gridworld(self):
+        state_labeling = stormpy.storage.StateLabeling(self.num_states+1)
+        labels = {"goal", "trap", "init", "save"}
+        for label in labels:
+            state_labeling.add_label(label)
+        for state in range(self.num_states):
+            if state in self.traps:
+                state_labeling.add_label_to_state("trap", state+1)
+            if state in self.goal:
+                state_labeling.add_label_to_state("goal", state+1)
+            else:
+                state_labeling.add_label_to_state("save", state+1)
         state_labeling.add_label_to_state("init", 0)
         
         return state_labeling
@@ -252,6 +314,49 @@ class IntervalMDPBuilder:
         choice_labeling.add_label_to_choice(init_action, 0)
         return choice_labeling
     
+    def set_choice_labels_with_init_Gridworld(self, state, action):    
+        choice_labeling = stormpy.storage.ChoiceLabeling(self.num_actions*self.num_states+1)
+        choice_labels = {"North", "East", "South", "West", "Escape", "Reset"}
+        for label in choice_labels:
+            choice_labeling.add_label(label)
+            
+        for i in range(self.num_states):
+            if i in self.traps:
+                choice_labeling.add_label_to_choice("Escape", 1+i*4)
+                choice_labeling.add_label_to_choice("Escape", 1+i*4+1)
+                choice_labeling.add_label_to_choice("Reset", 1+i*4+2)
+                choice_labeling.add_label_to_choice("Reset", 1+i*4+3)                 
+            else:    
+                choice_labeling.add_label_to_choice("North", 1+i*4)
+                choice_labeling.add_label_to_choice("East", 1+i*4+1)
+                choice_labeling.add_label_to_choice("South", 1+i*4+2)
+                choice_labeling.add_label_to_choice("West", 1+i*4+3) 
+        
+        init_action = ""
+        if state in self.traps:
+            match action:
+                case 0:
+                    init_action = "Escape"
+                case 1:
+                    init_action = "Escape"
+                case 2:
+                    init_action = "Reset"
+                case 3: 
+                    init_action = "Reset"
+            choice_labeling.add_label_to_choice(init_action, 0)
+        else:
+            match action:
+                case 0:
+                    init_action = "North"
+                case 1:
+                    init_action = "East"
+                case 2:
+                    init_action = "South"
+                case 3: 
+                    init_action = "West"
+            choice_labeling.add_label_to_choice(init_action, 0)
+        return choice_labeling
+    
     def set_choice_labels_with_init_WetChicken(self, action):    
         choice_labeling = stormpy.storage.ChoiceLabeling(self.num_actions*(self.num_states-1)+2)
         choice_labels = {"drift", "hold", "paddle_back", "right", "left", "reset"}
@@ -319,7 +424,7 @@ class IntervalMDPBuilder:
             for action in range(self.num_actions):
                 next_states = self.transitions[state][action]
                 # check if next state is a terminal state. If so, only add a transition to itself
-                if(sum(next_states) > 0):
+                if(len(next_states) > 0):
                     for next_state in next_states:
                         bounds = self.intervals[(state, action, next_state)]
                         builder.add_next_value(counter, next_state, pycarl.Interval(bounds[0], bounds[1]))

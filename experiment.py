@@ -37,7 +37,7 @@ from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
 
 
-from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane
+from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld
 from PACIntervalEstimator import PACIntervalEstimator
 from IntervalMDPBuilder import IntervalMDPBuilder
 directory = os.path.dirname(os.path.expanduser(__file__))
@@ -204,8 +204,8 @@ class Experiment:
             elif key in {shield_MBIE.NAME}:
                 self._run_mbie_shielded(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
-                # self._run_spibb_shielded(key)
-                self._run_spibb_experiment(key)
+                self._run_spibb_shielded(key)
+                # self._run_spibb_experiment(key)
             elif key in {WorstCaseRMDP.NAME}:
                 self._run_rmdp(key)
             elif key in {Shield_WorstCaseRMDP.NAME}:
@@ -723,6 +723,8 @@ class SlipperyGridworldExperiment(Experiment):
         self.env = gridWorld(self.height, self.width, self.slip_p, self.escape_p)
         self.initial_state = self.env.get_state_int()
         self.P = self.env.get_transition_function()
+        self.traps = self.env.get_traps()
+        self.goal = self.env.get_int_from_state(self.env.goal)
         # print("real transition model = ")
         # print(self.P)
         # for state in range(len(self.P)):
@@ -772,7 +774,7 @@ class SlipperyGridworldExperiment(Experiment):
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
                 # print(f"in state {env.decode_int(state)}, action {action_choice} leads to state {env.decode_int(next_state)} with reward of {reward}")
-                is_done = env.is_finished()
+                is_done = env.is_finished()                    
                 # print(is_done)
                 trajectorY.append([action_choice, state, next_state, reward])
                 state = next_state
@@ -795,19 +797,23 @@ class SlipperyGridworldExperiment(Experiment):
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
+                print("Generating Trajectories")
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # print("----------------------------------------------------------------")                
+                # print("----------------------------------------------------------------")    
+                print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # print(intervals)
-                # self.shielder = ShieldAirplane(self.structure, self.crash, self.success, self.intervals, self.maxX, self.maxY)
-                # self.shielder.calculateShield()
+                print("Calculating Shield")  
+                self.shielder = ShieldSlipperyGridworld(self.structure, self.traps, [self.goal], self.intervals, self.width, self.height)
+                self.shielder.calculateShield()
                 # self.shielder.printShield()
                 # print("----------------------------------------------------------------")
+                print("Running Algorithms")
                 self._run_algorithms()
                 
     def reduce_transition_matrix(self, transition_matrix):
@@ -1246,6 +1252,7 @@ class RandomMDPsExperiment(Experiment):
                 self.intervals = self.estimator.get_intervals()
                 self.shielder = ShieldRandomMDP(self.structure, self.traps, [self.garnet.final_state], self.intervals)
                 self.shielder.calculateShield()
+                # self.shielder.printShield()
                 # print("----------------------------------------------------------------")
                 self._run_algorithms()
 

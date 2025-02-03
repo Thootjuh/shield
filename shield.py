@@ -55,6 +55,7 @@ class Shield:
         start_total_time = time.time()
         for state in range(len(self.structure)):
             for action in range(len(self.structure[state])):
+                # print(f"shield for state {state} and action {action}")
                 if state in self.traps:
                     self.shield[state][action] = 1
                 elif state in self.goal:
@@ -71,7 +72,7 @@ class Shield:
         print("Total time needed to create the Shield:", end_total_time - start_total_time)                                 
         
     def printShield(self):
-        sorted_arr = self.shield2[self.shield2[:, 2].argsort()]
+        sorted_arr = self.shield[self.shield[:, 2].argsort()]
         np.set_printoptions(suppress=True, precision=6)
         print(sorted_arr)
         print(self.traps)
@@ -111,6 +112,10 @@ class Shield:
         task.set_robust_uncertainty(True)
         result = stormpy.check_interval_mdp(model, task, env)
         initial_state = model.initial_states[0]
+        # for state in model.states:
+        #     for action in state.actions:
+        #         for transition in action.transitions:
+        #             print("From state {} by action {}, with probability {}, go to state {}".format(state, action, transition.value(), transition.column))
         return result.at(initial_state)
 
 
@@ -138,6 +143,22 @@ class ShieldRandomMDP(Shield):
             min_value = np.min(probs)
             safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
         return safe_actions
+    
+    def printShield(self):
+        state_action_prob_pairs = []
+        for state in range(len(self.shield)):
+            for action in range(len(self.shield[state])):
+                prob = self.shield[state][action]
+                state_action_prob_pairs.append([state, action, prob])
+        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        
+        for pair in state_action_prob_pairs:
+            state = pair[0]
+            action = pair[1]
+            prob = pair[2]
+                        
+            print(f"State: {state}, action: {action}, with probability of falling: {prob}")
+        print(f"with crash states being {self.traps} and success states being {self.goal}")
 
 class ShieldWetChicken(Shield):
     def __init__(self, transition_matrix, width, length, goals, intervals):
@@ -258,6 +279,71 @@ class ShieldAirplane(Shield):
             min_value = np.min(probs)
             safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
         return safe_actions
+    
+class ShieldSlipperyGridworld(Shield):
+    def __init__(self, transition_matrix, traps, goal, intervals, width, height):
+        self.width = width
+        self.height = height
+        super().__init__(transition_matrix, traps, goal, intervals)
+    
+    def calculateShield(self):
+        # How likely are we to step into a trap
+        # prop = "Pmax=? [!\"trap\"U\"goal\"]"
+        prop = "Pmax=? [!\"trap\"U\"save\"]"
+        prop = "Pmax=? [!\"save\"U\"trap\"]"
+        
+        super().calculateShieldInterval(prop, self.builder.build_gridworld_model_with_init)
+        self.shield = 1-self.shield
+    
+    def get_safe_actions_from_shield(self, state, threshold=0.1, buffer = 0.05):
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            min_value = np.min(probs)
+            safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
+        return safe_actions
+    
+    def get_state_from_int(self, number):
+        x = number // (self.width)
+        y = number % (self.width)
+        
+        return x, y
+    
+    def printShield(self):
+        actions = [
+            "North",
+            "East",
+            "South",
+            "West"
+        ]
+        state_action_prob_pairs = []
+        for state in range(len(self.shield)):
+            for action in range(len(self.shield[state])):
+                prob = self.shield[state][action]
+                state_action_prob_pairs.append([state, action, prob])
+        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        
+        for pair in state_action_prob_pairs:
+            state = pair[0]
+            prob = pair[2]
+            
+            x, y = self.get_state_from_int(state)
+            if state in self.traps:
+                if pair[1] < 2:
+                    action = "escape"
+                else:
+                    action = "reset"
+                print(f"Trap State: {state}: {x}, {y}), action: {action}, with probability of getting trapped: {prob}")
+            else:
+                action = actions[pair[1]]
+                print(f"State: {state}: {x}, {y}), action: {action}, with probability of getting trapped: {prob}")
+        print(f"with crash states being {self.traps} and success states being {self.goal}")
+    
+
     
     
     
