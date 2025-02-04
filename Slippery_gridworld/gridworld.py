@@ -26,16 +26,12 @@ TRAPS = [ # 10 x 10 grid
 # TRAPS = [ #7 x 7 grid
 #     (0,0),
 #     (0,3),
-#     (2,0),
-#     (2,2),
 #     (2,3),
-#     (2,6),
 #     (3,0),
 #     (3,2),
 #     (3,3),
 #     (3,6),
-#     (6,3),
-#     (6,4)
+#     (6,3)
 # ]
 
 # TRAPS = [  #5 x 5
@@ -57,10 +53,11 @@ class gridWorld:
         self.nb_states = width * height
         self.nb_actions = len(ACTION_TRANSLATOR)
         self._state = np.zeros(2, dtype=int)
+        self.init = np.array([0, self.height])
         self.goal = np.array([self.width, 0])
         self.traps = self.get_traps()
         self.reset()
-        self.init = self._state.copy()
+        
     
     def get_traps(self):
         traps=[]

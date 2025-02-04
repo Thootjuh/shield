@@ -743,9 +743,10 @@ class SlipperyGridworldExperiment(Experiment):
         
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        print("pi-star")
         pi_star.fit()
         
-        # print("pi-star")
+        
         # actions = ["north", "east", "south", "west"]
         # for state in range(len(pi_star.pi)):
         #     # print(pi_star.pi[state])
@@ -775,6 +776,7 @@ class SlipperyGridworldExperiment(Experiment):
         """
         trajectories = []
         # print(pi)
+        
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
