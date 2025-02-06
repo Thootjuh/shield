@@ -295,7 +295,7 @@ class ShieldSlipperyGridworld(Shield):
         super().calculateShieldInterval(prop, self.builder.build_gridworld_model_with_init)
         self.shield = 1-self.shield
     
-    def get_safe_actions_from_shield(self, state, threshold=0.1, buffer = 0.05):
+    def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.15):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):

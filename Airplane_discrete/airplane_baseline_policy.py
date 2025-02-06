@@ -26,3 +26,6 @@ class AirplaneBaselinePolicy:
                 pi[state][1] = 0 # Down
                 pi[state][2] = 1 # Stay
         self.pi = (1 - self.epsilon) * pi + self.epsilon * self.pi
+        print(self.pi)
+        for state in self.pi:
+            print(sum(state))

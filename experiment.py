@@ -743,7 +743,20 @@ class SlipperyGridworldExperiment(Experiment):
         
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        print("pi-star")
         pi_star.fit()
+        
+        
+        # actions = ["north", "east", "south", "west"]
+        # for state in range(len(pi_star.pi)):
+        #     # print(pi_star.pi[state])
+        #     x = state // 10
+        #     y = state % 10
+        #     action = np.argmax(pi_star.pi[state])
+        #     print(f"in state {state}({x},{y}), we pick the action {actions[action]}")
+            
+            
+            
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
         print("pi_star_perf:", pi_star_perf)
         self.fixed_params_exp_list.append(pi_star_perf)
@@ -763,6 +776,7 @@ class SlipperyGridworldExperiment(Experiment):
         """
         trajectories = []
         # print(pi)
+        
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []

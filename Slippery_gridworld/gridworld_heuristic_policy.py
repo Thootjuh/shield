@@ -17,32 +17,38 @@ class GridworldBaselinePolicy:
             goal_x, goal_y = self.env.goal
             
             # Determine relative position to the goal
-            move_north = y > goal_y
-            move_south = y < goal_y
+            move_north = y < goal_y
+            move_south = y > goal_y
             move_west = x > goal_x
             move_east = x < goal_x
             
-            if move_north and move_west:
-                pi[state][0] = 0.5  # North
-                pi[state][3] = 0.5  # West
-            elif move_north and move_east:
-                pi[state][0] = 0.5  # North
-                pi[state][1] = 0.5  # East
-            elif move_south and move_west:
-                pi[state][2] = 0.5  # South
-                pi[state][3] = 0.5  # West
-            elif move_south and move_east:
-                pi[state][2] = 0.5  # South
-                pi[state][1] = 0.5  # East
-            elif move_north:
-                pi[state][0] = 1.0  # North
-            elif move_south:
-                pi[state][2] = 1.0  # South
-            elif move_west:
-                pi[state][3] = 1.0  # West
-            elif move_east:
-                pi[state][1] = 1.0  # East
+            if state in self.env.traps:
+                pi[state][0] = 0.5
+                pi[state][3] = 0.5
+            else:
+                if move_north and move_west:
+                    pi[state][0] = 0.5  # North
+                    pi[state][3] = 0.5  # West
+                elif move_north and move_east:
+                    pi[state][0] = 0.5  # North
+                    pi[state][1] = 0.5  # East
+                elif move_south and move_west:
+                    pi[state][2] = 0.5  # South
+                    pi[state][3] = 0.5  # West
+                elif move_south and move_east:
+                    pi[state][2] = 0.5  # South
+                    pi[state][1] = 0.5  # East
+                elif move_north:
+                    pi[state][0] = 1.0  # North
+                elif move_south:
+                    pi[state][2] = 1.0  # South
+                elif move_west:
+                    pi[state][3] = 1.0  # West
+                elif move_east:
+                    pi[state][1] = 1.0  # East
+                else:
+                    pi[state][:] = 1/self.nb_actions
             
         # Apply epsilon smoothing
-        self.pi = (1 - self.epsilon) * pi + (self.epsilon / self.nb_actions)
+        self.pi = (1 - self.epsilon) * pi + self.epsilon * self.pi
             

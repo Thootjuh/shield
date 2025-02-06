@@ -101,8 +101,8 @@ class BatchRLAlgorithm:
 
         # actions = ["north", "east", "south", "west"]
         # for state in range(len(self.pi)):
-        #     x = state // 7
-        #     y = state % 7
+        #     x = state // 10
+        #     y = state % 10
         #     action = np.argmax(self.pi[state])
         #     print(f"in state {state}({x},{y}), we pick the action {actions[action]}")
         if self.nb_it > self.max_nb_it:
