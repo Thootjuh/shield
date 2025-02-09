@@ -27,29 +27,29 @@ class Shield:
             file.write(Tempstr)
         return Tempstr
         
-    def calculateShieldPrism(self, prop):    
-        start_total_time = time.time()
-        for state in range(len(self.structure)):
-            for action in range(len(self.structure[state])):
-                # print(self.traps)
-                # print(state)
-                if state in self.traps:
-                    self.shield.append([state, action, 1])
-                elif state in self.goal:
-                    self.shield.append([state, action, 0])
-                else:
-                    mdpprog = PrismEncoder.add_initial_state_to_prism_mdp(self.prismStr, -1, action, self.structure[state][action])
-                    r1 = self.invokeStormPrism(mdpprog, prop)
-                    # r2 = self.invokeStorm(mdpprog, prop2)
-                    # r2 = 1
-                    self.shield.append([state, action, r1])
+    # def calculateShieldPrism(self, prop):    
+    #     start_total_time = time.time()
+    #     for state in range(len(self.structure)):
+    #         for action in range(len(self.structure[state])):
+    #             # print(self.traps)
+    #             # print(state)
+    #             if state in self.traps:
+    #                 self.shield.append([state, action, 1])
+    #             elif state in self.goal:
+    #                 self.shield.append([state, action, 0])
+    #             else:
+    #                 mdpprog = PrismEncoder.add_initial_state_to_prism_mdp(self.prismStr, -1, action, self.structure[state][action])
+    #                 r1 = self.invokeStormPrism(mdpprog, prop)
+    #                 # r2 = self.invokeStorm(mdpprog, prop2)
+    #                 # r2 = 1
+    #                 self.shield.append([state, action, r1])
                     
-        end_total_time = time.time()
+    #     end_total_time = time.time()
         
-        self.shield = np.array(self.shield)
-        # self.printShield()
+    #     self.shield = np.array(self.shield)
+    #     # self.printShield()
 
-        print("Total time needed to create the Shield:", end_total_time - start_total_time)
+    #     print("Total time needed to create the Shield:", end_total_time - start_total_time)
     
     def calculateShieldInterval(self, prop, model_function):
         start_total_time = time.time()
@@ -65,6 +65,7 @@ class Shield:
                     model = model_function(state, action, next_states)
                     r1 = self.invokeStorm(model, prop)
                     self.shield[state][action] = 1-r1
+                    # raise("hold on a god damn second")
                 # time.sleep(100)
         end_total_time = time.time()
         
@@ -112,10 +113,12 @@ class Shield:
         task.set_robust_uncertainty(True)
         result = stormpy.check_interval_mdp(model, task, env)
         initial_state = model.initial_states[0]
+        
         # for state in model.states:
         #     for action in state.actions:
         #         for transition in action.transitions:
         #             print("From state {} by action {}, with probability {}, go to state {}".format(state, action, transition.value(), transition.column))
+        
         return result.at(initial_state)
 
 
@@ -343,6 +346,66 @@ class ShieldSlipperyGridworld(Shield):
                 print(f"State: {state}: {x}, {y}), action: {action}, with probability of getting trapped: {prob}")
         print(f"with crash states being {self.traps} and success states being {self.goal}")
     
+class ShieldSimplifiedPacman(Shield):
+    def __init__(self, transition_matrix, traps, goal, intervals, width, height):
+        self.width = width
+        self.height = height
+        super().__init__(transition_matrix, traps, goal, intervals)
+        
+
+    def calculateShield(self):
+        # How likely are we to step into a trap
+        prop = "Pmax=? [!\"eaten\"U\"goal\"]"
+        
+        super().calculateShieldInterval(prop, self.builder.build_pacman_model_with_init)
+    
+    def decode_int(self, state_int):
+        ay = state_int % self.height
+        state_int //= self.height
+
+        ax = state_int % self.width
+        state_int //= self.width
+
+        y = state_int % self.height
+        state_int //= self.height
+
+        x = state_int % self.width
+
+        return x, y, ax, ay 
+    def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.00000001):
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            min_value = np.min(probs)
+            safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
+        return safe_actions  
+    
+    def printShield(self):
+        actions = [
+            "Up",
+            "Right",
+            "Down",
+            "Left"
+        ]
+        state_action_prob_pairs = []
+        for state in range(len(self.shield)):
+            for action in range(len(self.shield[state])):
+                prob = self.shield[state][action]
+                state_action_prob_pairs.append([state, action, prob])
+        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        
+        for pair in state_action_prob_pairs:
+            state = pair[0]
+            prob = pair[2]
+            action = actions[pair[1]]
+            x, y, gx, gy = self.decode_int(state)
+            print(f"Trap State: {state}: a:({x}, {y}), ghost:({gx},{gy}) action: {action}, with probability of getting trapped: {prob}")
+        
+        print(f"with crash states being {self.traps} and success states being {self.goal}")
 
     
     

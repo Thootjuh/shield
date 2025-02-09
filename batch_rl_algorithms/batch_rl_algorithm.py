@@ -92,6 +92,7 @@ class BatchRLAlgorithm:
         self.nb_it = 0
 
         while np.linalg.norm(self.q - old_q) > 10 ** (-9) and self.nb_it < self.max_nb_it:
+            # print("AAAAAAAAAAAAAAAAAAAAAA")
             self.nb_it += 1
             old_q = self.q.copy()
             self._policy_evaluation()
@@ -99,12 +100,12 @@ class BatchRLAlgorithm:
             if self.checks:
                 self._check_if_valid_policy()
 
-        # actions = ["north", "east", "south", "west"]
-        # for state in range(len(self.pi)):
-        #     x = state // 10
-        #     y = state % 10
-        #     action = np.argmax(self.pi[state])
-        #     print(f"in state {state}({x},{y}), we pick the action {actions[action]}")
+        # print(f"Policy = ")
+        # for i, state in enumerate(self.pi):
+        #     print(f"for state {i} we have {state}")
+            
+            
+            
         if self.nb_it > self.max_nb_it:
             with open("notconverging.txt", "a") as myfile:
                 myfile.write(f"{self.NAME} is not converging. \n")
@@ -140,7 +141,10 @@ class BatchRLAlgorithm:
         expected reward when choosing action a in state s in the estimated MDP.
         """
         self.R_state_action = np.einsum('ijk,ik->ij', self.transition_model, self.R_state_state)
-        # print(f"estimated R_state_action = {self.R_state_action}")
+        # print(f"estimated R_state_action = ")
+        # for i, state in enumerate(self.R_state_action):
+        #     print(f"for state {i} we have {state}")
+    
 
     def _policy_improvement(self):
         """

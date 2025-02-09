@@ -206,6 +206,51 @@ class IntervalMDPBuilder:
         # Build the model
         mdp = stormpy.storage.SparseIntervalMdp(components)
         return mdp
+    
+    def build_pacman_model_with_init(self, state_init, action_init, next_states_init):
+        # initialize builder
+        # print(next_states_init)
+        builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
+        
+        # Create sparse matrix
+        counter = 0
+        # Add initial state corresponding to the given state-action pair
+        builder.new_row_group(counter)
+        if(len(next_states_init) > 0):
+            for next_state_init in next_states_init:
+                bounds = self.intervals[(state_init, action_init, next_state_init)]
+                builder.add_next_value(counter, next_state_init+1, pycarl.Interval(bounds[0], bounds[1]))
+        else:
+            builder.add_next_value(counter, state_init+1, pycarl.Interval(1, 1)) 
+        counter += 1 
+        for state in range(self.num_states):
+            builder.new_row_group(counter)
+            for action in range(self.num_actions):
+                next_states = self.transitions[state][action]
+                if(len(next_states) > 0):
+                    for next_state in next_states:
+                        bounds = self.intervals[(state, action, next_state)]
+                        builder.add_next_value(counter, next_state+1, pycarl.Interval(bounds[0], bounds[1]))
+                else:
+                      builder.add_next_value(counter, state+1, pycarl.Interval(1, 1))
+                counter+=1
+                
+
+        transition_matrix = builder.build()
+        state_labels = self.set_state_labels_with_init_Pacman()
+        choice_labels = self.set_choice_labels_with_init_Pacman(action_init)
+        # choice_labels = self.set_choice_labels_MDP()
+        reward_model = self.set_reward_model_MDP()
+        
+        # Collect components
+        components = stormpy.SparseIntervalModelComponents(
+            transition_matrix=transition_matrix, state_labeling=state_labels, reward_models=reward_model, rate_transitions=False
+        )
+        components.choice_labeling = choice_labels
+        
+        # Build the model
+        mdp = stormpy.storage.SparseIntervalMdp(components)
+        return mdp
 
     def get_nr_groups(self):
         return self.groups_nr
@@ -235,6 +280,20 @@ class IntervalMDPBuilder:
                 state_labeling.add_label_to_state("goal", state+1)
             else:
                 state_labeling.add_label_to_state("save", state+1)
+        state_labeling.add_label_to_state("init", 0)
+        
+        return state_labeling
+    
+    def set_state_labels_with_init_Pacman(self):
+        state_labeling = stormpy.storage.StateLabeling(self.num_states+1)
+        labels = {"goal", "eaten", "init"}
+        for label in labels:
+            state_labeling.add_label(label)
+        for state in range(self.num_states):
+            if state in self.traps:
+                state_labeling.add_label_to_state("eaten", state+1)
+            elif state in self.goal:
+                state_labeling.add_label_to_state("goal", state+1)
         state_labeling.add_label_to_state("init", 0)
         
         return state_labeling
@@ -311,6 +370,31 @@ class IntervalMDPBuilder:
                 init_action = "action 3"
             case 3: 
                 init_action = "action 4"
+        choice_labeling.add_label_to_choice(init_action, 0)
+        return choice_labeling
+    
+    def set_choice_labels_with_init_Pacman(self, action):    
+        choice_labeling = stormpy.storage.ChoiceLabeling(self.num_actions*self.num_states+1)
+        choice_labels = {"Up", "Right", "Down", "Left"}
+        for label in choice_labels:
+            choice_labeling.add_label(label)
+            
+        for i in range(self.num_states):
+            choice_labeling.add_label_to_choice("Up", 1+i*4)
+            choice_labeling.add_label_to_choice("Right", 1+i*4+1)
+            choice_labeling.add_label_to_choice("Down", 1+i*4+2)
+            choice_labeling.add_label_to_choice("Left", 1+i*4+3) 
+        
+        init_action = ""
+        match action:
+            case 0:
+                init_action = "Up"
+            case 1:
+                init_action = "Right"
+            case 2:
+                init_action = "Down"
+            case 3: 
+                init_action = "Left"
         choice_labeling.add_label_to_choice(init_action, 0)
         return choice_labeling
     

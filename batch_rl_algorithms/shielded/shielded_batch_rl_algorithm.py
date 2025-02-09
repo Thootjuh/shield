@@ -29,7 +29,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         times a state-action-next-state triplet has been visited 
         """
         self.shield = shield
-        if(shield_baseline):
+        if shield_baseline:
             self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
             # print("shield baseline")
         self.pi_b = pi_b
