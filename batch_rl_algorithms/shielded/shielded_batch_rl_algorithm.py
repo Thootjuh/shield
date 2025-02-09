@@ -29,9 +29,6 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         times a state-action-next-state triplet has been visited 
         """
         self.shield = shield
-        if shield_baseline:
-            self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
-            # print("shield baseline")
         self.pi_b = pi_b
         self.gamma = gamma
         self.nb_states = nb_states
@@ -39,26 +36,30 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         self.zero_unseen = zero_unseen
         self.episodic = episodic
         self.data = data
-        if shield_data:
-            self.data = self._modify_data()
-            # print("shield data")
         self.max_nb_it = max_nb_it
         self.pi = self.pi_b.copy()
         self.q = np.zeros([nb_states, nb_actions])
         self.R_state_state = R
         self.checks = checks
         self.speed_up_dict = speed_up_dict
-        self.shield_actions()
+        
         if self.speed_up_dict:
             self.count_state_action = self.speed_up_dict['count_state_action']
             self.count_state_action_state = self.speed_up_dict['count_state_action_state']
         else:
             self._count()
         self._initial_calculations()
+        
+        if shield_data:
+            self.data = self._modify_data()
         if estimate_baseline:
             self.pi_b = self.estimate_baseline()
             # self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
             self.pi = self.pi_b.copy()
+        if shield_baseline:
+            self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
+        self.shield_actions()
+        
     
     def _modify_data(self):
         safe_data = []
