@@ -191,7 +191,6 @@ class gridWorld:
                     transition_function[state][1][next_state] += self.escape_p
                         
                 # Action Reset
-                
                 transition_function[state][2][init] = 1
                 transition_function[state][3][init] = 1
         goal = self.get_int_from_state(self.goal)

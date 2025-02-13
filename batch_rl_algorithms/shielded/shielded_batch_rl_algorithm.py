@@ -42,6 +42,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         self.R_state_state = R
         self.checks = checks
         self.speed_up_dict = speed_up_dict
+        self.shield_actions()
         
         if self.speed_up_dict:
             self.count_state_action = self.speed_up_dict['count_state_action']
@@ -58,7 +59,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
             self.pi = self.pi_b.copy()
         if shield_baseline:
             self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
-        self.shield_actions()
+        
         
     
     def _modify_data(self):
