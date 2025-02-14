@@ -1,4 +1,4 @@
 This is the wet chicken benchmark with a heuristic baseline.
-1 threads are being used, each computing 100 iterations.
-The seed which was used for the seed sequence is 1234 and the produced sequence is [2906597030].
-Experiment starts at Thu Feb 13 18:53:50 2025.
+1 threads are being used, each computing 840 iterations.
+The seed which was used for the seed sequence is 37 and the produced sequence is [4253695468].
+Experiment starts at Fri Feb 14 00:07:12 2025.
