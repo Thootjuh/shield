@@ -5,6 +5,8 @@ import os
 import time
 import numpy as np
 from IntervalMDPBuilder import IntervalMDPBuilder
+from IntervalMDPBuilder import IntervalMDPBuilderRandomMDPs, IntervalMDPBuilderAirplane, IntervalMDPBuilderWetChicken, IntervalMDPBuilderSlipperyGridworld,  IntervalMDPBuilderPacman
+
 import pycarl
  
 class Shield:
@@ -13,7 +15,6 @@ class Shield:
         self.goal = goal
         self.structure = transition_matrix
         self.intervals = intervals
-        self.builder = IntervalMDPBuilder(transition_matrix, intervals, goal, traps)
         self.num_states= len(self.structure)
         self.num_actions = len(self.structure[0])
         self.shield = np.full((self.num_states, self.num_actions), -1, dtype=np.float64)
@@ -27,29 +28,6 @@ class Shield:
             file.write(Tempstr)
         return Tempstr
         
-    # def calculateShieldPrism(self, prop):    
-    #     start_total_time = time.time()
-    #     for state in range(len(self.structure)):
-    #         for action in range(len(self.structure[state])):
-    #             # print(self.traps)
-    #             # print(state)
-    #             if state in self.traps:
-    #                 self.shield.append([state, action, 1])
-    #             elif state in self.goal:
-    #                 self.shield.append([state, action, 0])
-    #             else:
-    #                 mdpprog = PrismEncoder.add_initial_state_to_prism_mdp(self.prismStr, -1, action, self.structure[state][action])
-    #                 r1 = self.invokeStormPrism(mdpprog, prop)
-    #                 # r2 = self.invokeStorm(mdpprog, prop2)
-    #                 # r2 = 1
-    #                 self.shield.append([state, action, r1])
-                    
-    #     end_total_time = time.time()
-        
-    #     self.shield = np.array(self.shield)
-    #     # self.printShield()
-
-    #     print("Total time needed to create the Shield:", end_total_time - start_total_time)
     
     def calculateShieldInterval(self, prop, model_function):
         start_total_time = time.time()
@@ -77,31 +55,6 @@ class Shield:
         np.set_printoptions(suppress=True, precision=6)
         print(sorted_arr)
         print(self.traps)
-        
-    def invokeStormPrism(self, mdpprog, prop):
-        # write program to RAM
-        temp_name = next(tempfile._get_candidate_names())
-        file_name = "/dev/shm/prism-" + temp_name + ".nm"
-        text_file = open(file_name, "w")
-        text_file.write(mdpprog)
-        text_file.close()
-
-        # read program from RAM
-        program = stormpy.parse_prism_program(file_name)
-        properties = stormpy.parse_properties_for_prism_program(prop, program, None)
-
-        start = time.time()
-        model = stormpy.build_model(program, properties)
-        initial_state = model.initial_states[0]
-        end = time.time()
-        # print(end-start)
-
-        result = stormpy.model_checking(model, properties[0])
-        # print(result.at(initial_state))
-
-        os.remove(file_name)
-
-        return result.at(initial_state)
                 
     
     def invokeStorm(self, model, prop):
@@ -123,6 +76,10 @@ class Shield:
 
 
 class ShieldRandomMDP(Shield):
+    def __init__(self, transition_matrix, traps, goal, intervals):
+        self.builder = IntervalMDPBuilderRandomMDPs(transition_matrix, intervals, goal, traps)
+        super().__init__(transition_matrix, traps, goal, intervals)
+        
     def calculateShield(self):
         # How likely are we to step into a trap
         prop = "Pmin=? [  F<4 \"trap\" ]"
@@ -133,7 +90,7 @@ class ShieldRandomMDP(Shield):
         # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
         prop3 = "Pmax=? [!\"trap\" U \"goal\"]"
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
-        return super().calculateShieldInterval(prop3, self.builder.build_MDP_model_with_init)
+        return super().calculateShieldInterval(prop3, self.builder.build_model_with_init)
     
     def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         probs = self.shield[state]
@@ -167,6 +124,7 @@ class ShieldWetChicken(Shield):
     def __init__(self, transition_matrix, width, length, goals, intervals):
         self.width = width
         self.length = length
+        self.builder = IntervalMDPBuilderWetChicken(transition_matrix, intervals, [], [])
         super().__init__(transition_matrix, [], [], intervals)
         
     def createPrismStr(self):
@@ -210,7 +168,7 @@ class ShieldWetChicken(Shield):
         prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
         # prop = "Pmin=? [  F\"waterfall\"]"
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
-        return super().calculateShieldInterval(prop, self.builder.build_wetChicken_model_with_init)
+        return super().calculateShieldInterval(prop, self.builder.build_model_with_init)
     
     def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         probs = self.shield[state]
@@ -228,6 +186,7 @@ class ShieldAirplane(Shield):
     def __init__(self, transition_matrix, traps, goal, intervals, maxX, maxY):
         self.maxX = maxX
         self.maxY = maxY
+        self.builder = IntervalMDPBuilderAirplane(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         
     def calculateShield(self):
@@ -235,7 +194,7 @@ class ShieldAirplane(Shield):
         prop = "Pmax=? [  !\"crash\" U \"success\"]"
         # prop = "Pmin=? [  F\"waterfall\"]"
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
-        return super().calculateShieldInterval(prop, self.builder.build_airplane_model_with_init)
+        return super().calculateShieldInterval(prop, self.builder.build_model_with_init)
     
     def decode_int(self, state_int):   
         ay = state_int % self.maxY
@@ -287,6 +246,7 @@ class ShieldSlipperyGridworld(Shield):
     def __init__(self, transition_matrix, traps, goal, intervals, width, height):
         self.width = width
         self.height = height
+        self.builder = IntervalMDPBuilderSlipperyGridworld(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
     
     def calculateShield(self):
@@ -295,7 +255,7 @@ class ShieldSlipperyGridworld(Shield):
         prop = "Pmax=? [!\"trap\"U\"save\"]"
         prop = "Pmax=? [!\"save\"U\"trap\"]"
         
-        super().calculateShieldInterval(prop, self.builder.build_gridworld_model_with_init)
+        super().calculateShieldInterval(prop, self.builder.build_model_with_init)
         self.shield = 1-self.shield
     
     def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.15):
@@ -350,6 +310,7 @@ class ShieldSimplifiedPacman(Shield):
     def __init__(self, transition_matrix, traps, goal, intervals, width, height):
         self.width = width
         self.height = height
+        self.builder = IntervalMDPBuilderPacman(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         
 
@@ -357,7 +318,7 @@ class ShieldSimplifiedPacman(Shield):
         # How likely are we to step into a trap
         prop = "Pmax=? [!\"eaten\"U\"goal\"]"
         
-        super().calculateShieldInterval(prop, self.builder.build_pacman_model_with_init)
+        super().calculateShieldInterval(prop, self.builder.build_model_with_init)
     
     def decode_int(self, state_int):
         ay = state_int % self.height

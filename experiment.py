@@ -42,7 +42,6 @@ from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
 
 from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld, ShieldSimplifiedPacman
 from PACIntervalEstimator import PACIntervalEstimator
-from IntervalMDPBuilder import IntervalMDPBuilder
 directory = os.path.dirname(os.path.expanduser(__file__))
 
 
