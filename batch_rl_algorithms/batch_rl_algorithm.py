@@ -34,6 +34,7 @@ class BatchRLAlgorithm:
         times a state-action-next-state triplet has been visited
         """
         self.pi_b = pi_b
+        self.pi = self.pi_b.copy()
         self.gamma = gamma
         self.nb_states = nb_states
         self.nb_actions = nb_actions
@@ -41,7 +42,7 @@ class BatchRLAlgorithm:
         self.zero_unseen = zero_unseen
         self.episodic = episodic
         self.max_nb_it = max_nb_it
-        self.pi = pi_b.copy()
+        
         self.q = np.zeros([nb_states, nb_actions])
         self.R_state_state = R
         self.checks = checks

@@ -10,17 +10,17 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-from wet_chicken_discrete.baseline_policy import WetChickenBaselinePolicy
-from wet_chicken_discrete.dynamics import WetChicken
+from environments.wet_chicken_discrete.baseline_policy import WetChickenBaselinePolicy
+from environments.wet_chicken_discrete.dynamics import WetChicken
 
-from Airplane_discrete.airplane import Airplane
-from Airplane_discrete.airplane_baseline_policy import AirplaneBaselinePolicy
+from environments.Airplane_discrete.airplane import Airplane
+from environments.Airplane_discrete.airplane_baseline_policy import AirplaneBaselinePolicy
 
-from Slippery_gridworld.gridworld import gridWorld
-from Slippery_gridworld.gridworld_heuristic_policy import GridworldBaselinePolicy
+from environments.Slippery_gridworld.gridworld import gridWorld
+from environments.Slippery_gridworld.gridworld_heuristic_policy import GridworldBaselinePolicy
 
-from pacman.pacman_dynamics import pacmanSimplified
-from pacman.pacman_heuristic_policy import PacmanBaselinePolicy
+from environments.pacman.pacman_dynamics import pacmanSimplified
+from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 
 from batch_rl_algorithms.basic_rl import Basic_rl
 from batch_rl_algorithms.pi_star import PiStar

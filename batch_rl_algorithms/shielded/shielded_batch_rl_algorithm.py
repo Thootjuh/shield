@@ -36,6 +36,8 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         self.zero_unseen = zero_unseen
         self.episodic = episodic
         self.data = data
+        if shield_data:
+            self.data = self._modify_data()
         self.max_nb_it = max_nb_it
         self.pi = self.pi_b.copy()
         self.q = np.zeros([nb_states, nb_actions])
@@ -49,18 +51,15 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
             self.count_state_action_state = self.speed_up_dict['count_state_action_state']
         else:
             self._count()
-        self._initial_calculations()
-        
-        if shield_data:
-            self.data = self._modify_data()
         if estimate_baseline:
             self.pi_b = self.estimate_baseline()
             # self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
             self.pi = self.pi_b.copy()
         if shield_baseline:
             self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
-        
-        
+            self.pi = self.pi_b.copy()
+        self._initial_calculations()
+
     
     def _modify_data(self):
         safe_data = []
