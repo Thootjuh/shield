@@ -13,8 +13,7 @@ tiny-01.drn
 
 # Ignore all .png files except those in the graphs folder
 *.png
-!graphs/
-!graphs/*.png
 
 # Ignore everything in the results folder
 results/
+data/
