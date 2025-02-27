@@ -68,9 +68,9 @@ def plot_all_methods(ax, data, title, color):
         legend_handles.append(line)
         legend_labels.append(method)
     
-    ax.set_xlabel('Length Trajectory')
-    ax.set_ylabel('Avg. Performance')
-    ax.set_title(title)
+    ax.set_xlabel('Length Trajectory', fontsize="15")
+    ax.set_ylabel('Avg. Performance', fontsize="15")
+    ax.set_title(title, fontsize="20")
     ax.grid(True)
     
     return legend_handles, legend_labels
@@ -113,7 +113,7 @@ def plot_multiple_directories(parent_directory, output_filename):
     legend_ax.axis('off')  # Hide axes
 
     # Create legend
-    legend_ax.legend(handles, labels, title="Method Legend", loc="center")
+    legend_ax.legend(handles, labels, title="Method Legend", fontsize="15", loc="center")
 
     # # Caption text
     # legend_ax.text(0.5, 0.1, "Comparison of average method performance\nacross multiple datasets",
@@ -127,4 +127,4 @@ def plot_multiple_directories(parent_directory, output_filename):
     
 environments = ["Aircraft Collision Avoidance", "Wet Chicken", "Slippery Grid World", "Random MDPs", "Pacman"]
 parent_directory = sys.argv[1]
-plot_multiple_directories(parent_directory, "combined_results.png")
+plot_multiple_directories(parent_directory, "combined_resultsBig.png")

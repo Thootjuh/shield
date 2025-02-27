@@ -93,18 +93,12 @@ class BatchRLAlgorithm:
         self.nb_it = 0
 
         while np.linalg.norm(self.q - old_q) > 10 ** (-9) and self.nb_it < self.max_nb_it:
-            # print("AAAAAAAAAAAAAAAAAAAAAA")
             self.nb_it += 1
             old_q = self.q.copy()
             self._policy_evaluation()
             self._policy_improvement()
             if self.checks:
-                self._check_if_valid_policy()
-
-        # print(f"Policy = ")
-        # for i, state in enumerate(self.pi):
-        #     print(f"for state {i} we have {state}")
-            
+                self._check_if_valid_policy()            
             
             
         if self.nb_it > self.max_nb_it:
