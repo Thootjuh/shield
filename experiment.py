@@ -19,7 +19,7 @@ from environments.Airplane_discrete.airplane_baseline_policy import AirplaneBase
 from environments.Slippery_gridworld.gridworld import gridWorld
 from environments.Slippery_gridworld.gridworld_heuristic_policy import GridworldBaselinePolicy
 
-from environments.pacman.pacman_dynamics import pacmanSimplified
+from environments.pacman.large_pacman_dynamics import pacmanSimplified
 from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 
 from batch_rl_algorithms.basic_rl import Basic_rl
@@ -724,7 +724,6 @@ class SimplifiedPacmanExperiment(Experiment):
         self.nb_actions = 4
         
         self.initial_state = self.env.state_to_int()
-        print("init = ", self.initial_state)
         print("create transition function")
         self.P = self.env.get_transition_function()
         
