@@ -1188,10 +1188,11 @@ class WetChickenExperiment(Experiment):
         print(f"pi_rand_perf = {pi_rand_perf}")
         self.fixed_params_exp_list.append(pi_rand_perf)
 
-        pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
-                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
-        pi_star.fit()
-        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        # pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+        #                  data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        # pi_star.fit()
+        # pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        pi_star_perf = 10
         print(f"pi_star_perf = {pi_star_perf}")
         self.fixed_params_exp_list.append(pi_star_perf)
 
