@@ -154,10 +154,10 @@ class BatchRLAlgorithm:
         for (i, j, k), value in self.transition_model.items():
             result[(i, j)] += value * self.R_state_state[i, k]
         # Convert to a dense NumPy array if needed
-        max_i = max(i for i, _ in result.keys()) + 1
-        max_j = max(j for _, j in result.keys()) + 1
+        # max_i = max(i for i, _ in result.keys()) + 1
+        # max_j = max(j for _, j in result.keys()) + 1
 
-        self.R_state_action = np.zeros((max_i, max_j))
+        self.R_state_action = np.zeros((self.nb_states, self.nb_actions))
         for (i, j), val in result.items():
             self.R_state_action[i, j] = val
         # print("WELL DONE BROTHERRRR I AM PROUD OF YOU!!!!", self.R_state_action.shape)

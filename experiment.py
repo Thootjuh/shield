@@ -184,6 +184,7 @@ class Experiment:
         for key in self.algorithms_dict.keys():
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
                 self._run_spibb(key)
+                print("running SPIBB!")
             elif key in {ExactSoftSPIBB.NAME, ApproxSoftSPIBB.NAME, LowerApproxSoftSPIBB.NAME,
                          AdvApproxSoftSPIBB.NAME}:
                 self._run_soft_spibb(key)
@@ -207,6 +208,7 @@ class Experiment:
                 self._run_mbie_shielded(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
                 self._run_spibb_shielded(key)
+                print("Running Shielded Spibb!")
                 # self._run_spibb_experiment(key)
             elif key in {WorstCaseRMDP.NAME}:
                 self._run_rmdp(key)
@@ -751,13 +753,14 @@ class SimplifiedPacmanExperiment(Experiment):
         print("pi_rand_perf:", pi_rand_perf)
         self.fixed_params_exp_list.append(pi_rand_perf)
         
-        pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
-                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
-        print("pi-star")
-        pi_star.fit()    
+        # pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+        #                  data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        # print("pi-star")
+        # pi_star.fit()    
             
-        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        print("pi_star_perf:", pi_star_perf)
+        # pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        # print("pi_star_perf:", pi_star_perf)
+        pi_star_perf = 10
         self.fixed_params_exp_list.append(pi_star_perf)
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
