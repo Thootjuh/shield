@@ -29,8 +29,30 @@ class Shield:
         return Tempstr
         
     
-    def calculateShieldInterval(self, prop, model_function):
+    def calculateShieldInterval2(self, prop, model_function):
         start_total_time = time.time()
+        for state in range(len(self.structure)):
+            for action in range(len(self.structure[state])):
+                # print(f"shield for state {state} and action {action}")
+                if state in self.traps:
+                    self.shield[state][action] = 1
+                elif state in self.goal:
+                    self.shield[state][action] = 0
+                else:
+                    next_states = self.structure[state][action]
+                    model = model_function(state, action, next_states)
+                    r1 = self.invokeStorm(model, prop)
+                    self.shield[state][action] = 1-r1
+                    # raise("hold on a god damn second")
+                # time.sleep(100)
+        end_total_time = time.time()
+        
+
+        print("Total time needed to create the Shield:", end_total_time - start_total_time)   
+    def calculateShieldInterval(self, prop, model_function):
+        
+        start_total_time = time.time()
+        self.use_hint = False
         for state in range(len(self.structure)):
             for action in range(len(self.structure[state])):
                 # print(f"shield for state {state} and action {action}")
@@ -62,9 +84,17 @@ class Shield:
         env = stormpy.Environment()
         env.solver_environment.minmax_solver_environment.method = stormpy.MinMaxMethod.value_iteration
         task = stormpy.CheckTask(properties[0].raw_formula, only_initial_states=True)
+        if self.use_hint:
+            print("DABABY")
+            hint = stormpy.ExplicitModelCheckerHintDouble().set_scheduler_hint(self.scheduler)
+            task.set_hint(hint)
         task.set_produce_schedulers()
         task.set_robust_uncertainty(True)
         result = stormpy.check_interval_mdp(model, task, env)
+        if not self.use_hint:
+            self.scheduler = result.scheduler
+            # self.use_hint = True
+        # print(self.scheduler)
         initial_state = model.initial_states[0]
         
         # for state in model.states:
@@ -80,7 +110,7 @@ class ShieldRandomMDP(Shield):
         self.builder = IntervalMDPBuilderRandomMDPs(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         
-    def calculateShield(self):
+    def calculateShield(self): 
         # How likely are we to step into a trap
         prop = "Pmin=? [  F<4 \"trap\" ]"
         # prop1 = "Pmax=? [  F \"trap\" ]"
@@ -307,13 +337,34 @@ class ShieldSlipperyGridworld(Shield):
         print(f"with crash states being {self.traps} and success states being {self.goal}")
     
 class ShieldSimplifiedPacman(Shield):
-    def __init__(self, transition_matrix, traps, goal, intervals, width, height):
+    def __init__(self, transition_matrix, traps, goal, intervals, width, height, walls):
+        self.walls = walls
         self.width = width
         self.height = height
         self.builder = IntervalMDPBuilderPacman(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         
+    def calculateShieldInterval(self, prop, model_function):
+        start_total_time = time.time()
+        self.use_hint = False
+        for state in range(len(self.structure)):
+            if state in self.traps or state in self.walls:
+                self.shield[state][:] = 1
+            elif state in self.goal:
+                self.shield[state][:] = 0
+            else:
+                for action in range(len(self.structure[state])):
+                    # print(f"shield for state {state} and action {action}")
+                        next_states = self.structure[state][action]
+                        model = model_function(state, action, next_states)
+                        r1 = self.invokeStorm(model, prop)
+                        self.shield[state][action] = 1-r1
+                        # raise("hold on a god damn second")
+                    # time.sleep(100)
+        end_total_time = time.time()
+        
 
+        print("Total time needed to create the Shield:", end_total_time - start_total_time) 
     def calculateShield(self):
         # How likely are we to step into a trap
         prop = "Pmax=? [!\"eaten\"U\"goal\"]"

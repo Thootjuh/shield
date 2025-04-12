@@ -207,9 +207,9 @@ class Experiment:
             elif key in {shield_MBIE.NAME}:
                 self._run_mbie_shielded(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
-                self._run_spibb_shielded(key)
+                # self._run_spibb_shielded(key)
                 print("Running Shielded Spibb!")
-                # self._run_spibb_experiment(key)
+                self._run_spibb_experiment(key)
             elif key in {WorstCaseRMDP.NAME}:
                 self._run_rmdp(key)
             elif key in {Shield_WorstCaseRMDP.NAME}:
@@ -721,7 +721,7 @@ class SimplifiedPacmanExperiment(Experiment):
         self.env = pacmanSimplified(self.lag)
         self.width = self.env.width
         self.height = self.env.height
-        
+        self.wall_states = self.env.get_wall_states()
         self.nb_states = self.env.nb_states
         self.nb_actions = 4
         
@@ -825,7 +825,7 @@ class SimplifiedPacmanExperiment(Experiment):
                 self.intervals = self.estimator.get_intervals()
                 # print(intervals)
                 print("Calculating Shield")  
-                self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height)
+                self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height, self.wall_states)
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
                 # print("----------------------------------------------------------------")

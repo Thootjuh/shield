@@ -71,7 +71,15 @@ class pacmanSimplified:
             print(f"x = {x}, y = {y}, gx = {ax}, gy = {ay}")
             raise ValueError("Input values out of range")
         return (x * self.height * self.width * self.height) + (y * self.width * self.height) + (ax * self.height) + ay
-
+    
+    def get_wall_states(self):
+        wall_states = []
+        for i in range(self.nb_states):
+            x,y,ax,ay = self.decode_int(i)
+        if (x,y) in self.walls or (ax,ay) in self.walls:
+            wall_states.append(i)
+        return wall_states
+            
     def decode_int(self, state_int):
         ay = state_int % self.height
         state_int //= self.height

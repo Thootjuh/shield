@@ -65,12 +65,16 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         safe_data = []
         if self.episodic:
             batch_trajectory = [val for sublist in self.data for val in sublist]
+            for [action, state, next_state, reward] in batch_trajectory:
+                safe_actions = self.shield.get_safe_actions_from_shield(state)
+                if action in safe_actions:
+                    safe_data.append([[action,state,next_state,reward]])
         else:
             batch_trajectory = self.data.copy()
-        for [action, state, next_state, reward] in batch_trajectory:
-            safe_actions = self.shield.get_safe_actions_from_shield(state)
-            if action in safe_actions:
-                safe_data.append([[action,state,next_state,reward]])
+            for [action, state, next_state, reward] in batch_trajectory:
+                safe_actions = self.shield.get_safe_actions_from_shield(state)
+                if action in safe_actions:
+                    safe_data.append([action,state,next_state,reward])
         return safe_data
     
     def shield_actions(self):
