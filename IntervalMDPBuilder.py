@@ -234,7 +234,7 @@ class IntervalMDPBuilderWetChicken(IntervalMDPBuilder):
                 falling_states.append(state)
         
         return falling_states
-    
+     
 class IntervalMDPBuilderAirplane(IntervalMDPBuilder):
     def build_model_with_init(self, state_init, action_init, next_states_init):
         builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)

@@ -33,6 +33,7 @@ class BatchRLAlgorithm:
         'count_state_action_state': numpy array with shape (nb_states, nb_actions, nb_states) indicating the number of
         times a state-action-next-state triplet has been visited
         """
+        print("IM RUNNING THE BORING ONE")
         self.pi_b = pi_b
         self.pi = self.pi_b.copy()
         self.gamma = gamma

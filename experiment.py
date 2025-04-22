@@ -207,9 +207,9 @@ class Experiment:
             elif key in {shield_MBIE.NAME}:
                 self._run_mbie_shielded(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
-                # self._run_spibb_shielded(key)
+                self._run_spibb_shielded(key)
                 print("Running Shielded Spibb!")
-                self._run_spibb_experiment(key)
+                # self._run_spibb_experiment(key)
             elif key in {WorstCaseRMDP.NAME}:
                 self._run_rmdp(key)
             elif key in {Shield_WorstCaseRMDP.NAME}:

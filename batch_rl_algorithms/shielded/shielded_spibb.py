@@ -1,6 +1,6 @@
 import numpy as np
 
-from batch_rl_algorithms.shielded.shielded_batch_rl_algorithm import shieldedBatchRLAlgorithm 
+from batch_rl_algorithms.shielded.shielded_batch_rl_algorithm import shieldedBatchRLAlgorithm  
 
  
 class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
