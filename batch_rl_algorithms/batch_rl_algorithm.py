@@ -1,6 +1,5 @@
 import numpy as np 
 
-  
 class BatchRLAlgorithm:
     # Base class for all batch RL algorithms, which implements the general framework and the PE and PI step for
     # Dynamic Programming following 'Reinforcement Learning - An Introduction' by Sutton and Barto and
@@ -59,17 +58,16 @@ class BatchRLAlgorithm:
             self.pi = self.pi_b.copy()
             
     def estimate_baseline(self):
-        num_states, num_actions = self.count_state_action.shape
 
         # Calculate n(s) for each state
         n_s = np.sum(self.count_state_action, axis=1)  # Sum of actions per state
 
         # Create an output array for normalized probabilities
-        result = np.zeros_like(self.count_state_action, dtype=float)
+        result = np.zeros_like((self.nb_states, self.nb_actions), dtype=float)
 
-        for state in range(num_states):
+        for state in range(self.nb_states):
             if n_s[state] == 0:  # If n(s) == 0, assign uniform probabilities
-                result[state] = 1 / num_actions
+                result[state] = 1 / self.nb_actions
             else:  # Otherwise, calculate n(s, a) / n(s)
                 result[state] = self.count_state_action[state] / n_s[state]
         
@@ -189,3 +187,4 @@ class BatchRLAlgorithm:
         v_pi_b_est_state = q_pi_b_est[state] @ self.pi_b[state]
         advantage = (v_pi_b_est_state - q_pi_b_est[state]) @ self.pi[state]
         return advantage
+    

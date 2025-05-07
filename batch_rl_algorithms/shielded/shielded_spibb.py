@@ -33,13 +33,13 @@ class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
         times a state-action-next-state triplet has been visited
         :param N_wedge: hyper-parameter of SPIBB and Lower-SPIBB 
         """
+        # print("SHIIIIIEEEEELLLLDDD")
         self.N_wedge = N_wedge
         self.shield_action = shield_action
         self.shield_baseline = shield_baseline
-
         super().__init__(pi_b=pi_b, gamma=gamma, nb_states=nb_states, nb_actions=nb_actions, data=data, R=R,
                          zero_unseen=zero_unseen, max_nb_it=max_nb_it, episodic=episodic, shield=shield, checks=checks,
-                         speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline, shield_baseline=shield_baseline, shield_data=shield_data)
+                         speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline, shield_baseline=shield_baseline, shield_data=shield_data, shield_actions=shield_action)
         self.pi_b_masked = self.pi_b.copy()
         self.pi_b_masked[self.mask] = 0
         
@@ -61,6 +61,10 @@ class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
         Computes a boolean mask indicating whether a state-action pair has been more than N_wedge times.
         """
         self.mask = self.count_state_action > self.N_wedge
+        # self.mask = np.full((self.nb_states, self.nb_actions), False, dtype=bool)
+        # for (state, action), value in self.count_state_action.items():
+        #     if value > self.N_wedge:
+        #         self.mask[state,action] = True
         
 
         

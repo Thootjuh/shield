@@ -5,7 +5,7 @@ import os
 import time
 import numpy as np
 from IntervalMDPBuilder import IntervalMDPBuilderRandomMDPs, IntervalMDPBuilderAirplane, IntervalMDPBuilderWetChicken, IntervalMDPBuilderSlipperyGridworld,  IntervalMDPBuilderPacman
-from IntervalMDPBuilderSmall import IntervalMDPBuilderRandomMDPSmall, IntervalMDPBuilderPacmanSmall, IntervalMDPBuilderWetChickenSmall, IntervalMDPBuilderAirplaneSmall, IntervalMDPBuilderSlipperyGridworldSmall
+from IntervalMDPBuilderSmall import IntervalMDPBuilderRandomMDPSmall, IntervalMDPBuilderPacmanSmall, IntervalMDPBuilderWetChickenSmall, IntervalMDPBuilderAirplaneSmall, IntervalMDPBuilderSlipperyGridworldSmall, IntervalMDPBuilderPrism
 import pycarl
  
 class Shield:
@@ -31,7 +31,6 @@ class Shield:
     def calculateShieldIntervalFast(self, prop, model):
         start_total_time = time.time()
         state_probabilities, transition_probabilities = self.get_probs(model, prop)
-        print(transition_probabilities.keys())
         for state in range(len(self.structure)):
             for action in range(len(self.structure[state])):
                 if state in self.traps:
@@ -108,7 +107,6 @@ class Shield:
         env.solver_environment.minmax_solver_environment.method = stormpy.MinMaxMethod.value_iteration
         task = stormpy.CheckTask(properties[0].raw_formula, only_initial_states=False)
         task.set_produce_schedulers()
-        task.set_robust_uncertainty(True)
         result = stormpy.check_interval_mdp(model, task, env)
         
         probs = result.get_values()
@@ -470,11 +468,10 @@ class ShieldSimplifiedPacman(Shield):
         # How likely are we to step into a trap
         prop = "Pmax=? [!\"eaten\"U\"goal\"]"
         
-        # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
+        super().calculateShieldInterval(prop, self.builder.build_model_with_init)
         # self.printShield()
-        # print("BIG FUCKING PAUSE!!!")
         # self.shield[:] = 0
-        super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
+        # super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
         # self.printShield()
         
     def decode_int(self, state_int):
@@ -522,11 +519,52 @@ class ShieldSimplifiedPacman(Shield):
             prob = pair[2]
             action = actions[pair[1]]
             x, y, gx, gy = self.decode_int(state)
-            print(f"Trap State: {state}: a:({x}, {y}), ghost:({gx},{gy}) action: {action}, with probability of getting trapped: {prob}")
+            print(f"State: {state}: a:({x}, {y}), ghost:({gx},{gy}) action: {action}, with probability of getting trapped: {prob}")
         
         print(f"with crash states being {self.traps} and success states being {self.goal}")
 
     
     
+class ShieldPrism(Shield):
+    def __init__(self, transition_matrix, traps, goal, intervals):
+        self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps)
+        super().__init__(transition_matrix, traps, goal, intervals)
+        
+   
+    def calculateShield(self):
+        # How likely are we to step into a trap
+        prop = "Pmax=? [!\"trap\"U\"goal\"]"
+        
+        # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
+        # self.printShield()
+        # self.shield[:] = 0
+        super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
+        # self.printShield()
     
+    def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            min_value = np.min(probs)
+            safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
+        return safe_actions  
+    
+    def printShield(self):
+        state_action_prob_pairs = []
+        for state in range(len(self.shield)):
+            for action in range(len(self.shield[state])):
+                prob = self.shield[state][action]
+                state_action_prob_pairs.append([state, action, prob])
+        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        
+        for pair in state_action_prob_pairs:
+            state = pair[0]
+            prob = pair[2]
+            print(f"State: {state}:  with probability of getting trapped: {prob}")
+        
+        print(f"with crash states being {self.traps} and success states being {self.goal}")
     

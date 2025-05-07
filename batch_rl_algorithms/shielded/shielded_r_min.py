@@ -7,7 +7,7 @@ class Shield_RMin(shieldedBatchRLAlgorithm):
     NAME = 'shield-R_min'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, shield, zero_unseen=True, max_nb_it=5000,
-                 checks=False, speed_up_dict=None, estimate_baseline=False):
+                 checks=False, speed_up_dict=None, estimate_baseline=False, shield_baseline=False, shield_data=False, shield_action=True):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -35,12 +35,15 @@ class Shield_RMin(shieldedBatchRLAlgorithm):
         :param N_wedge: Hyper-parameter of R-MIN
         """
         self.N_wedge = N_wedge
+        self.shield_action = shield_action
         self.r_min = np.min(R)
         super().__init__(pi_b=pi_b, gamma=gamma, nb_states=nb_states, nb_actions=nb_actions, data=data, R=R,
                          zero_unseen=zero_unseen, max_nb_it=max_nb_it, episodic=episodic, shield=shield, checks=checks,
-                         speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
-        self.shield_actions()
-        self.mask = self.mask & self.allowed
+                         speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline, shield_baseline=shield_baseline, shield_data=shield_data, shield_actions=shield_action)
+         
+        if self.shield_action:
+            self.shield_actions()
+            self.mask = self.mask & self.allowed
 
     def _initial_calculations(self):
         """

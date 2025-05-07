@@ -45,7 +45,6 @@ class BatchRLAlgorithm:
         self.zero_unseen = zero_unseen
         self.episodic = episodic
         self.max_nb_it = max_nb_it
-        
         self.q = np.zeros([nb_states, nb_actions])
         self.R_state_state = R
         self.checks = checks
@@ -59,7 +58,7 @@ class BatchRLAlgorithm:
         if estimate_baseline:
             self.pi_b = self.estimate_baseline()
             self.pi = self.pi_b.copy()
-            
+        
     def array_to_dict(self, arr):
         sparse_dict = {}
 
@@ -72,21 +71,24 @@ class BatchRLAlgorithm:
         return sparse_dict
            
     def estimate_baseline(self):
-        num_states, num_actions = self.count_state_action.shape
+        result = np.zeros((self.nb_states, self.nb_actions), dtype=float)
 
-        # Calculate n(s) for each state
-        n_s = np.sum(self.count_state_action, axis=1)  # Sum of actions per state
+        # First, compute n(s): total visits per state
+        n_s = defaultdict(int)
+        for (s, a), count in self.count_state_action.items():
+            n_s[s] += count
 
-        # Create an output array for normalized probabilities
-        result = np.zeros_like(self.count_state_action, dtype=float)
+        # Now compute the baseline probabilities
+        for s in range(self.nb_states):
+            if n_s[s] == 0:
+                # If the state has never been seen, assign uniform policy
+                result[s] = 1.0 / self.nb_actions
+            else:
+                for a in range(self.nb_actions):
+                    count = self.count_state_action.get((s, a), 0)
+                    result[s, a] = count / n_s[s]
 
-        for state in range(num_states):
-            if n_s[state] == 0:  # If n(s) == 0, assign uniform probabilities
-                result[state] = 1 / num_actions
-            else:  # Otherwise, calculate n(s, a) / n(s)
-                result[state] = self.count_state_action[state] / n_s[state]
-        
-        return result         
+        return result             
 
     def _initial_calculations(self):
         """
@@ -127,22 +129,27 @@ class BatchRLAlgorithm:
             batch_trajectory = [val for sublist in self.data for val in sublist]
         else:
             batch_trajectory = self.data.copy()
-        self.count_state_action_state = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+        self.count_state_action_state = defaultdict(int)
+        self.count_state_action = defaultdict(int)
         for [action, state, next_state, _] in batch_trajectory:
-            self.count_state_action_state[int(state), action, int(next_state)] += 1
-        self.count_state_action = np.sum(self.count_state_action_state, 2)
+            self.count_state_action_state[(int(state), action, int(next_state))] += 1
+            self.count_state_action[(int(state), action)] += 1
+
 
     def _build_model(self):
         """
         Estimates the transition probabilities from the given data.
         """
-        transition_model = self.count_state_action_state / self.count_state_action[:, :, np.newaxis]
-        if self.zero_unseen:
-            transition_model = np.nan_to_num(transition_model)
-        else:
-            transition_model[np.isnan(transition_model)] = 1. / self.nb_states
-        self.transition_model_old = transition_model.copy()
-        self.transition_model = self.array_to_dict(transition_model)
+        self.transition_model = {}
+
+        for (s, a, s_prime), count in self.count_state_action_state.items():
+            denom = self.count_state_action.get((s, a), 0)
+
+            if denom == 0:
+                continue  # Avoid division by zero; unseen (s,a) pairs are skipped
+
+            prob = count / denom
+            self.transition_model[(s, a, s_prime)] = prob
         
 
     def _compute_R_state_action(self):
@@ -152,20 +159,19 @@ class BatchRLAlgorithm:
         expected reward when choosing action a in state s in the estimated MDP.
         """
         result = defaultdict(float)
-        for (i, j, k), value in self.transition_model.items():
-            result[(i, j)] += value * self.R_state_state[i, k]
-        # Convert to a dense NumPy array if needed
-        # max_i = max(i for i, _ in result.keys()) + 1
-        # max_j = max(j for _, j in result.keys()) + 1
+
+        for (i, j, k), p_val in self.transition_model.items():
+            r_val = self.R_state_state.get((i, k), 0.0)
+            result[(i, j)] += p_val * r_val
+
+        # Convert result to dense NumPy array
 
         self.R_state_action = np.zeros((self.nb_states, self.nb_actions))
+
         for (i, j), val in result.items():
             self.R_state_action[i, j] = val
-        # print("WELL DONE BROTHERRRR I AM PROUD OF YOU!!!!", self.R_state_action.shape)
-        # self.R_state_action = np.einsum('ijk,ik->ij', self.transition_model, self.R_state_state)
-        # print(f"estimated R_state_action = ")
-        # for i, state in enumerate(self.R_state_action):
-        #     print(f"for state {i} we have {state}")
+
+        return self.R_state_action
     
 
     def _policy_improvement(self):

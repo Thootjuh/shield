@@ -51,7 +51,7 @@ def plot_data(data, filename):
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance')
-    plt.title('Average Performance vs. Length Trajectory for various implementations of the shield (Wet Chicken environment)')
+    plt.title('Average Performance vs. Length Trajectory for various implementations of the shield (Random MDPs environment)')
     plt.legend(title='Method')
     plt.grid(True)
     plt.savefig(filename)
@@ -70,7 +70,7 @@ def plot_positive_data(data, filename):
     plt.ylim(bottom=0)
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance')
-    plt.title('Average Performance vs. Length Trajectory for various implementations of the shield (Wet Chicken environment)')
+    plt.title('Average Performance vs. Length Trajectory for various implementations of the shield (Random MDPs environment)')
     plt.legend(title='Method')
     plt.grid(True)
     plt.savefig(filename)
@@ -105,7 +105,7 @@ def plot_data_interval(data, filename):
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance')
-    plt.title('Average Performance vs. Length Trajectory for various implementations of the shield (Wet Chicken environment)')
+    plt.title('Average Performance vs. Length Trajectory for various implementations of the shield (Random MDPs environment)')
     plt.legend(title='Method')
     plt.grid(True)
     plt.savefig(filename)
@@ -141,7 +141,7 @@ def plot_positive_data_interval(data, filename):
     plt.ylim(bottom=0)  # Ensure y-axis starts at 0
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance')
-    plt.title('Average Performance vs. Length Trajectory for various implementations of the shield (Wet Chicken environment)')
+    plt.title('Average Performance vs. Length Trajectory for various implementations of the shield (Random MDPs environment)')
     plt.legend(title='Method')
     plt.grid(True)
     plt.savefig(filename)
@@ -170,7 +170,7 @@ def plot_cvar(cvar_data, filename):
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')
     plt.ylabel('1%-CVaR (Conditional Value at Risk)')
-    plt.title('1%-CVaR vs. Length Trajectory for various implementations of the shield (Wet Chicken environment)')
+    plt.title('1%-CVaR vs. Length Trajectory for various implementations of the shield (Random MDPs environment)')
     plt.legend(title='Method')
     plt.grid(True)
     plt.savefig(filename)

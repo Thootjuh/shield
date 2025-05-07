@@ -2,7 +2,7 @@ from batch_rl_algorithms.batch_rl_algorithm import BatchRLAlgorithm
 import numpy as np
 class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen=True, max_nb_it=5000,
-                 checks=False, speed_up_dict=None, estimate_baseline=False, shield_baseline=False, shield_data=False):
+                 checks=False, speed_up_dict=None, estimate_baseline=False, shield_baseline=False, shield_data=False, shield_actions=True):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -37,6 +37,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         self.episodic = episodic
         self.data = data
         if shield_data:
+            # print("aaa")
             self.data = self._modify_data()
         self.max_nb_it = max_nb_it
         self.pi = self.pi_b.copy()
@@ -44,7 +45,9 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         self.R_state_state = R
         self.checks = checks
         self.speed_up_dict = speed_up_dict
-        self.shield_actions()
+        if shield_actions:
+            # print("bbb")
+            self.shield_actions()
         
         if self.speed_up_dict:
             self.count_state_action = self.speed_up_dict['count_state_action']
@@ -56,6 +59,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
             # self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
             self.pi = self.pi_b.copy()
         if shield_baseline:
+            # print("ccc")
             self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
             self.pi = self.pi_b.copy()
         self._initial_calculations()
