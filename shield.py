@@ -6,7 +6,7 @@ import time
 import numpy as np
 from IntervalMDPBuilder import IntervalMDPBuilder
 from IntervalMDPBuilder import IntervalMDPBuilderRandomMDPs, IntervalMDPBuilderAirplane, IntervalMDPBuilderWetChicken, IntervalMDPBuilderSlipperyGridworld,  IntervalMDPBuilderPacman
-
+from IntervalMDPBuilderSmall import IntervalMDPBuilderPacmanSmall
 import pycarl
  
 class Shield:
@@ -27,8 +27,74 @@ class Shield:
         with open("output.txt", 'w') as file:
             file.write(Tempstr)
         return Tempstr
-        
     
+    def get_probs(self, model, prop):
+        properties = stormpy.parse_properties(prop)
+        env = stormpy.Environment()
+        env.solver_environment.minmax_solver_environment.method = stormpy.MinMaxMethod.value_iteration
+        task = stormpy.CheckTask(properties[0].raw_formula, only_initial_states=False)
+        task.set_produce_schedulers()
+        result = stormpy.check_interval_mdp(model, task, env)
+        
+        probs = result.get_values()
+        transition_probs = {}
+        transition_probs = {}
+        for state in model.states:
+            for action in state.actions:
+                transitions = {}
+                for transition in action.transitions:
+                    transition.value
+                    transitions[transition.column] = transition.value()
+                transition_probs[(state.id, action.id)] = transitions
+        # print("and now for something completely different: the scheduler")
+        # print(result.scheduler)
+        return probs, transition_probs
+    
+    def calculateShieldIntervalFast(self, prop, model):
+        start_total_time = time.time()
+        state_probabilities, transition_probabilities = self.get_probs(model, prop)
+        for state in range(len(self.structure)):
+            for action in range(len(self.structure[state])):
+                if state in self.traps:
+                    self.shield[state][action] = 1
+                elif state in self.goal:
+                    self.shield[state][action] = 0
+                else:
+                    try:
+                        trans = transition_probabilities[(state, action)]
+                    except KeyError:
+                        self.shield[state][action] = 1
+                    # Find the worst case transition probabilities
+                    worst_case_transitions = {}
+                    for next_state, trans_prob in trans.items():
+                        worst_case_transitions[next_state] = trans_prob.lower()
+                    remaining_states = list(worst_case_transitions.keys())
+                    # print("remaining states are: ", remaining_states)
+                    total_mass = sum(worst_case_transitions.values())
+                    
+                    #get the worst next state and add mass untill we reach upper
+                    while total_mass < 1 and len(remaining_states) >= 1:
+                        # get the worst next state
+                        worst_next_state = min(remaining_states, key=lambda i: state_probabilities[i])
+                        # print("worst_next_state = ", worst_next_state)
+                        remaining_states = [state for state in remaining_states if state != worst_next_state]
+                        # print("remaining states are: ", remaining_states)
+                        # add mass untill we reach max_prob or total_mass = 1
+                        bounds = trans[worst_next_state]
+                        difference = bounds.upper()-bounds.lower()
+                        added_mass = min(difference, 1-total_mass)
+                        total_mass+= added_mass
+                        worst_case_transitions[worst_next_state] = worst_case_transitions[worst_next_state]+added_mass
+                    
+                    value = 0  
+                    for next_state, trans_prob in worst_case_transitions.items():                        
+                        value += trans_prob*state_probabilities[next_state]
+                        # print("mid = ", trans_prob, "prob = ", state_probabilities[next_state], "new value = ", value)
+                    self.shield[state][action] = max(min(1.0, 1-value), 0.0)
+        end_total_time = time.time()
+        
+
+        print("Total time needed to create the Shield:", end_total_time - start_total_time)     
     def calculateShieldInterval(self, prop, model_function):
         start_total_time = time.time()
         for state in range(len(self.structure)):
@@ -311,6 +377,7 @@ class ShieldSimplifiedPacman(Shield):
         self.width = width
         self.height = height
         self.builder = IntervalMDPBuilderPacman(transition_matrix, intervals, goal, traps)
+        self.model_builder = IntervalMDPBuilderPacmanSmall(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         
 
@@ -318,7 +385,8 @@ class ShieldSimplifiedPacman(Shield):
         # How likely are we to step into a trap
         prop = "Pmax=? [!\"eaten\"U\"goal\"]"
         
-        super().calculateShieldInterval(prop, self.builder.build_model_with_init)
+        # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
+        super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
     
     def decode_int(self, state_int):
         ay = state_int % self.height
@@ -333,7 +401,8 @@ class ShieldSimplifiedPacman(Shield):
         x = state_int % self.width
 
         return x, y, ax, ay 
-    def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.00000001):
+    
+    def get_safe_actions_from_shield(self, state, threshold=0.01, buffer = 0.01):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):
