@@ -132,22 +132,26 @@ class BatchRLAlgorithm:
             batch_trajectory = [val for sublist in self.data for val in sublist]
         else:
             batch_trajectory = self.data.copy()
-        self.count_state_action_state = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+        self.count_state_action_state = defaultdict(int)
+        self.count_state_action = defaultdict(int)
         for [action, state, next_state, _] in batch_trajectory:
-            self.count_state_action_state[int(state), action, int(next_state)] += 1
-        self.count_state_action = np.sum(self.count_state_action_state, 2)
+            self.count_state_action_state[(int(state), action, int(next_state))] += 1
+            self.count_state_action[(int(state), action)] += 1
 
     def _build_model(self):
         """
         Estimates the transition probabilities from the given data.
         """
-        transition_model = self.count_state_action_state / self.count_state_action[:, :, np.newaxis]
-        if self.zero_unseen:
-            transition_model = np.nan_to_num(transition_model)
-        else:
-            transition_model[np.isnan(transition_model)] = 1. / self.nb_states
-        self.transition_model_old = transition_model.copy()
-        self.transition_model = self.array_to_dict(transition_model)
+        self.transition_model = {}
+
+        for (s, a, s_prime), count in self.count_state_action_state.items():
+            denom = self.count_state_action.get((s, a), 0)
+
+            if denom == 0:
+                continue  # Avoid division by zero; unseen (s,a) pairs are skipped
+
+            prob = count / denom
+            self.transition_model[(s, a, s_prime)] = prob
         
 
     def _compute_R_state_action(self):
