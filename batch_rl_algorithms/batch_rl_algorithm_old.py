@@ -1,8 +1,6 @@
 import numpy as np 
-from collections import defaultdict
-from scipy.sparse import eye, lil_matrix
-from scipy.sparse.linalg import spsolve
 
+  
 class BatchRLAlgorithm:
     # Base class for all batch RL algorithms, which implements the general framework and the PE and PI step for
     # Dynamic Programming following 'Reinforcement Learning - An Introduction' by Sutton and Barto and
@@ -59,17 +57,6 @@ class BatchRLAlgorithm:
             self.pi_b = self.estimate_baseline()
             self.pi = self.pi_b.copy()
             
-    def array_to_dict(self, arr):
-        sparse_dict = {}
-
-        # Iterate over the 3D array and add non-zero elements to the dictionary
-        for i in range(arr.shape[0]):
-            for j in range(arr.shape[1]):
-                for k in range(arr.shape[2]):
-                    if arr[i, j, k] != 0:
-                        sparse_dict[(i, j, k)] = arr[i, j, k]
-        return sparse_dict
-           
     def estimate_baseline(self):
         num_states, num_actions = self.count_state_action.shape
 
@@ -109,13 +96,7 @@ class BatchRLAlgorithm:
             self.nb_it += 1
             old_q = self.q.copy()
             self._policy_evaluation()
-            # q_func = self._policy_evaluation_old()
             self._policy_improvement()
-            # for i in range(len(q_func)):
-            #     for j in range(len(q_func[i])):
-            #         if q_func[i,j] != self.q[i,j]:
-            #             print(q_func[i,j], " does not equal ", self.q[i,j])
-            # print("next_it")
             if self.checks:
                 self._check_if_valid_policy()            
             
@@ -141,13 +122,11 @@ class BatchRLAlgorithm:
         """
         Estimates the transition probabilities from the given data.
         """
-        transition_model = self.count_state_action_state / self.count_state_action[:, :, np.newaxis]
+        self.transition_model = self.count_state_action_state / self.count_state_action[:, :, np.newaxis]
         if self.zero_unseen:
-            transition_model = np.nan_to_num(transition_model)
+            self.transition_model = np.nan_to_num(self.transition_model)
         else:
-            transition_model[np.isnan(transition_model)] = 1. / self.nb_states
-        self.transition_model_old = transition_model.copy()
-        self.transition_model = self.array_to_dict(transition_model)
+            self.transition_model[np.isnan(self.transition_model)] = 1. / self.nb_states
         
 
     def _compute_R_state_action(self):
@@ -156,18 +135,7 @@ class BatchRLAlgorithm:
         estimate a new reward matrix in the shape (nb_states, nb_actions) such that self.R_state_action[s, a] is the
         expected reward when choosing action a in state s in the estimated MDP.
         """
-        result = defaultdict(float)
-        for (i, j, k), value in self.transition_model.items():
-            result[(i, j)] += value * self.R_state_state[i, k]
-        # Convert to a dense NumPy array if needed
-        # max_i = max(i for i, _ in result.keys()) + 1
-        # max_j = max(j for _, j in result.keys()) + 1
-
-        self.R_state_action = np.zeros((self.nb_states, self.nb_actions))
-        for (i, j), val in result.items():
-            self.R_state_action[i, j] = val
-        # print("WELL DONE BROTHERRRR I AM PROUD OF YOU!!!!", self.R_state_action.shape)
-        # self.R_state_action = np.einsum('ijk,ik->ij', self.transition_model, self.R_state_state)
+        self.R_state_action = np.einsum('ijk,ik->ij', self.transition_model, self.R_state_state)
         # print(f"estimated R_state_action = ")
         # for i, state in enumerate(self.R_state_action):
         #     print(f"for state {i} we have {state}")
@@ -180,41 +148,14 @@ class BatchRLAlgorithm:
         self.pi = np.zeros([self.nb_states, self.nb_actions])
         for s in range(self.nb_states):
             self.pi[s, np.argmax(self.q[s, :])] = 1
-            
-    def _policy_evaluation_old(self):
-        """
-        Computes the action-value function for the current policy self.pi.
-        """
-        nb_sa = self.nb_actions * self.nb_states
-        M = np.eye(nb_sa) - self.gamma * np.einsum('ijk,kl->ijkl', self.transition_model_old, self.pi).reshape(nb_sa, nb_sa)
-        q_func = np.linalg.solve(M, self.R_state_action.reshape(nb_sa)).reshape(self.nb_states, self.nb_actions)
-        return q_func
-    
+
     def _policy_evaluation(self):
         """
         Computes the action-value function for the current policy self.pi.
         """
-        # nb_sa = self.nb_actions * self.nb_states
-        # M = np.eye(nb_sa) - self.gamma * np.einsum('ijk,kl->ijkl', self.transition_model_old, self.pi).reshape(nb_sa, nb_sa)
-        # self.q = np.linalg.solve(M, self.R_state_action.reshape(nb_sa)).reshape(self.nb_states, self.nb_actions)
         nb_sa = self.nb_actions * self.nb_states
-
-        # Create identity matrix I
-        M = eye(nb_sa, format="lil")  # LIL format allows efficient element-wise updates
-
-        # Iterate over sparse transition_model
-        for (i, j, k), value in self.transition_model.items():
-            for l in range(self.nb_actions):  # Iterate over action indices
-                M[i * self.nb_actions + j, k * self.nb_actions + l] -= self.gamma * value * self.pi[k, l]
-
-        # Convert M to CSR for efficient solving
-        M = M.tocsr()
-
-        # Solve for q
-        q_vector = spsolve(M, self.R_state_action.reshape(nb_sa))  # Solve Mq = R
-        self.q = q_vector.reshape(self.nb_states, self.nb_actions)  # Reshape to desired format
-        # print("YAHOO! ITSA ME MARIO ANDA ITSA MY BROTHA LUIGI! YAHOO!!")
-        # print(self.q)
+        M = np.eye(nb_sa) - self.gamma * np.einsum('ijk,kl->ijkl', self.transition_model, self.pi).reshape(nb_sa, nb_sa)
+        self.q = np.linalg.solve(M, self.R_state_action.reshape(nb_sa)).reshape(self.nb_states, self.nb_actions)
 
     def _check_if_valid_policy(self):
         checks = np.unique((np.sum(self.pi, axis=1)))
