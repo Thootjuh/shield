@@ -328,7 +328,7 @@ class Experiment:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
-                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline)
+                                             speed_up_dict=self.speed_up_dict,estimate_baseline=True)
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
@@ -908,7 +908,7 @@ class SlipperyGridworldExperiment(Experiment):
 
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         
-    def generate_batch(self, nb_trajectories, env, pi, max_steps=50):
+    def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
         """
         Generates a data batch for an episodic MDP.
         :param nb_steps: number of steps in the data batch

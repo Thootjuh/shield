@@ -71,21 +71,24 @@ class BatchRLAlgorithm:
         return sparse_dict
            
     def estimate_baseline(self):
-        num_states, num_actions = self.count_state_action.shape
+        result = np.zeros((self.nb_states, self.nb_actions), dtype=float)
 
-        # Calculate n(s) for each state
-        n_s = np.sum(self.count_state_action, axis=1)  # Sum of actions per state
+        # First, compute n(s): total visits per state
+        n_s = defaultdict(int)
+        for (s, a), count in self.count_state_action.items():
+            n_s[s] += count
 
-        # Create an output array for normalized probabilities
-        result = np.zeros_like(self.count_state_action, dtype=float)
+        # Now compute the baseline probabilities
+        for s in range(self.nb_states):
+            if n_s[s] == 0:
+                # If the state has never been seen, assign uniform policy
+                result[s] = 1.0 / self.nb_actions
+            else:
+                for a in range(self.nb_actions):
+                    count = self.count_state_action.get((s, a), 0)
+                    result[s, a] = count / n_s[s]
 
-        for state in range(num_states):
-            if n_s[state] == 0:  # If n(s) == 0, assign uniform probabilities
-                result[state] = 1 / num_actions
-            else:  # Otherwise, calculate n(s, a) / n(s)
-                result[state] = self.count_state_action[state] / n_s[state]
-        
-        return result         
+        return result           
 
     def _initial_calculations(self):
         """
@@ -132,22 +135,26 @@ class BatchRLAlgorithm:
             batch_trajectory = [val for sublist in self.data for val in sublist]
         else:
             batch_trajectory = self.data.copy()
-        self.count_state_action_state = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+        self.count_state_action_state = defaultdict(int)
+        self.count_state_action = defaultdict(int)
         for [action, state, next_state, _] in batch_trajectory:
-            self.count_state_action_state[int(state), action, int(next_state)] += 1
-        self.count_state_action = np.sum(self.count_state_action_state, 2)
+            self.count_state_action_state[(int(state), action, int(next_state))] += 1
+            self.count_state_action[(int(state), action)] += 1
 
     def _build_model(self):
         """
         Estimates the transition probabilities from the given data.
         """
-        transition_model = self.count_state_action_state / self.count_state_action[:, :, np.newaxis]
-        if self.zero_unseen:
-            transition_model = np.nan_to_num(transition_model)
-        else:
-            transition_model[np.isnan(transition_model)] = 1. / self.nb_states
-        self.transition_model_old = transition_model.copy()
-        self.transition_model = self.array_to_dict(transition_model)
+        self.transition_model = {}
+
+        for (s, a, s_prime), count in self.count_state_action_state.items():
+            denom = self.count_state_action.get((s, a), 0)
+
+            if denom == 0:
+                continue  # Avoid division by zero; unseen (s,a) pairs are skipped
+
+            prob = count / denom
+            self.transition_model[(s, a, s_prime)] = prob
         
 
     def _compute_R_state_action(self):

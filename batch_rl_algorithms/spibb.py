@@ -51,7 +51,11 @@ class SPIBB_abstract(BatchRLAlgorithm):
         """
         Computes a boolean mask indicating whether a state-action pair has been more than N_wedge times.
         """
-        self.mask = self.count_state_action > self.N_wedge
+        # self.mask = self.count_state_action > self.N_wedge
+        self.mask = np.full((self.nb_states, self.nb_actions), False, dtype=bool)
+        for (state, action), value in self.count_state_action.items():
+            if value > self.N_wedge:
+                self.mask[state,action] = True
 
 class SPIBB(SPIBB_abstract):
     # Code and algorithm from 'Safe Policy Improvement with Baseline Bootstrapping' by Romain Laroche, Paul Trichelair
