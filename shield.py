@@ -6,7 +6,7 @@ import time
 import numpy as np
 from IntervalMDPBuilder import IntervalMDPBuilder
 from IntervalMDPBuilder import IntervalMDPBuilderRandomMDPs, IntervalMDPBuilderAirplane, IntervalMDPBuilderWetChicken, IntervalMDPBuilderSlipperyGridworld,  IntervalMDPBuilderPacman
-from IntervalMDPBuilderSmall import IntervalMDPBuilderPacmanSmall
+from IntervalMDPBuilderSmall import IntervalMDPBuilderPacmanSmall, IntervalMDPBuilderRandomMDPSmall, IntervalMDPBuilderAirplaneSmall, IntervalMDPBuilderSlipperyGridworldSmall, IntervalMDPBuilderWetChickenSmall
 import pycarl
  
 class Shield:
@@ -144,6 +144,7 @@ class Shield:
 class ShieldRandomMDP(Shield):
     def __init__(self, transition_matrix, traps, goal, intervals):
         self.builder = IntervalMDPBuilderRandomMDPs(transition_matrix, intervals, goal, traps)
+        self.model_builder = IntervalMDPBuilderRandomMDPSmall(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         
     def calculateShield(self):
@@ -156,8 +157,8 @@ class ShieldRandomMDP(Shield):
         # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
         prop3 = "Pmax=? [!\"trap\" U \"goal\"]"
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
-        return super().calculateShieldInterval(prop3, self.builder.build_model_with_init)
-    
+        # super().calculateShieldInterval(prop3, self.builder.build_model_with_init)
+        super().calculateShieldIntervalFast(prop3, self.model_builder.build_model())
     def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         probs = self.shield[state]
         safe_actions = []
@@ -191,6 +192,7 @@ class ShieldWetChicken(Shield):
         self.width = width
         self.length = length
         self.builder = IntervalMDPBuilderWetChicken(transition_matrix, intervals, [], [])
+        self.model_builder = IntervalMDPBuilderWetChickenSmall(transition_matrix, intervals, [], [])
         super().__init__(transition_matrix, [], [], intervals)
         
     def createPrismStr(self):
@@ -234,8 +236,8 @@ class ShieldWetChicken(Shield):
         prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
         # prop = "Pmin=? [  F\"waterfall\"]"
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
-        return super().calculateShieldInterval(prop, self.builder.build_model_with_init)
-    
+        # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
+        super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
     def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         probs = self.shield[state]
         safe_actions = []
@@ -253,6 +255,7 @@ class ShieldAirplane(Shield):
         self.maxX = maxX
         self.maxY = maxY
         self.builder = IntervalMDPBuilderAirplane(transition_matrix, intervals, goal, traps)
+        self.model_builder = IntervalMDPBuilderAirplaneSmall(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         
     def calculateShield(self):
@@ -260,8 +263,8 @@ class ShieldAirplane(Shield):
         prop = "Pmax=? [  !\"crash\" U \"success\"]"
         # prop = "Pmin=? [  F\"waterfall\"]"
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
-        return super().calculateShieldInterval(prop, self.builder.build_model_with_init)
-    
+        # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
+        super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
     def decode_int(self, state_int):   
         ay = state_int % self.maxY
         state_int //= self.maxY
@@ -313,6 +316,7 @@ class ShieldSlipperyGridworld(Shield):
         self.width = width
         self.height = height
         self.builder = IntervalMDPBuilderSlipperyGridworld(transition_matrix, intervals, goal, traps)
+        self.model_builder = IntervalMDPBuilderSlipperyGridworldSmall(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
     
     def calculateShield(self):
@@ -321,7 +325,8 @@ class ShieldSlipperyGridworld(Shield):
         prop = "Pmax=? [!\"trap\"U\"save\"]"
         prop = "Pmax=? [!\"save\"U\"trap\"]"
         
-        super().calculateShieldInterval(prop, self.builder.build_model_with_init)
+        # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
+        super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
         self.shield = 1-self.shield
     
     def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.15):

@@ -40,5 +40,5 @@ class PiStar(BatchRLAlgorithm):
         self.q = np.zeros([nb_states, nb_actions])
         self.R_state_state = R
         self.checks = checks
-        self.transition_model = P
+        self.transition_model = self.array_to_dict(P)
         self._compute_R_state_action()
