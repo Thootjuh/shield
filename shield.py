@@ -321,15 +321,16 @@ class ShieldSlipperyGridworld(Shield):
     
     def calculateShield(self):
         # How likely are we to step into a trap
-        # prop = "Pmax=? [!\"trap\"U\"goal\"]"
-        prop = "Pmax=? [!\"trap\"U\"save\"]"
-        prop = "Pmax=? [!\"save\"U\"trap\"]"
+        prop = "Pmax=? [!\"trap\"U\"goal\"]"
+        # prop = "Pmax=? [!\"trap\"U\"save\"]"
+        # prop = "Pmax=? [!\"save\"U\"trap\"]"
         
         # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
         super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
-        self.shield = 1-self.shield
+        # self.printShield()
+        # self.shield = 1-self.shield
     
-    def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.15):
+    def get_safe_actions_from_shield(self, state, threshold=0.1, buffer = 0.1):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):

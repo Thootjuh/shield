@@ -1,5 +1,5 @@
 import numpy as np
-
+from collections import defaultdict
 LENGTH = 5
 WIDTH = 5
 MAX_TURBULENCE = 3.5
@@ -89,56 +89,64 @@ class WetChicken:
             raise AssertionError('You chose a continuous MDP, but requested the transition function.')
         nb_states = self.width * self.length + 1
         nb_actions = len(ACTION_TRANSLATOR)
-        P = np.zeros((nb_states, nb_actions, nb_states))
+        transition_function = defaultdict(float)
+        # P = np.zeros((nb_states, nb_actions, nb_states))
         for state in range(nb_states):
             x = int(state / self.length)
             y = state % self.width
             velocity = self.max_velocity * y / self.width
             turbulence = self.max_turbulence - velocity
-
-            for action_nb, action in enumerate(ACTION_TRANSLATOR.keys()):
-                action_coordinates = ACTION_TRANSLATOR[action]
-                target_interval = [
-                    x + action_coordinates[0] + velocity - turbulence,
-                    x + action_coordinates[0] + velocity + turbulence]
-                prob_mass_on_land = 1 / (2 * turbulence) * self._get_overlap(
-                    [-self.max_turbulence - 2, -0.5],
-                    target_interval)  # -self.max_turbulence - 2 should be the lowest possible
-                prob_mass_waterfall = 1 / (2 * turbulence) * self._get_overlap(
-                    [self.length - 0.5, self.length + self.max_turbulence + self.max_velocity],
-                    target_interval)  # self.length + self.max_turbulence + self.max_velocity should be the highest possible
-                y_hat = y + action_coordinates[1]
-                if y_hat < 0:
-                    y_new = 0
-                elif y_hat >= self.width:
-                    y_new = self.width - 1
-                else:
-                    y_new = y_hat
-                y_new = int(y_new)
-                P[state, action_nb, nb_states-1] += prob_mass_waterfall
-                P[state, action_nb, y_new] += prob_mass_on_land
-                for x_hat in range(self.width):
-                    x_hat_interval = [x_hat - 0.5, x_hat + 0.5]
-                    prob_mass = 1 / (2 * turbulence) * self._get_overlap(
-                        x_hat_interval, target_interval)
-                    P[state, action_nb, x_hat * self.length + y_new] += prob_mass
-                P[nb_states-1, action_nb, :] = 0
-                P[nb_states-1, action_nb, 0] = 1
+            if state != nb_states-1:
+                for action_nb, action in enumerate(ACTION_TRANSLATOR.keys()):
+                    action_coordinates = ACTION_TRANSLATOR[action]
+                    target_interval = [
+                        x + action_coordinates[0] + velocity - turbulence,
+                        x + action_coordinates[0] + velocity + turbulence]
+                    prob_mass_on_land = 1 / (2 * turbulence) * self._get_overlap(
+                        [-self.max_turbulence - 2, -0.5],
+                        target_interval)  # -self.max_turbulence - 2 should be the lowest possible
+                    prob_mass_waterfall = 1 / (2 * turbulence) * self._get_overlap(
+                        [self.length - 0.5, self.length + self.max_turbulence + self.max_velocity],
+                        target_interval)  # self.length + self.max_turbulence + self.max_velocity should be the highest possible
+                    y_hat = y + action_coordinates[1]
+                    if y_hat < 0:
+                        y_new = 0
+                    elif y_hat >= self.width:
+                        y_new = self.width - 1
+                    else:
+                        y_new = y_hat
+                    y_new = int(y_new)
+                    transition_function[(state, action_nb, nb_states-1)] += prob_mass_waterfall
+                    transition_function[(state, action_nb, y_new)] += prob_mass_on_land
+                    for x_hat in range(self.width):
+                        x_hat_interval = [x_hat - 0.5, x_hat + 0.5]
+                        prob_mass = 1 / (2 * turbulence) * self._get_overlap(
+                            x_hat_interval, target_interval)
+                        transition_function[(state, action_nb, x_hat * self.length + y_new)] += prob_mass
+                    transition_function[(nb_states-1, action_nb, 0)] = 1.0
+        
         # for state in range(len(P)):
         #     for action in range(len(P[state])):
         #         print(P[state][action])
-        return P
+        transition_function = {key: value for key, value in transition_function.items() if value != 0.0}
+        return transition_function
 
+
+    
     def get_reward_function(self):
         if not self.discrete:
             raise AssertionError('You chose a continuous MDP, but requested the reward function.')
         nb_states = self.width * self.length +1
-        R = np.zeros((nb_states, nb_states))
+        # R = np.zeros((nb_states, nb_states))
+        reward_function = defaultdict(float)
         for state in range(nb_states):
             for next_state in range(nb_states):
-                R[state, next_state] = int(next_state / self.width)
-        R[:, nb_states-1] = FALL_REWARD
-        return R
+                reward_function[(state, next_state)] = int(next_state / self.width)
+            reward_function[(state, nb_states-1)] = FALL_REWARD
+        # R[:, nb_states-1] = FALL_REWARD
+        reward_function = {key: value for key, value in reward_function.items() if value != 0.0}
+        # print(reward_function)
+        return reward_function
 
     def evaluate_policy(self, nb_evaluations):
         performance = np.zeros(nb_evaluations)

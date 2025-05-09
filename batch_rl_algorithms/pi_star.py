@@ -38,7 +38,16 @@ class PiStar(BatchRLAlgorithm):
         self.max_nb_it = max_nb_it
         self.pi = np.ones([self.nb_states, self.nb_actions]) / self.nb_actions
         self.q = np.zeros([nb_states, nb_actions])
-        self.R_state_state = R
+        if isinstance(R, dict):
+            self.R_state_state = R
+        else:
+            self.R_state_state = self.reward_function_to_dict(R)
+            print(self.R_state_state)
         self.checks = checks
-        self.transition_model = self.array_to_dict(P)
+        if isinstance(P, dict):
+            self.transition_model = P
+        else:
+            self.transition_model = self.array_to_dict(P)
+            # print(self.transition_model)
+        
         self._compute_R_state_action()

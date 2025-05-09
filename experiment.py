@@ -706,6 +706,30 @@ class Experiment:
         :param pi: policy as numpy array with shape (nb_states, nb_actions)
         """
         return policy_evaluation_exact(pi, self.R_state_action, self.P, self.gamma)[0][self.initial_state]
+    
+    def compute_r_state_action(self, P, R):
+        if isinstance(P, dict):
+            return self.compute_r_state_action_sparse(P, R)
+        return self.compute_r_state_action_dense(P, R)
+    
+    def compute_r_state_action_sparse(self, P, R):
+            result = defaultdict(float)
+
+            for (i, j, k), p_val in P.items():
+                r_val = R.get((i, k), 0.0)
+                result[(i, j)] += p_val * r_val
+
+            # Convert result to dense NumPy array
+
+            dense_result = np.zeros((self.nb_states, self.nb_actions))
+
+            for (i, j), val in result.items():
+                dense_result[i, j] = val
+
+            return dense_result
+        
+    def compute_r_state_action_dense(self, P, R):
+        return np.einsum('ijk,ik->ij', P, R)
 
 
 class SimplifiedPacmanExperiment(Experiment):
@@ -740,7 +764,7 @@ class SimplifiedPacmanExperiment(Experiment):
         
         print("create reward function")
         self.R_state_state = self.env.get_reward_function()
-        self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
+        self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         
         # for i, state in enumerate(self.R_state_action):
         #     print(f"for state {i} we have {state}")
@@ -767,7 +791,7 @@ class SimplifiedPacmanExperiment(Experiment):
 
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         
-    def generate_batch(self, nb_trajectories, env, pi, max_steps=50):
+    def generate_batch(self, trajectories, nb_trajectories, env, pi, max_steps=2500):
         """
         Generates a data batch for an episodic MDP.
         :param nb_steps: number of steps in the data batch
@@ -775,10 +799,11 @@ class SimplifiedPacmanExperiment(Experiment):
         :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
         :return: data batch as a list of sublists of the form [state, action, next_state, reward]
         """
-        trajectories = []
+        current_nb_trajectories = len(trajectories)
+        nb_itt =nb_trajectories - current_nb_trajectories
         # print(pi)
         
-        for _ in np.arange(nb_trajectories):
+        for _ in np.arange(nb_itt):
             nb_steps = 0
             trajectorY = []
             env.reset()
@@ -806,14 +831,17 @@ class SimplifiedPacmanExperiment(Experiment):
             self.pi_b = PacmanBaselinePolicy(env=self.env, epsilon=epsilon_baseline).pi
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]
-            
+            trajectories = []
             for nb_trajectories in self.nb_trajectories_list:
                 print(
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
-                self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                print("before ", len(trajectories))
+                trajectories, batch_traj = self.generate_batch(trajectories, nb_trajectories, self.env, self.pi_b)
+                print("after ", len(trajectories))
+                self.data = trajectories
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
                 # print("----------------------------------------------------------------")    
@@ -886,7 +914,7 @@ class SlipperyGridworldExperiment(Experiment):
         #         print(self.P[state][action])
         self.R_state_state = self.env.get_reward_function()
         # print(self.R_state_state)
-        self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
+        self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         self.fixed_params_exp_list = [self.seed, self.gamma, self.width, self.height, self.slip_p, self.escape_p]
         
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
@@ -908,7 +936,7 @@ class SlipperyGridworldExperiment(Experiment):
 
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         
-    def generate_batch(self, nb_trajectories, env, pi, max_steps=50):
+    def generate_batch(self, trajectories, nb_trajectories, env, pi, max_steps=2500):
         """
         Generates a data batch for an episodic MDP.
         :param nb_steps: number of steps in the data batch
@@ -916,10 +944,11 @@ class SlipperyGridworldExperiment(Experiment):
         :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
         :return: data batch as a list of sublists of the form [state, action, next_state, reward]
         """
-        trajectories = []
+        current_trajectories = len(trajectories)
+        nb_itt = nb_trajectories - current_trajectories
         # print(pi)
-        
-        for _ in np.arange(nb_trajectories):
+        counter = 0
+        for _ in np.arange(nb_itt):
             nb_steps = 0
             trajectorY = []
             env.reset()
@@ -936,6 +965,9 @@ class SlipperyGridworldExperiment(Experiment):
                 state = next_state
                 nb_steps += 1
             trajectories.append(trajectorY)
+            if is_done:
+                counter+=1
+        print(counter)
         batch_traj = [val for sublist in trajectories for val in sublist]
         return trajectories, batch_traj  
 
@@ -947,14 +979,17 @@ class SlipperyGridworldExperiment(Experiment):
             self.pi_b = GridworldBaselinePolicy(env=self.env, epsilon=epsilon_baseline).pi
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]
-            
+            trajectories = []
             for nb_trajectories in self.nb_trajectories_list:
                 print(
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
-                self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                print("before ", len(trajectories))
+                trajectories, batch_traj = self.generate_batch(trajectories, nb_trajectories, self.env, self.pi_b)
+                print("after ", len(trajectories))
+                self.data = trajectories
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
                 # print("----------------------------------------------------------------")    
@@ -1025,7 +1060,7 @@ class AirplaneExperiment(Experiment):
         #         print(self.P[state][action])
         self.R_state_state = self.env.get_reward_function()
         # print(self.R_state_state)
-        self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
+        self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         self.set_success_and_crash_states()
         self.fixed_params_exp_list = [self.seed, self.gamma, self.maxX, self.maxY, self.response, self.adv_prob]
         
@@ -1152,7 +1187,7 @@ class WetChickenExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'length', 'width', 'max_turbulence', 'max_velocity', 'baseline_method',
                                 'pi_rand_perf', 'pi_star_perf']
-
+    
     def _set_env_params(self):
         """
         Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
@@ -1178,9 +1213,8 @@ class WetChickenExperiment(Experiment):
         #     for action in range(len(self.P[state])):
         #         print(self.P[state][action])
         self.R_state_state = self.env.get_reward_function()
-
-        self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
         
+        self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         self.baseline_method = self.experiment_config['BASELINE']['method']
         self.fixed_params_exp_list = [self.seed, self.gamma, self.length, self.width, self.max_turbulence,
                                       self.max_velocity, self.baseline_method]
@@ -1270,7 +1304,6 @@ class WetChickenExperiment(Experiment):
                 trajectory.append([0, state, next_state, reward])
         return trajectory
             
-    
 
     def reduce_transition_matrix(self, transition_matrix):
         """
@@ -1285,18 +1318,23 @@ class WetChickenExperiment(Experiment):
         - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
         where each element contains the indices of possible end states.
         """
-        num_states = self.nb_states
-        num_actions = self.nb_actions
+
         # Prepare the reduced matrix to hold the indices of possible states
-        reduced_matrix = np.empty((num_states, num_actions), dtype=object)
+        reduced_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
+
+        for state in range(self.nb_states):
+            for action in range(self.nb_actions):
+                reduced_matrix[state, action] = []
         
         # Loop through each state and action to populate the reduced matrix
-        for state in range(num_states):
-            for action in range(num_actions):
-                # Get indices of nonzero probabilities (possible end states)
-                possible_states = np.nonzero(transition_matrix[state, action])[0]
-                reduced_matrix[state, action] = np.array(possible_states)
-        
+        for (state,action,next_state) in transition_matrix.keys():
+            reduced_matrix[state][action].append(next_state)
+            
+        # for state in range(num_states):
+        #     for action in range(num_actions):
+        #         # Get indices of nonzero probabilities (possible end states)
+        #         possible_states = np.nonzero(transition_matrix[state, action])[0]
+        #         reduced_matrix[state, action] = np.array(possible_states)
         return reduced_matrix
     
     def find_closest_states(self, states_list, length):
@@ -1388,7 +1426,7 @@ class RandomMDPsExperiment(Experiment):
             self.traps = self.garnet.get_traps()
             self.easter_egg = None
 
-            self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
+            self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
             self.to_append_run_one_iteration += [self.pi_b_perf, self.pi_rand_perf, self.pi_star_perf]
 
 
@@ -1423,7 +1461,7 @@ class RandomMDPsExperiment(Experiment):
             self.traps.append(trap)
             self.R_state_state[:, trap] = reward
             self.P[trap, :, :] = 0
-            self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
+            self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
             potential_final_states.remove(trap)
         
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
@@ -1453,7 +1491,7 @@ class RandomMDPsExperiment(Experiment):
         assert (self.garnet.final_state != self.easter_egg)
         self.R_state_state[:, self.easter_egg] = reward
         self.P[self.easter_egg, :, :] = 0
-        self.R_state_action = compute_r_state_action(self.P, self.R_state_state)
+        self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         # Compute optimal policy in this new environment
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
@@ -1525,8 +1563,61 @@ class RandomMDPsExperiment(Experiment):
                 reduced_matrix[state, action, :len(possible_states)] = possible_states
         
         return reduced_matrix
-    
+
+import numpy as np
+from collections import defaultdict
+from scipy.sparse import dok_matrix, identity
+from scipy.sparse.linalg import spsolve
+
+
 def policy_evaluation_exact(pi, r, p, gamma):
+    if isinstance(p, dict):
+        return policy_evaluation_exact_sparse(pi, r, p, gamma)
+    return policy_evaluation_exact_dense(pi, r, p, gamma)
+
+def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
+    """
+    Evaluate policy using a sparse transition dictionary.
+
+    Args:
+      pi: policy, array of shape [num_states x num_actions]
+      r: rewards, array of shape [num_states x num_actions]
+      p_sparse: dictionary {(s, a, s'): p(s'|s,a)} with only non-zero transitions
+      gamma: discount factor
+      num_states: number of states
+      num_actions: number of actions
+
+    Returns:
+      v: 1D array with updated state values
+      q: 2D array with updated action values
+    """
+    num_states, num_actions = pi.shape
+    # Compute expected rewards under policy
+    r_pi = np.einsum('ij,ij->i', pi, r)
+
+    # Build sparse p_pi as a dictionary {(s, s'): prob}
+    p_pi_sparse = defaultdict(float)
+    for (s, a, s_prime), prob in p_sparse.items():
+        p_pi_sparse[(s, s_prime)] += pi[s, a] * prob
+
+    # Convert sparse p_pi to a scipy sparse matrix for solving
+    P_pi = dok_matrix((num_states, num_states), dtype=np.float64)
+    for (s, s_prime), prob in p_pi_sparse.items():
+        P_pi[s, s_prime] = prob
+
+    # Solve (I - gamma * P_pi) * v = r_pi
+    A = identity(num_states, format='csr') - gamma * P_pi.tocsr()
+    v = spsolve(A, r_pi)
+
+    # Compute Q-values
+    q = np.zeros((num_states, num_actions))
+    for (s, a, s_prime), prob in p_sparse.items():
+        q[s, a] += prob * v[s_prime]
+    q = r + gamma * q
+
+    return v, q, dict(p_pi_sparse)
+
+def policy_evaluation_exact_dense(pi, r, p, gamma):
     """
     Evaluate policy (from https://github.com/RomainLaroche/SPIBB, but changed to use
     np.linalg.solve instead of the inverse for a higher stability)
@@ -1560,5 +1651,5 @@ algorithm_name_dict = {SPIBB.NAME: SPIBB, Lower_SPIBB.NAME: Lower_SPIBB,
                        WorstCaseRMDP.NAME : WorstCaseRMDP, Shield_WorstCaseRMDP.NAME : Shield_WorstCaseRMDP, PiStar.NAME: PiStar}
 
 
-def compute_r_state_action(P, R):
-    return np.einsum('ijk,ik->ij', P, R)
+
+

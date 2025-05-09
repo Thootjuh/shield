@@ -46,7 +46,10 @@ class BatchRLAlgorithm:
         self.max_nb_it = max_nb_it
         
         self.q = np.zeros([nb_states, nb_actions])
-        self.R_state_state = R
+        if isinstance(R, dict):
+            self.R_state_state = R
+        else:
+            self.R_state_state = self.reward_function_to_dict(R)
         self.checks = checks
         self.speed_up_dict = speed_up_dict
         if self.speed_up_dict:
@@ -69,23 +72,36 @@ class BatchRLAlgorithm:
                     if arr[i, j, k] != 0:
                         sparse_dict[(i, j, k)] = arr[i, j, k]
         return sparse_dict
+    
+    def reward_function_to_dict(self, arr):
+        sparse_dict = {}
+
+        # Iterate over the 3D array and add non-zero elements to the dictionary
+        for i in range(arr.shape[0]):
+            for j in range(arr.shape[1]):
+                if arr[i, j] != 0:
+                    sparse_dict[(i, j)] = arr[i, j]
+        return sparse_dict
            
     def estimate_baseline(self):
-        num_states, num_actions = self.count_state_action.shape
+        result = np.zeros((self.nb_states, self.nb_actions), dtype=float)
 
-        # Calculate n(s) for each state
-        n_s = np.sum(self.count_state_action, axis=1)  # Sum of actions per state
+        # First, compute n(s): total visits per state
+        n_s = defaultdict(int)
+        for (s, a), count in self.count_state_action.items():
+            n_s[s] += count
 
-        # Create an output array for normalized probabilities
-        result = np.zeros_like(self.count_state_action, dtype=float)
+        # Now compute the baseline probabilities
+        for s in range(self.nb_states):
+            if n_s[s] == 0:
+                # If the state has never been seen, assign uniform policy
+                result[s] = 1.0 / self.nb_actions
+            else:
+                for a in range(self.nb_actions):
+                    count = self.count_state_action.get((s, a), 0)
+                    result[s, a] = count / n_s[s]
 
-        for state in range(num_states):
-            if n_s[state] == 0:  # If n(s) == 0, assign uniform probabilities
-                result[state] = 1 / num_actions
-            else:  # Otherwise, calculate n(s, a) / n(s)
-                result[state] = self.count_state_action[state] / n_s[state]
-        
-        return result         
+        return result            
 
     def _initial_calculations(self):
         """
@@ -161,20 +177,19 @@ class BatchRLAlgorithm:
         expected reward when choosing action a in state s in the estimated MDP.
         """
         result = defaultdict(float)
-        for (i, j, k), value in self.transition_model.items():
-            result[(i, j)] += value * self.R_state_state[i, k]
-        # Convert to a dense NumPy array if needed
-        # max_i = max(i for i, _ in result.keys()) + 1
-        # max_j = max(j for _, j in result.keys()) + 1
+
+        for (i, j, k), p_val in self.transition_model.items():
+            r_val = self.R_state_state.get((i, k), 0.0)
+            result[(i, j)] += p_val * r_val
+
+        # Convert result to dense NumPy array
 
         self.R_state_action = np.zeros((self.nb_states, self.nb_actions))
+
         for (i, j), val in result.items():
             self.R_state_action[i, j] = val
-        # print("WELL DONE BROTHERRRR I AM PROUD OF YOU!!!!", self.R_state_action.shape)
-        # self.R_state_action = np.einsum('ijk,ik->ij', self.transition_model, self.R_state_state)
-        # print(f"estimated R_state_action = ")
-        # for i, state in enumerate(self.R_state_action):
-        #     print(f"for state {i} we have {state}")
+
+        return self.R_state_action
     
 
     def _policy_improvement(self):

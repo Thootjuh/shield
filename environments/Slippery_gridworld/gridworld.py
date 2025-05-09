@@ -1,5 +1,5 @@
 import numpy as np
-
+from collections import defaultdict
 ACTION_TRANSLATOR = [
     (0, 1), # Action 0: Go North
      (1,0), # Action 2: Go East
@@ -148,55 +148,58 @@ class gridWorld:
     
     def get_reward_function(self):
         reward_matrix = np.zeros((self.nb_states, self.nb_states))
+        reward_matrix = defaultdict(int)
         goal_state = self.get_int_from_state(self.goal)
-        reward_matrix[:, goal_state] = REWARD
+        
+        for state in range(self.nb_states):
+            reward_matrix[(state,goal_state)] = REWARD
+        # reward_matrix[:, goal_state] = REWARD
         # print(reward_matrix)
         return reward_matrix
     
     def get_transition_function(self):
-        transition_function = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+        # transition_function = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+        transition_function = defaultdict(float)
+        goal = self.get_int_from_state(self.goal)
         init = self.get_int_from_state(self.init)
-        for state in range(len(transition_function)):
-            if state not in self.traps: #If we are in an non-trapped state
-                for action in range(len(transition_function[state])): 
-                    # Add mass for performing action
+        for state in range(self.nb_states):
+            if state is not goal:
+                if state not in self.traps: #If we are in an non-trapped state
+                    for action in range(len(transition_function[state])): 
+                        # Add mass for performing action
+                        x,y = self.get_state_from_int(state)
+                        action_coordinates = ACTION_TRANSLATOR[action]
+                        next_x = min(max(x+action_coordinates[0], 0), self.width)
+                        next_y = min(max(y+action_coordinates[1], 0), self.height)
+                        next_state = self.get_int_from_state([next_x, next_y])
+                        transition_function[(state,action,next_state)] += 1-4*self.slip_p
+                        
+                        # Add mass for slipping
+                        for transition in ACTION_TRANSLATOR:
+                            next_x = min(max(x+transition[0], 0), self.width)
+                            next_y = min(max(y+transition[1], 0), self.height)
+                            next_state = self.get_int_from_state([next_x, next_y])
+                            transition_function[(state,action,next_state)] += self.slip_p
+                else:
+                    # Action Free
+                    # Add mass for failing to escape
                     x,y = self.get_state_from_int(state)
-                    action_coordinates = ACTION_TRANSLATOR[action]
-                    next_x = min(max(x+action_coordinates[0], 0), self.width)
-                    next_y = min(max(y+action_coordinates[1], 0), self.height)
+                    next_x = x
+                    next_y = y
                     next_state = self.get_int_from_state([next_x, next_y])
-                    transition_function[state][action][next_state] += 1-4*self.slip_p
-                    
-                    # Add mass for slipping
+                    transition_function[(state, 0, next_state)] += 1-(4*self.escape_p)
+                    transition_function[(state, 1, next_state)] += 1-(4*self.escape_p)
+                    # Add mass for escaping
                     for transition in ACTION_TRANSLATOR:
                         next_x = min(max(x+transition[0], 0), self.width)
                         next_y = min(max(y+transition[1], 0), self.height)
                         next_state = self.get_int_from_state([next_x, next_y])
-                        transition_function[state][action][next_state] += self.slip_p
-            else:
-                # Action Free
-                # Add mass for failing to escape
-                x,y = self.get_state_from_int(state)
-                next_x = x
-                next_y = y
-                next_state = self.get_int_from_state([next_x, next_y])
-                transition_function[state][0][next_state] += 1-(4*self.escape_p)
-                transition_function[state][1][next_state] += 1-(4*self.escape_p)
-                # Add mass for escaping
-                for transition in ACTION_TRANSLATOR:
-                    next_x = min(max(x+transition[0], 0), self.width)
-                    next_y = min(max(y+transition[1], 0), self.height)
-                    next_state = self.get_int_from_state([next_x, next_y])
-                    transition_function[state][0][next_state] += self.escape_p
-                    transition_function[state][1][next_state] += self.escape_p
-                        
-                # Action Reset
-                transition_function[state][2][init] = 1
-                transition_function[state][3][init] = 1
-        goal = self.get_int_from_state(self.goal)
-        transition_function[goal][:][:] = 0
-        transition_function[goal][:][:] = 0
-        
+                        transition_function[(state, 0, next_state)] += self.escape_p
+                        transition_function[(state, 1, next_state)] += self.escape_p
+                            
+                    # Action Reset
+                    transition_function[(state,2,init)] = 1
+                    transition_function[(state,3, init)] = 1        
         # for state in range(len(transition_function)):
         #     print(f"in state {self.get_state_from_int(state)}, we have the following transition functions:")
         #     for action in range(len(transition_function[state])):

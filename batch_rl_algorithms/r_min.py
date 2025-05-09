@@ -37,7 +37,10 @@ class RMin(BatchRLAlgorithm):
         :param N_wedge: Hyper-parameter of R-MIN
         """
         self.N_wedge = N_wedge
-        self.r_min = np.min(R)
+        if isinstance(R, dict):
+            self.r_min = min(R.values())
+        else:
+            self.r_min = np.min(R)
         super().__init__(pi_b=pi_b, gamma=gamma, nb_states=nb_states, nb_actions=nb_actions, data=data, R=R,
                          zero_unseen=zero_unseen, max_nb_it=max_nb_it, episodic=episodic, checks=checks,
                          speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
@@ -60,23 +63,27 @@ class RMin(BatchRLAlgorithm):
         old_q = np.zeros([self.nb_states, self.nb_actions])
         nb_it = 0
         started = True
-        while started or np.linalg.norm(self.q - old_q) > 0.00001 and nb_it < self.max_nb_it / 10:
+
+        while started or (np.linalg.norm(self.q - old_q) > 0.00001 and nb_it < self.max_nb_it / 10):
             started = False
             nb_it += 1
             old_q = self.q.copy()
+
             for state in range(self.nb_states):
                 for action in range(self.nb_actions):
                     if self.mask[state, action]:
-                        # future_return = 0
-                        # for next_state in range(self.nb_states):
-                        #    future_return += self.P[state, action, next_state] * max(old_q[next_state])
-                        # With the before code the algorithm needed 3.66 seconds for something RL took 0.0, SPIBB 0.008
-                        # Now it takes 0.556 seconds...
-                        future_return = np.dot(self.transition_model[state, action], np.max(old_q, axis=1))
+                        future_return = 0.0
+                        # Accumulate future returns from only the relevant next states
+                        for (s, a, s_prime), prob in self.transition_model.items():
+                            if s == state and a == action:
+                                future_return += prob * np.max(old_q[s_prime])
                         self.q[state, action] = self.R_state_action[state, action] + self.gamma * future_return
 
     def _compute_mask(self):
         """
         Computes a boolean mask indicating whether a state-action pair has been more than N_wedge times.
-        """
-        self.mask = self.count_state_action > self.N_wedge
+        """ 
+        self.mask = np.full((self.nb_states, self.nb_actions), False, dtype=bool)
+        for (state, action), value in self.count_state_action.items():
+            if value > self.N_wedge:
+                self.mask[state,action] = True
