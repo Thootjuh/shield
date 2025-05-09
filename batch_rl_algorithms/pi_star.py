@@ -42,7 +42,7 @@ class PiStar(BatchRLAlgorithm):
             self.R_state_state = R
         else:
             self.R_state_state = self.reward_function_to_dict(R)
-            print(self.R_state_state)
+            # print(self.R_state_state)
         self.checks = checks
         if isinstance(P, dict):
             self.transition_model = P

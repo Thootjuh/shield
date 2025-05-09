@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment, SlipperyGridworldExperiment, SimplifiedPacmanExperiment
+from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment, SlipperyGridworldExperiment, SimplifiedPacmanExperiment, PrismExperiment
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
@@ -52,7 +52,8 @@ def run_experiment(seed):
         experiment = SimplifiedPacmanExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                         machine_specific_experiment_directory=machine_specific_experiment_directory)
     else:
-        raise ValueError('Not a valid experiment')
+        experiment = PrismExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
     experiment.run()
 
 
