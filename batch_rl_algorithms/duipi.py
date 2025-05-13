@@ -59,53 +59,103 @@ class DUIPI(BatchRLAlgorithm):
 
     def _prepare_R_and_variance_R(self):
         """
-        Estimates the reward matrix and its variance.
+        Estimates the reward matrix and its variance from a sparse R_state_state dictionary:
+        {(s, s'): reward}.
+        Broadcasts the reward across all actions for a given state-next_state pair.
         """
         self.R_state_action_state = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
-        for action in range(self.nb_actions):
-            self.R_state_action_state[:, action, :] = self.R_state_state.copy()
-        self.variance_R = np.zeros([self.nb_states, self.nb_actions, self.nb_states])
+
+        for (s, s_prime), reward in self.R_state_state.items():
+            self.R_state_action_state[s, :, s_prime] = reward  # Assign reward for all actions at (s, s')
+
+        self.variance_R = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+
 
     def _prepare_P_and_variance_P(self):
         """
-        Estimates the reward matrix and its variance.
+        Estimates the transition model and its variance using sparse count and transition dictionaries.
+        Supports Bayesian and frequentist cases.
         """
-        self.variance_P = np.zeros([self.nb_states, self.nb_actions, self.nb_states])
+        self.variance_P = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+
         if self.bayesian:
-            alpha_d = (self.count_state_action_state + self.alpha_prior)
-            alpha_d_0 = np.sum(alpha_d, 2)[:, :, np.newaxis]
-            self.transition_model = alpha_d / alpha_d_0
-            self.variance_P = alpha_d * (alpha_d_0 - alpha_d) / alpha_d_0 ** 2 / (alpha_d_0 + 1)
+            # Bayesian update from sparse count dictionary
+            transition_model = {}
+            count_sums = {}  # Holds alpha_d_0 = sum over s' for each (s, a)
+            
+            # First pass: compute alpha_d and alpha_d_0
+            for (s, a, s_prime), count in self.count_state_action_state.items():
+                alpha_d = count + self.alpha_prior
+                transition_model[(s, a, s_prime)] = alpha_d
+                count_sums[(s, a)] = count_sums.get((s, a), 0) + alpha_d
+
+            # Normalize to get probabilities and compute variance
+            self.transition_model = {}
+            for (s, a, s_prime), alpha_d in transition_model.items():
+                alpha_d_0 = count_sums[(s, a)]
+                prob = alpha_d / alpha_d_0
+                self.transition_model[(s, a, s_prime)] = prob
+
+                var = (alpha_d * (alpha_d_0 - alpha_d)) / (alpha_d_0**2 * (alpha_d_0 + 1))
+                self.variance_P[s, a, s_prime] = var
+
         else:
-            self._build_model()
-            for state in range(self.nb_states):
-                self.variance_P[:, :, state] = self.transition_model[:, :, state] * (
-                        1 - self.transition_model[:, :, state]) / (
-                                                       self.count_state_action - 1)
-            self.variance_P = np.nan_to_num(self.variance_P, nan=1 / 4,
-                                            posinf=1 / 4)  # maximal variance is (b - a)^2 / 4
-            self.variance_P[
-                self.count_state_action == 0] = 1 / 4  # Otherwise variance_P would be if a state-action pair hasn't been visited yet
+            # Frequentist case
+            self._build_model()  # Must build self.transition_model from sparse data
+            for (s, a, s_prime), prob in self.transition_model.items():
+                count = self.count_state_action.get((s, a), 0)
+                if count > 1:
+                    var = prob * (1 - prob) / (count - 1)
+                else:
+                    var = 1 / 4  # max variance for binary distribution with no/1 sample
+                self.variance_P[s, a, s_prime] = var
+
+            # Default variance for unvisited state-action pairs
+            for s in range(self.nb_states):
+                for a in range(self.nb_actions):
+                    if (s, a) not in self.count_state_action:
+                        self.variance_P[s, a, :] = 1 / 4
+
         self._check_if_valid_transitions()
 
     def _compute_mask(self):
         """
         Compute the mask which indicates which state-pair has never been visited.
         """
-        self.mask = self.count_state_action > 0
+        # self.mask = self.count_state_action > 0
+        self.mask = np.full((self.nb_states, self.nb_actions), False, dtype=bool)
+        for (state, action), value in self.count_state_action.items():
+            if value > 0:
+                self.mask[state,action] = True
 
     def _policy_evaluation(self):
         """
-        Evaluates the current policy self.pi and calculates its variance.
-        :return:
+        Evaluates the current policy self.pi and calculates its variance, using a sparse transition model.
         """
+        # Value function: v(s) = sum_a pi(s,a) * q(s,a)
         self.v = np.einsum('ij,ij->i', self.pi, self.q)
+
+        # Variance of v(s): weighted sum of variance_q(s,a)
         self.variance_v = np.einsum('ij,ij->i', self.pi ** 2, self.variance_q)
-        self.q = np.einsum('ijk,ijk->ij', self.transition_model, self.R_state_action_state + self.gamma * self.v)
-        self.variance_q = np.dot(self.gamma ** 2 * self.transition_model ** 2, self.variance_v) + \
-                          np.einsum('ijk,ijk->ij', (self.R_state_action_state + self.gamma * self.v) ** 2,
-                                    self.variance_P) + \
-                          np.einsum('ijk,ijk->ij', self.transition_model ** 2, self.variance_R)
+
+        # Initialize q and variance_q to zero
+        self.q = np.zeros((self.nb_states, self.nb_actions))
+        self.variance_q = np.zeros((self.nb_states, self.nb_actions))
+
+        for (s, a, s_prime), prob in self.transition_model.items():
+            r = self.R_state_action_state[s, a, s_prime]
+            v_sp = self.v[s_prime]
+            self.q[s, a] += prob * (r + self.gamma * v_sp)
+
+            # Variance terms
+            r_term = r + self.gamma * v_sp
+            var1 = (self.gamma ** 2) * (prob ** 2) * self.variance_v[s_prime]
+            var2 = (r_term ** 2) * self.variance_P[s, a, s_prime]
+            var3 = (prob ** 2) * self.variance_R[s, a, s_prime]
+
+            self.variance_q[s, a] += var1 + var2 + var3
+
+        # Replace any NaNs or infs due to numerical issues
         self.variance_q = np.nan_to_num(self.variance_q, nan=np.inf, posinf=np.inf)
  
     def _policy_improvement(self):

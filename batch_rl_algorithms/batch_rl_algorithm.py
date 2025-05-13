@@ -245,13 +245,24 @@ class BatchRLAlgorithm:
             print(f'!!! Policy not summing up to 1 !!!')
 
     def _check_if_valid_transitions(self):
-        checks = np.unique((np.sum(self.transition_model, axis=2)))
+        """
+        Checks that for each (state, action) pair, the transition probabilities over next states sum to 1 or 0.
+        """
+        from collections import defaultdict
+
+        sum_probs = defaultdict(float)
+        for (s, a, s_prime), prob in self.transition_model.items():
+            sum_probs[(s, a)] += prob
+
         valid = True
-        for i in range(len(checks)):
-            if np.abs(checks[i] - 0) > 10 ** (-8) and np.abs(checks[i] - 1) > 10 ** (-8):
+        for (s, a), total_prob in sum_probs.items():
+            if not (np.isclose(total_prob, 1.0, atol=1e-8) or np.isclose(total_prob, 0.0, atol=1e-8)):
+                print(f'Invalid transition sum for state {s}, action {a}: {total_prob}')
                 valid = False
+
         if not valid:
-            print(f'!!! Transitions not summing up to 0 or 1 !!!')
+            print('!!! Transitions not summing up to 0 or 1 !!!')
+
 
     def compute_safety(self):
         return {'Probability': None, 'lower_limit': None}

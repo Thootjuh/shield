@@ -49,5 +49,5 @@ label "crash" = x=maxX & ay = y;
 
 rewards "r1"
   x=maxX : 5;
-  collision : -10;
+  collision : -100;
 endrewards

@@ -50,5 +50,14 @@ class RaMDP(BatchRLAlgorithm):
         :return:
         '''
         super()._compute_R_state_action()
-        self.R_state_action -= self.kappa / np.sqrt(self.count_state_action)
-        self.R_state_action[self.count_state_action == 0] = np.min(self.R_state_state) * (1 / (1 - self.gamma))
+        # Apply penalty only to known (s, a) pairs
+        for (s, a), count in self.count_state_action.items():
+            if count > 0:
+                self.R_state_action[s, a] -= self.kappa / np.sqrt(count)
+
+        # Set minimum reward for unseen (s, a) pairs
+        min_reward = np.min(list(self.R_state_state.values())) * (1 / (1 - self.gamma))
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                if (s, a) not in self.count_state_action:
+                    self.R_state_action[s, a] = min_reward

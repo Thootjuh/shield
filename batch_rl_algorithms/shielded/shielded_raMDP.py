@@ -38,7 +38,10 @@ class Shield_RaMDP(shieldedBatchRLAlgorithm):
         :param kappa: hyper-parameter of RaMDP
         '''
         self.kappa = kappa
-        
+        if isinstance(R, dict):
+            self.r_min = min(R.values())
+        else:
+            self.r_min = np.min(R)
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen, max_nb_it, checks,
                          speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
 
@@ -56,9 +59,27 @@ class Shield_RaMDP(shieldedBatchRLAlgorithm):
         :return:
         '''
         super()._compute_R_state_action()
-        self.R_state_action -= self.kappa / np.sqrt(self.count_state_action)
-        self.R_state_action[self.count_state_action == 0] = np.min(self.R_state_state) * (1 / (1 - self.gamma))
-        self.R_state_action[~self.allowed] = np.min(self.R_state_state) * (1 / (1 - self.gamma))
+    def _compute_R_state_action(self):
+        '''
+        Applies the estimated transition probabilities and the reward matrix with shape (nb_states, nb_states) to
+        estimate a new reward matrix in the shape (nb_states, nb_actions) such that self.R_state_action[s, a] is the
+        expected reward when choosing action a in state s in the estimated MDP. Additionally, it adjusts the reward
+        matrix by the rules of RaMDP.
+        :return:
+        '''
+        super()._compute_R_state_action()
+        # Apply penalty only to known (s, a) pairs
+        for (s, a), count in self.count_state_action.items():
+            if count > 0:
+                self.R_state_action[s, a] -= self.kappa / np.sqrt(count)
+
+        # Set minimum reward for unseen (s, a) pairs
+        min_reward = np.min(list(self.R_state_state.values())) * (1 / (1 - self.gamma))
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                if (s, a) not in self.count_state_action:
+                    self.R_state_action[s, a] = min_reward
+        self.R_state_action[~self.allowed] = self.r_min * (1 / (1 - self.gamma))
         # print("in shielded")
         # print(self.R_state_action)
        
