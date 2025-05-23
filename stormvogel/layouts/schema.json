@@ -1,0 +1,202 @@
+{
+  "__macros": {
+    "__group_macro": {
+      "__collapse": true,
+      "borderWidth": {
+        "__description": "Border width",
+        "__widget": "IntSlider"
+      },
+      "color": {
+        "background": {
+          "__description": "Bg color",
+          "__widget": "ColorPicker"
+        },
+        "border": {
+          "__description": "Border color",
+          "__widget": "ColorPicker"
+        }
+      },
+      "shape": {
+        "__description": "Shape",
+        "__widget": "Dropdown",
+        "__kwargs": {
+          "options": [
+            "ellipse",
+            "circle",
+            "database",
+            "box",
+            "text",
+            "diamond",
+            "dot",
+            "star",
+            "triangle",
+            "triangleDown",
+            "square"
+          ]
+        }
+      },
+      "mass": {
+        "__html": "<p>Mass controls degree of repulsion of nodes.</p>",
+        "__description": "Mass",
+        "__widget": "IntSlider"
+      },
+      "font": {
+        "__html": "<h4>Font</h4>",
+        "color": {
+          "__description": "Color",
+          "__widget": "ColorPicker"
+        },
+        "size": {
+          "__description": "Size",
+          "__widget": "IntSlider"
+        }
+      }
+    }
+  },
+  "edit_groups": {
+    "__html": "<p>Select the labels which should have a separate layout. If multiple labels are present, then the first item in this list will be chosen. Click below to add a new label. Drag to change the priorities. Press the reload button to apply changes. For more info, consult the documentation.</p>",
+    "__collapse": true,
+    "groups": {
+      "__description": "Active state groups",
+      "__widget": "TagsInput",
+      "__kwargs": {
+        "allow_duplicates": false
+      }
+    }
+  },
+  "groups": {},
+  "edges": {
+    "__collapse": true,
+    "color": {
+      "color": {
+        "__description": "Color",
+        "__widget": "ColorPicker"
+      }
+    },
+    "font": {
+      "__html": "<p>Font</p>",
+      "color": {
+        "__description": "Color",
+        "__widget": "ColorPicker"
+      },
+      "size": {
+        "__description": "Size",
+        "__widget": "IntSlider"
+      },
+      "strokeColor": {
+        "__description": "Text outline color",
+        "__widget": "ColorPicker"
+      },
+      "strokeWidth": {
+        "__description": "Text outline width",
+        "__widget": "IntSlider"
+      }
+    },
+    "width": {
+      "__description": "Wdith",
+      "__widget": "IntSlider"
+    }
+  },
+  "numbers": {
+    "__collapse": true,
+    "fractions": {
+      "__description": "Fractions",
+      "__widget": "Checkbox"
+    },
+    "digits": {
+      "__description": "Round digits",
+      "__widget": "IntSlider"
+    }
+  },
+  "state_properties": {
+    "__collapse": true,
+    "show_results": {
+      "__description": "Show results",
+      "__widget": "Checkbox"
+    },
+    "result_symbol": {
+      "__description": "Symbol",
+      "__widget": "Text"
+    },
+    "show_rewards": {
+      "__description": "Show rewards",
+      "__widget": "Checkbox"
+    },
+    "reward_symbol": {
+      "__description": "Symbol",
+      "__widget": "Text"
+    },
+    "show_zero_rewards": {
+      "__description": "Show zero rewards",
+      "__widget": "Checkbox"
+    },
+    "show_observations": {
+      "__description": "Show observations",
+      "__widget": "Checkbox"
+    },
+    "observation_symbol": {
+      "__description": "Symbol",
+      "__widget": "Text"
+    }
+  },
+  "misc": {
+    "__html": "<p>These settings require a reload to take effect.</p>",
+    "__collapse": true,
+    "enable_physics": {
+      "__description": "enable physics",
+      "__widget": "Checkbox"
+    },
+    "width": {
+      "__description": "Width",
+      "__widget": "IntSlider",
+      "__kwargs": {
+        "min": 0,
+        "max": 2000
+      }
+    },
+    "height": {
+      "__description": "Height",
+      "__widget": "IntSlider",
+      "__kwargs": {
+        "min": 0,
+        "max": 2000
+      }
+    },
+    "explore": {
+      "__description": "explore",
+      "__widget": "Checkbox"
+    }
+  },
+  "saving": {
+    "__collapse": true,
+    "relative_path": {
+      "__description": "Relative path",
+      "__widget": "Checkbox"
+    },
+    "filename": {
+      "__description": "File name",
+      "__widget": "Text"
+    },
+    "save_button": {
+      "__description": "Save",
+      "__widget": "Button",
+      "__kwargs": {
+        "button_style": "success"
+      }
+    },
+    "load_button": {
+      "__description": "Load",
+      "__widget": "Button",
+      "__kwargs": {
+        "button_style": "warning"
+      }
+    }
+  },
+  "reload_button": {
+    "__description": "Reload",
+    "__widget": "Button",
+    "__kwargs": {
+      "button_style": "info"
+    }
+  }
+}
