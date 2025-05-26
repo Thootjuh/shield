@@ -23,7 +23,6 @@ from environments.pacman.pacman_dynamics import pacmanSimplified
 from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 
 from environments.read_env_from_prism import prism_env
-from environments.gym_environment import gymTaxi
 
 from batch_rl_algorithms.basic_rl import Basic_rl
 from batch_rl_algorithms.pi_star import PiStar

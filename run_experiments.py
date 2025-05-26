@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment, SlipperyGridworldExperiment, SimplifiedPacmanExperiment, PrismExperiment, GymEnvironment
+from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment, SlipperyGridworldExperiment, SimplifiedPacmanExperiment, PrismExperiment
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
