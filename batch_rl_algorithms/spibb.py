@@ -33,12 +33,14 @@ class SPIBB_abstract(BatchRLAlgorithm):
         times a state-action-next-state triplet has been visited
         :param N_wedge: hyper-parameter of SPIBB and Lower-SPIBB
         """
+        print("initializing SPIBB")
         self.N_wedge = N_wedge
         super().__init__(pi_b=pi_b, gamma=gamma, nb_states=nb_states, nb_actions=nb_actions, data=data, R=R,
                          zero_unseen=zero_unseen, max_nb_it=max_nb_it, episodic=episodic, checks=checks,
                          speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
         self.pi_b_masked = self.pi_b.copy()
         self.pi_b_masked[self.mask] = 0
+        print("starting SPIBB")
 
     def _initial_calculations(self):
         """

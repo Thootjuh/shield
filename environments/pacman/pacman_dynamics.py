@@ -1,5 +1,5 @@
 import numpy as np
-
+from collections import defaultdict
 ACTION_TRANSLATOR = [
     (0, 1), # Action 0: Go North
      (1,0), # Action 2: Go East
@@ -8,20 +8,46 @@ ACTION_TRANSLATOR = [
 ]
 
 GOAL_REWARD = 10
-EATEN_REWARD = -1
+EATEN_REWARD = -10
 
 class pacmanSimplified:
     def __init__(self, lag_chance):
         self.lag_chance = lag_chance
         print("lag chance = ", lag_chance)
-        self.width = 4
-        self.height = 5
+        self.width = 9
+        self.height = 9
         self.nb_states = ((self.width)*(self.height))**2
         self.nb_actions = len(ACTION_TRANSLATOR)
         self.walls = [
-            (0,3),
             (1,1),
-            (2,3)
+            (1,2),
+            (1,3),
+            (1,5),
+            (1,6),
+            (1,7),
+            (2,3),
+            (2,5),
+            (3,0),
+            (3,1),
+            (3,3),
+            (3,4),
+            (3,5),
+            (3,7),
+            (5,0),
+            (5,1),
+            (5,3),
+            (5,4),
+            (5,5),
+            (5,7),
+            (5,8),
+            (6,1),
+            (6,3),
+            (7,1),
+            (7,5),
+            (7,6),
+            (7,7),
+            (7,8),
+            (8,3)
         ] 
         
         self.init = np.array([[0,0],[self.width-1, self.height-1]])
@@ -63,7 +89,24 @@ class pacmanSimplified:
     def state_to_int(self):
         return self.encode_int(self._state[0][0], self._state[0][1], self._state[1][0], self._state[1][1])
     
-    
+    def set_random_state(self):
+        
+        #pick random state
+        random_state = np.random.randint(self.nb_states)
+        x, y, gx, gy = self.decode_int(random_state)
+        while self._is_terminal_state(x, y, gx, gy):
+            random_state = np.random.randint(self.nb_states)
+            x, y, gx, gy = self.decode_int(random_state)
+        
+        
+        # set position of ghost
+        self._state[0][0] = x
+        self._state[0][1] = y
+        
+        # Set state of ghost
+        self._state[1][0] = gx
+        self._state[1][1] = gy
+
     def _is_terminal_state(self, x,y,gx,gy):
         if x == self.goal[0] and y == self.goal[1]:
             return True
@@ -79,10 +122,12 @@ class pacmanSimplified:
         
         # Reached Goal
         if x == self.goal[0] and y == self.goal[1]:
+            # print("REACHED THE GOAL!!")
             return True
         
         # Eaten
         if x == self._state[1][0] and y == self._state[1][1]:
+            # print("GOT EATEN :(")
             return True
         
         return False
@@ -163,12 +208,18 @@ class pacmanSimplified:
         return old_state, self.state_to_int(), self.get_reward()
     
     def get_reward_function(self):
-        reward_matrix = np.zeros((self.nb_states, self.nb_states))
-        for state in range(self.nb_states):
-            for next_state in range(self.nb_states):
-                reward_matrix[state, next_state] = self.get_reward_from_int(next_state)
+        reward_dict = {}
 
-        return reward_matrix
+        for next_state in range(self.nb_states):
+            reward = self.get_reward_from_int(next_state)
+            # if next_state % 100 == 0:
+            #     print(next_state)
+            if reward != 0:
+                for state in range(self.nb_states):
+                    # reward_matrix[state, next_state] = self.get_reward_from_int(next_state)
+                    reward_dict[(state, next_state)] = reward
+
+        return reward_dict
     
     def in_wall(self, x,y,gx,gy):
         if (x,y) in self.walls or (gx,gy) in self.walls:
@@ -176,16 +227,15 @@ class pacmanSimplified:
         return False
     
     def get_transition_function(self):
-        transition_matrix = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
-        for state in range(len(transition_matrix)):
+        transition_dict = defaultdict(float)
+        counter = 0
+        for state in range(self.nb_states):
             x,y,gx,gy = self.decode_int(state)
             # check if done
             if self._is_terminal_state(x,y,gx,gy) or self.in_wall(x,y,gx,gy):
-                transition_matrix[state, :, state] = 0
-            # if not True:
-            #     print("what")
+                counter += 1
             else:
-                for action in range(len(transition_matrix[state])):
+                for action in range(self.nb_actions):
                     # next position player
                     next_x = max(min(x + ACTION_TRANSLATOR[action][0], self.width-1),0)
                     next_y = max(min(y + ACTION_TRANSLATOR[action][1], self.height-1),0)
@@ -203,23 +253,15 @@ class pacmanSimplified:
                     for next_g_state in possible_g_actions:
                         #Player action succeeds
                         next_state = self.encode_int(next_x, next_y, next_g_state[0], next_g_state[1])
-                        transition_matrix[state][action][next_state] += (1-self.lag_chance) * (1/len(possible_g_actions))
+                        transition_dict[(state, action, next_state)] += (1-self.lag_chance) * (1/len(possible_g_actions))
                         #Player action fails
-                        next_state = self.encode_int(x, y, next_g_state[0], next_g_state[1])
-                        transition_matrix[state][action][next_state] += self.lag_chance * (1/len(possible_g_actions))
-                        
-                        
-        # for i, state in enumerate(transition_matrix):
-        #     print(f"in state {i}({self.decode_int(i)}, we have the following actions:")
-        #     for j, action in enumerate(state):
-        #         print(f"action = {j}, with possible next states")
-        #         indices = np.nonzero(action)[0]
-        #         for next_state in indices:
-        #             nx,ny,ngx,ngy = self.decode_int(next_state)
-        #             if (nx, ny) in self.walls or (ngx,ngy) in self.walls:
-        #                 print(f"state {self.decode_int(i)}, action {j}, next state: {nx}, {ny}, {ngx}, {ngy}, prob: {action[next_state]}")
-        #                 raise("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA_________________________________________AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
-                    
-        #             print(f"next_state = {next_state}({self.decode_int(next_state)}) with prob = {action[next_state]}")
-        #     print("-----------------------------------------------------------------------")
-        return transition_matrix
+                        if self.lag_chance > 0:
+                            next_state = self.encode_int(x, y, next_g_state[0], next_g_state[1])
+                            transition_dict[(state, action, next_state)] += self.lag_chance * (1/len(possible_g_actions))
+        # print(transition_dict.keys())                
+        # print("we contain this many items",len(transition_dict))  
+        for value in transition_dict.values():
+            if value == 0.0:
+                print("YOU FUCKED IT!!")           
+        print(counter)
+        return transition_dict

@@ -10,9 +10,10 @@ class WorstCaseRMDP(BatchRLAlgorithm):
         """
         :param transition_intervals: Dictionary mapping (s, a) pairs to a list of (s', [P_min, P_max]).
         """
+        print("initializing RMDP")
         self.intervals = intervals
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen, max_nb_it, checks, speed_up_dict, estimate_baseline)
-    
+        print("starting RMDP")
     def build_worst_case_model(self):
         """
         Computes the worst-case action-value function for the current policy using a sparse transition model.

@@ -6,7 +6,7 @@ class BatchRLAlgorithm:
     # Dynamic Programming following 'Reinforcement Learning - An Introduction' by Sutton and Barto and
     # https://github.com/RomainLaroche/SPIBB. Additionally, it also implements the estimations of the transition
     # probabilities and reward matrix and some validation checks.
-    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen=True, max_nb_it=5000,
+    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen=True, max_nb_it=50,
                  checks=False, speed_up_dict=None, estimate_baseline = False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of

@@ -33,7 +33,7 @@ class prism_env:
         
         next_state = np.random.choice(next_states, p=probs)
         self._state = next_state
-        return old_state, next_state, self.reward_function.get((old_state, next_state), 0)
+        return old_state, next_state, self.reward_model.get((old_state, next_state), 0)
     
     def get_nb_states(self):
         return self.nb_states
@@ -104,7 +104,7 @@ class prism_env:
 
         self.pi = pi     
         self.reward_model = reward_dict
-        self.reward_function = reward_dict
+
         print(self.goal_states)
         print(self.trap_states)
         # generate a baseline policy
@@ -115,7 +115,7 @@ class prism_env:
         return self.transition_function
     
     def get_reward_function(self):
-        return self.reward_model
+        return seclf.reward_model
     
     def get_baseline_policy(self, epsilon):
         pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions

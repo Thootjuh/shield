@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment, SlipperyGridworldExperiment, SimplifiedPacmanExperiment, PrismExperiment
+from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment, SlipperyGridworldExperiment, SimplifiedPacmanExperiment, PrismExperiment, GymEnvironment
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
@@ -51,6 +51,10 @@ def run_experiment(seed):
     elif environment == 'pacman_simplified':
         experiment = SimplifiedPacmanExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                         machine_specific_experiment_directory=machine_specific_experiment_directory)
+    elif environment =='taxi':
+        print("doing_taxi")
+        experiment = GymEnvironment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
     else:
         experiment = PrismExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                         machine_specific_experiment_directory=machine_specific_experiment_directory)
@@ -62,17 +66,19 @@ def start_process():
 
 
 if __name__ == '__main__':
+    
     pool_size = int(sys.argv[4])
     pool = multiprocessing.Pool(processes=pool_size, initializer=start_process)
     seed = int(sys.argv[3])
-    ss = np.random.SeedSequence(seed)
-    seeds = ss.generate_state(pool_size)
+    run_experiment(seed)
+    # ss = np.random.SeedSequence(seed)
+    # seeds = ss.generate_state(pool_size)
 
-    f = open(os.path.join(machine_specific_experiment_directory, "Exp_description.txt"), "w+")
-    f.write(
-        f"This is the wet chicken benchmark with a heuristic baseline.\n")
-    f.write(f'{pool_size} threads are being used, each computing {nb_iterations} iterations.\n')
-    f.write(f'The seed which was used for the seed sequence is {seed} and the produced sequence is {seeds}.\n')
-    f.write(f'Experiment starts at {time.ctime()}.')
-    f.close()
-    pool.map(run_experiment, seeds)
+    # f = open(os.path.join(machine_specific_experiment_directory, "Exp_description.txt"), "w+")
+    # f.write(
+    #     f"This is the wet chicken benchmark with a heuristic baseline.\n")
+    # f.write(f'{pool_size} threads are being used, each computing {nb_iterations} iterations.\n')
+    # f.write(f'The seed which was used for the seed sequence is {seed} and the produced sequence is {seeds}.\n')
+    # f.write(f'Experiment starts at {time.ctime()}.')
+    # f.close()
+    # pool.map(run_experiment, seeds)

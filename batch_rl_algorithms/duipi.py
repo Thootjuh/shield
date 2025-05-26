@@ -41,6 +41,7 @@ class DUIPI(BatchRLAlgorithm):
         :param xi: hyper-parameter of DUIPI, the higher xi is, the stronger is the influence of the variance
         :param alpha_prior: float variable necessary if bayesian=True, usually between 0 and 1
         """
+        print("initializing DUIPI")
         self.xi = xi
         self.alpha_prior = alpha_prior
         self.bayesian = bayesian
@@ -48,6 +49,7 @@ class DUIPI(BatchRLAlgorithm):
                          speed_up_dict, estimate_baseline)
         self.variance_q = np.zeros([self.nb_states, self.nb_actions])
         self.pi = 1 / self.nb_actions * np.ones([self.nb_states, self.nb_actions])
+        print("Starting DUIPI")
 
     def _initial_calculations(self):
         """
