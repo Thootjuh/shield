@@ -5,6 +5,7 @@ import IPython.display as ipd
 import numpy as np
 import stormvogel.stormpy_utils.mapping as mapping
 import environments
+import random
 
 class gymTaxi:
     def __init__(self):
@@ -17,9 +18,10 @@ class gymTaxi:
         self.terminated = False
         # print(self.goal_states)
         for (state,action,next_state) in self.transition_model.keys():
-            taxi_row, taxi_col, pass_loc, dest_idx = self.env.env.env.decode(state)
+            if state != self.nb_states-1:
+                taxi_row, taxi_col, pass_loc, dest_idx = self.env.env.env.decode(state)
                 # prob = self.transition_model[(state,action,next_state)]
-            print(f"State: {state}: ({taxi_row},{taxi_col}), pass at {pass_loc}, dest at {dest_idx}), taking action {action} takes you to: {next_state}")
+                print(f"State: {state}: ({taxi_row},{taxi_col}), pass at {pass_loc}, dest at {dest_idx}), taking action {action} takes you to: {next_state}")
         print("in ", state, "using ", action, "to ", next_state)
             
     def reset(self):
@@ -50,15 +52,22 @@ class gymTaxi:
         self.nb_actions = len(P[0])
         self.goal_states = []
         for state in P:
-            for action in P[state]:
-                for prob, next_state, reward, done in P[state][action]:
-                    self.transition_model[(state, action, next_state)] = prob
-                    self.reward_model[(state, next_state)] = reward
             if self.env.env.env.isGoalState(state):
-                self.goal_states.append(state)  
-      
+                self.goal_states.append(state)
+            elif state != self.nb_states-1:
+                for action in P[state]:
+                    for prob, next_state, reward, done in P[state][action]:
+                        self.transition_model[(state, action, next_state)] = prob
+                        self.reward_model[(state, next_state)] = reward
 
-            
+        print("goal States are: ", self.goal_states)
+      
+    def set_random_state(self):
+        valid_states = [s for s in range(self.nb_states-1) if s not in self.goal_states]    
+        state = np.random.choice(valid_states)
+        self.state = state
+        self.env.env.env.set_state(state)
+        
     def get_reward_function(self):
         for reward in self.reward_model.values():
             if reward > 15:
@@ -68,7 +77,7 @@ class gymTaxi:
     def get_transition_function(self):
         return self.transition_model
                 
-    def get_baseline_policy(self, epsilon):
+    def get_baseline_policy_old(self, epsilon):
         pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         
         stormpy_model = mapping.stormvogel_to_stormpy(self.sv_model)
@@ -85,7 +94,7 @@ class gymTaxi:
         pi = (1-epsilon) * pi_sched + epsilon * pi_r        
         return pi    
         
-    def get_baseline_policy_old(self, epsilon):
+    def get_baseline_policy(self, epsilon):
         pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         
         possible_destinations = []
@@ -125,3 +134,95 @@ class gymTaxi:
     
     def get_init_state(self):
         return self.init
+    
+    
+class gymIce:
+    def __init__(self):
+        self.env = gym.make("FrozenLake-v1", render_mode="rgb_array", map_name = "8x8", is_slippery=True)
+        self.sv_model = gymnasium_grid_to_stormvogel(self.env)
+        self.initial_calculations()
+        observation, _ = self.env.env.env.reset()
+        self.init = observation
+        self.state = observation
+        self.goal = get_target_state(self.env)
+        self.terminated = False
+        
+    def reset(self):
+        observation, _  = self.env.env.env.env.reset()
+        self.state = observation
+    
+    def set_random_state(self):
+        possible_states = [s for s in range(self.nb_states) if s not in self.traps and s != self.goal]    
+        random_state = random.choice(possible_states)
+        self.env.env.env.env.s = random_state
+        self.state = random_state
+        print(self.env.env.env.env.s, "==", self.state )
+    def step(self, action):
+        old_state = self.state
+        next_state, reward, terminated, truncated, info = self.env.env.env.env.step(action)
+        self.terminated = terminated
+        self.state = next_state
+        return old_state, next_state, reward
+    
+    def is_done(self):
+        if self.terminated:
+            if self.state == self.nb_states-1:
+                print("REACHED GOAL!!")
+        #     else:
+        #         print("Fell :(, self.state = )", self.state)
+        return self.terminated
+    
+    def initial_calculations(self):
+        # print("goal: ", self.env.env.env.env.desc[0][0])
+        P = self.env.env.env.env.P
+        self.reward_model = {}
+        self.transition_model = {}
+        self.nb_states = len(P)
+        self.nb_actions = len(P[0])
+        self.traps = []
+        for state in P:
+            for action in P[state]:
+                for prob, next_state, reward, done in P[state][action]:
+                    self.transition_model[(state, action, next_state)] = prob
+                    self.reward_model[(state, next_state)] = reward
+            col, row = to_coordinate(state, self.env.env.env.env)
+            if self.env.env.env.env.desc[row][col] == b"H":
+                self.traps.append(state)
+
+    def get_reward_function(self):
+        return self.reward_model
+   
+    def get_transition_function(self):
+        # print(self.transition_model)
+        return self.transition_model
+   
+    def get_nb_states(self):
+        return self.nb_states
+    
+    def get_nb_actions(self):
+        return self.nb_actions
+    
+    def get_goal_state(self):
+        return self.goal
+    
+    def get_init_state(self):
+        return self.init
+    
+    def get_traps(self):
+        return self.traps
+    def get_baseline_policy(self, epsilon):
+        pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
+        
+        # stormpy_model = mapping.stormvogel_to_stormpy(self.sv_model)
+        # prop = stormpy.parse_properties('Rmax=? [S]')
+        # # res = model_checking(self.model, f)
+        # res = stormpy.model_checking(stormpy_model, prop[0], extract_scheduler=True)
+        # scheduler = res.scheduler
+        
+        # pi_sched = np.full((self.nb_states, self.nb_actions), 0)   
+        # for next_state in range(self.nb_states):
+        #     choice = scheduler.get_choice(next_state).get_deterministic_choice()
+        #     pi_sched[next_state][choice] = 1
+        
+        # pi = (1-epsilon) * pi_sched + epsilon * pi_r        
+        return pi_r  

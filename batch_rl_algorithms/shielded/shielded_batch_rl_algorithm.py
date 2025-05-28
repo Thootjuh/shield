@@ -1,7 +1,7 @@
 from batch_rl_algorithms.batch_rl_algorithm import BatchRLAlgorithm
 import numpy as np
 class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
-    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen=True, max_nb_it=5000,
+    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen=True, max_nb_it=100,
                  checks=False, speed_up_dict=None, estimate_baseline=False, shield_baseline=False, shield_data=False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of

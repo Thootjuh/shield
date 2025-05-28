@@ -6,7 +6,7 @@ import time
 import numpy as np
 from IntervalMDPBuilder import IntervalMDPBuilder
 from IntervalMDPBuilder import IntervalMDPBuilderRandomMDPs, IntervalMDPBuilderAirplane, IntervalMDPBuilderWetChicken, IntervalMDPBuilderSlipperyGridworld,  IntervalMDPBuilderPacman
-from IntervalMDPBuilderSmall import IntervalMDPBuilderPacmanSmall, IntervalMDPBuilderRandomMDPSmall, IntervalMDPBuilderAirplaneSmall, IntervalMDPBuilderSlipperyGridworldSmall, IntervalMDPBuilderWetChickenSmall, IntervalMDPBuilderPrism, IntervalMDPBuilderTaxi
+from IntervalMDPBuilderSmall import IntervalMDPBuilderPacmanSmall, IntervalMDPBuilderRandomMDPSmall, IntervalMDPBuilderAirplaneSmall, IntervalMDPBuilderSlipperyGridworldSmall, IntervalMDPBuilderWetChickenSmall, IntervalMDPBuilderPrism, IntervalMDPBuilderTaxi, IntervalMDPBuilderFrozenLake
 import pycarl
  
 class Shield:
@@ -514,7 +514,66 @@ class ShieldTaxi(Shield):
                 print(f"State: {state}: ({taxi_row},{taxi_col}, pass at {pass_loc}, dest at {dest_idx}), taking action {ACTIONS[act]} with probability of getting trapped: {prob}")
         
         print(f"with crash states being {self.traps} and success states being {self.goal}")
-               
+
+
+class ShieldFrozenLake(Shield):
+    def __init__(self, transition_matrix, traps, goal, intervals):
+        self.model_builder = IntervalMDPBuilderFrozenLake(transition_matrix, intervals, goal, traps)
+        super().__init__(transition_matrix, traps, goal, intervals)
+        self.grid_size = np.sqrt(self.num_states)
+        
+    def calculateShield(self):
+        # How likely are we to step into a trap
+        prop = "Pmax=? [!\"hole\"U\"goal\"]"
+        
+        # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
+        # self.printShield()
+        # self.shield[:] = 0
+        super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
+        # self.printShield()
+        # self.printShield()
+    
+    def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.02):
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            min_value = np.min(probs)
+            safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
+        return safe_actions  
+    
+    def decode(self, state):
+        col = int(state % self.grid_size)
+        row = int(state // self.grid_size)
+        return col, row
+    def printShield(self):
+        ACTIONS = {
+            0 : "left",
+            1 : "down",
+            2 : "right",
+            3 : "up",
+        }
+            
+        
+        state_action_prob_pairs = []
+        for state in range(len(self.shield)):
+            for action in range(len(self.shield[state])):
+                prob = self.shield[state][action]
+                state_action_prob_pairs.append([state, action, prob])
+        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        
+        for pair in state_action_prob_pairs:
+            state = pair[0]
+            act = pair[1]
+            prob = pair[2]
+            col, row = self.decode(state)
+            print(f"State: {state}: ({row},{col}, taking action {ACTIONS[act]} with probability of getting trapped: {prob}")
+        
+        print(f"with crash states being {self.traps} and success states being {self.goal}")
+                    
 class ShieldPrism(Shield):
     def __init__(self, transition_matrix, traps, goal, intervals):
         self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps)

@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment, SlipperyGridworldExperiment, SimplifiedPacmanExperiment, PrismExperiment, GymEnvironment
+from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment, SlipperyGridworldExperiment, SimplifiedPacmanExperiment, PrismExperiment, GymTaxiExperiment, GymFrozenLakeExperiment
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
@@ -53,7 +53,11 @@ def run_experiment(seed):
                                         machine_specific_experiment_directory=machine_specific_experiment_directory)
     elif environment =='taxi':
         print("doing_taxi")
-        experiment = GymEnvironment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+        experiment = GymTaxiExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
+    elif environment =='frozen_lake':
+        print("doing frozen lake")
+        experiment = GymFrozenLakeExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                         machine_specific_experiment_directory=machine_specific_experiment_directory)
     else:
         experiment = PrismExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,

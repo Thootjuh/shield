@@ -23,7 +23,7 @@ from environments.pacman.pacman_dynamics import pacmanSimplified
 from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 
 from environments.read_env_from_prism import prism_env
-from environments.gym_environment import gymTaxi
+from environments.gym_environment import gymTaxi, gymIce
 
 from batch_rl_algorithms.basic_rl import Basic_rl
 from batch_rl_algorithms.pi_star import PiStar
@@ -43,7 +43,7 @@ from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
 
 
-from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld, ShieldSimplifiedPacman, ShieldPrism, ShieldTaxi
+from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld, ShieldSimplifiedPacman, ShieldPrism, ShieldTaxi, ShieldFrozenLake
 from PACIntervalEstimator import PACIntervalEstimator
 directory = os.path.dirname(os.path.expanduser(__file__))
 
@@ -1755,7 +1755,7 @@ class PrismExperiment(Experiment):
         #         reduced_matrix[state, action] = np.array(possible_states)
         return reduced_matrix
     
-class GymEnvironment(Experiment):
+class GymTaxiExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method','pi_rand_perf', 'pi_star_perf']
     
@@ -1877,7 +1877,7 @@ class GymEnvironment(Experiment):
         :return: data batch as a list of sublists of the form [state, action, next_state, reward]
         """
         trajectories = []
-        
+        env.reset()
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
@@ -1897,9 +1897,193 @@ class GymEnvironment(Experiment):
                 state = next_state
                 nb_steps += 1
             trajectories.append(trajectorY)
+            env.reset()
+            # env.set_random_state()
         batch_traj = [val for sublist in trajectories for val in sublist]
         # temppp = np.array(trajectories)
         # print(temppp)
+        # print(trajectories)
+        return trajectories, batch_traj
+            
+    
+
+    def reduce_transition_matrix(self, transition_matrix):
+        """
+        Reduces a transition matrix to only include possible end states for each state-action pair.
+
+        Args:
+        - transition_matrix (numpy.ndarray): A 3D numpy array of shape (num_states, num_actions, num_states) 
+        where each element represents the probability of transitioning from one state to another
+        given a certain action.
+
+        Returns:
+        - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
+        where each element contains the indices of possible end states.
+        """
+
+        # Prepare the reduced matrix to hold the indices of possible states
+        reduced_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
+
+        for state in range(self.nb_states):
+            for action in range(self.nb_actions):
+                reduced_matrix[state, action] = []
+        
+        # Loop through each state and action to populate the reduced matrix
+        for (state,action,next_state) in transition_matrix.keys():
+            reduced_matrix[state][action].append(next_state)
+            
+        # for state in range(num_states):
+        #     for action in range(num_actions):
+        #         # Get indices of nonzero probabilities (possible end states)
+        #         possible_states = np.nonzero(transition_matrix[state, action])[0]
+        #         reduced_matrix[state, action] = np.array(possible_states)
+        return reduced_matrix
+    
+    
+    
+    
+class GymFrozenLakeExperiment(Experiment):
+    # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
+    fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method','pi_rand_perf', 'pi_star_perf']
+    
+    def compute_r_state_action(self, P, R):
+        result = defaultdict(float)
+
+        for (i, j, k), p_val in P.items():
+            r_val = R.get((i, k), 0.0)
+            result[(i, j)] += p_val * r_val
+
+        # Convert result to dense NumPy array
+
+        dense_result = np.zeros((self.nb_states, self.nb_actions))
+
+        for (i, j), val in result.items():
+            dense_result[i, j] = val
+
+        return dense_result
+    
+    def _set_env_params(self):
+        """
+        Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
+        """
+        self.episodic = True
+        self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
+        
+        print("start env")
+        self.env = gymIce()
+        print("get values")
+        self.nb_states = self.env.get_nb_states()
+        # self.traps = [self.nb_states-1]
+        self.nb_actions = self.env.get_nb_actions()
+        self.traps = self.env.get_traps()
+        print("traps are: ", self.traps)
+        self.goal = self.env.get_goal_state()
+        self.initial_state = self.env.get_init_state()
+        
+        self.P = self.env.get_transition_function()
+        self.R_state_state = self.env.get_reward_function()
+
+        print("calcing r_sa")
+        self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
+        
+        self.baseline_method = self.experiment_config['BASELINE']['method']
+        self.fixed_params_exp_list = [self.seed, self.gamma, self.baseline_method]
+
+        pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
+        print("calcing rand perf")
+        pi_rand_perf = self._policy_evaluation_exact(pi_rand)
+        print(f"pi_rand_perf = {pi_rand_perf}")
+        
+        self.fixed_params_exp_list.append(pi_rand_perf)
+
+        pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        pi_star.fit()
+        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        print(f"pi_star_perf = {pi_star_perf}")
+        self.fixed_params_exp_list.append(pi_star_perf)
+
+
+        self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
+        pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
+        print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
+        print(f"pi_baseline_perf = {pi_base_perf}")
+        self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
+        if self.baseline_method == 'heuristic':
+            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
+        else:
+            self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
+            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
+                                                'length_trajectory']
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+
+        
+    def _run_one_iteration(self):
+        for epsilon_baseline in self.epsilons_baseline:
+            print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
+                  f' {self.epsilons_baseline}')
+            
+            print("creating Baseline Policy")
+            self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
+            # print("a")
+            self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+                                                                        self._policy_evaluation_exact(self.pi_b)]
+            # print("b")
+            
+            for nb_trajectories in self.nb_trajectories_list:
+                print(
+                    f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
+                    f'{self.nb_trajectories_list}')
+                # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
+                print("Generating Trajectories")
+                self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
+
+                # print("----------------------------------------------------------------")    
+                print("Estimating Intervals")            
+                self.structure = self.reduce_transition_matrix(self.P)   
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()
+                # # print(intervals)
+                print("Calculating Shield")  
+                self.shielder = ShieldFrozenLake(self.structure, self.traps, [self.goal], self.intervals)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
+                # print("----------------------------------------------------------------")
+                print("Running Algorithms")
+                self._run_algorithms()
+                
+
+    def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
+        """
+        Generates a data batch for an episodic MDP.
+        :param nb_steps: number of steps in the data batch
+        :param env: environment to be used to generate the batch on
+        :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
+        :return: data batch as a list of sublists of the form [state, action, next_state, reward]
+        """
+        trajectories = []
+        
+        for _ in np.arange(nb_trajectories):
+            nb_steps = 0
+            trajectorY = []
+            env.reset()
+            state = self.initial_state
+            is_done = False
+            while nb_steps < max_steps and not is_done:
+                # print(is_done)
+                action_choice = np.random.choice(pi.shape[1], p=pi[state])
+                state, next_state, reward = env.step(action_choice)
+                is_done = env.is_done()                    
+                trajectorY.append([action_choice, state, next_state, reward])
+                state = next_state
+                nb_steps += 1
+            trajectories.append(trajectorY)
+        batch_traj = [val for sublist in trajectories for val in sublist]
+        # temppp = np.array(trajectories)
+        # print(temppp)
+        # print(trajectories)
         # print(trajectories)
         return trajectories, batch_traj
             

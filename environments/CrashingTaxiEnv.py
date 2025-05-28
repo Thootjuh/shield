@@ -109,7 +109,9 @@ class CustomTaxiEnv(TaxiEnv):
         self.median_vert = None
         self.background_img = None
         
-        
+    def set_state(self, state):
+        self.s = state
+    
         
     def _build_rainy_transitions(self, row, col, pass_idx, dest_idx, action):
             """Computes the next action for a state (row, col, pass_idx, dest_idx) and action for `is_rainy`."""
