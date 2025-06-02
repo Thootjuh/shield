@@ -14,43 +14,30 @@ class pacmanSimplified:
     def __init__(self, lag_chance):
         self.lag_chance = lag_chance
         print("lag chance = ", lag_chance)
-        self.width = 9
-        self.height = 9
-        self.nb_states = ((self.width)*(self.height))**2
+        self.width = 7
+        self.height = 7
+        self.nb_states = ((self.width)*(self.height))**3
         self.nb_actions = len(ACTION_TRANSLATOR)
         self.walls = [
             (1,1),
             (1,2),
-            (1,3),
+            (1,4),
             (1,5),
-            (1,6),
-            (1,7),
+            (2,2),
             (2,3),
-            (2,5),
+            (2,4),
             (3,0),
-            (3,1),
-            (3,3),
-            (3,4),
-            (3,5),
-            (3,7),
+            (3,2),
+            (3,6),
+            (4,4),
             (5,0),
             (5,1),
-            (5,3),
+            (5,2),
             (5,4),
-            (5,5),
-            (5,7),
-            (5,8),
-            (6,1),
-            (6,3),
-            (7,1),
-            (7,5),
-            (7,6),
-            (7,7),
-            (7,8),
-            (8,3)
+            (5,5)
         ] 
         
-        self.init = np.array([[0,0],[self.width-1, self.height-1], [4,4]])
+        self.init = np.array([[0,0],[self.width-1, self.height-1], [3,3]])
         self.goal = [self.width-1, self.height-1]
         
         self._state = np.zeros((3,2), dtype=int)
@@ -172,6 +159,7 @@ class pacmanSimplified:
     
     def get_reward(self):
         if self._state[0][0] == self.goal[0] and self._state[0][1] == self.goal[1]:
+            # print("REACHED GOAL :)")
             return GOAL_REWARD
         if self._state[0][0] == self._state[1][0] and self._state[0][1] == self._state[1][1]:
             return EATEN_REWARD
@@ -261,13 +249,13 @@ class pacmanSimplified:
         self._state[2][1] = ghost_y_hat
         return old_state, self.state_to_int(), self.get_reward()
     
-    def get_reward_function(self):
-        reward_dict = {}
+    def get_reward_function_old(self):
+        reward_dict = defaultdict(float)
 
         for next_state in range(self.nb_states):
             reward = self.get_reward_from_int(next_state)
-            # if next_state % 100 == 0:
-            #     print(next_state)
+            if next_state % 1000 == 0:
+                print(next_state)
             if reward != 0:
                 for state in range(self.nb_states):
                     # reward_matrix[state, next_state] = self.get_reward_from_int(next_state)
@@ -275,8 +263,28 @@ class pacmanSimplified:
 
         return reward_dict
     
-    def in_wall(self, x,y,gx1,gy1, gy2, gx2):
-        if (x,y) in self.walls or (gx1,gy1) in self.walls or (gx2,gy2) in self.walls:
+    def get_reward_function(self):
+        reward_dict = defaultdict(float)
+
+        for (state, action, next_state) in self.transition_function.keys():
+            reward = self.get_reward_from_int(next_state)
+            if reward != 0:
+                reward_dict[(state, next_state)] = reward
+
+        return reward_dict
+    
+    def in_wall(self, x,y,gx1,gy1,gx2,gy2, verbose=False):
+        if (x,y) in self.walls:
+            if verbose: 
+                print(1)
+            return True
+        if  (gx1,gy1) in self.walls:
+            if verbose: 
+                print(2)
+            return True
+        if  (gx2,gy2) in self.walls:
+            if verbose: 
+                print(3)
             return True
         return False
     
@@ -286,7 +294,7 @@ class pacmanSimplified:
         for state in range(self.nb_states):
             x,y,gx1,gy1, gx2, gy2  = self.decode_int(state)
             # check if done
-            if self._is_terminal_state(x,y,gx,gy) or self.in_wall(x,y,gx,gy):
+            if self._is_terminal_state(x,y,gx1,gy1,gx2,gy2) or self.in_wall(x,y,gx1,gy1,gx2,gy2):
                 counter += 1
             else:
                 for action in range(self.nb_actions):
@@ -304,8 +312,7 @@ class pacmanSimplified:
                         if self.is_valid_move(gx1, gy1, g_action):
                             next_gx = gx1 + ACTION_TRANSLATOR[g_action][0]
                             next_gy = gy1 + ACTION_TRANSLATOR[g_action][1]
-                            possible_g1_actions.append((next_gx, next_gy))
-                            
+                            possible_g1_actions.append((next_gx, next_gy)) 
                             
                         if self.is_valid_move(gx2, gy2, g_action):
                             next_gx = gx2 + ACTION_TRANSLATOR[g_action][0]
@@ -324,8 +331,18 @@ class pacmanSimplified:
                                 transition_dict[(state, action, next_state)] += self.lag_chance * (1/(len(possible_g1_actions)*len(possible_g2_actions)))
         # print(transition_dict.keys())                
         # print("we contain this many items",len(transition_dict))  
-        for value in transition_dict.values():
+        x,y,gx1,gy1,gx2,gy2 = self.decode_int(113027)
+        print(f"From state 113027 a:({x}, {y}), ghost:({gx1},{gy1}) and ({gx2},{gy2})")
+        print(self._is_terminal_state(x,y,gx1,gy1,gx2,gy2))
+        print(self.in_wall(x,y,gx1,gy1,gx2,gy2, True))
+        for (state, action, next_state), value in transition_dict.items():
+            if state == 113027:
+                x,y,gx1,gy1,gx2,gy2 = self.decode_int(next_state)
+                print(f"From state: {state} we go to: a:({x}, {y}), ghost:({gx1},{gy1}) and ({gx2},{gy2}) action: {action}, with probability: {value}")
+
             if value == 0.0:
-                print("YOU FUCKED IT!!")           
+                print("YOU FUCKED IT!!")
+        print("fuck you i quit")           
         print(counter)
+        self.transition_function = transition_dict
         return transition_dict
