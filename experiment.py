@@ -1801,7 +1801,7 @@ def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
     print("c")
     # Solve (I - gamma * P_pi) * v = r_pi
     A = identity(num_states, format='csr') - gamma * P_pi.tocsr()
-    v, info = bicgstab(A, r_pi, tol=1e-6)
+    v, info = bicgstab(A, r_pi, atol=1e-6)
     if info != 0:
         print("Warning: Iterative solver did not converge")
     print("d")
