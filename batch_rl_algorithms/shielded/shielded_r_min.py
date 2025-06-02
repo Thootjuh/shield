@@ -6,7 +6,7 @@ from batch_rl_algorithms.shielded.shielded_batch_rl_algorithm import shieldedBat
 class Shield_RMin(shieldedBatchRLAlgorithm):
     NAME = 'shield-R_min'
 
-    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, shield, zero_unseen=True, max_nb_it=100,
+    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, shield, zero_unseen=True, max_nb_it=5000,
                  checks=False, speed_up_dict=None, estimate_baseline=False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of

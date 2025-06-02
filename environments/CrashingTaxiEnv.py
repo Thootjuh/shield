@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 from gymnasium import Env, spaces, utils
 
-CRASH_REWARD = -20
+CRASH_REWARD = -250
 MAP = [
     "+---------+",
     "|R: | : :G|",
@@ -189,7 +189,7 @@ class CustomTaxiEnv(TaxiEnv):
         if self.desc[1 + new_row, 2 * new_col + offset] == b":":
             return new_row, new_col, -1
         elif self.desc[1 + new_row, 2 * new_col + offset] == b"|":
-            return new_row, new_col, CRASH_REWARD
+            return -1, -1, CRASH_REWARD
         else:  # Default to current position if not traversable
             
             return row, col, -1

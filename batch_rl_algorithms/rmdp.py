@@ -6,7 +6,7 @@ from scipy.sparse.linalg import spsolve
 class WorstCaseRMDP(BatchRLAlgorithm):
     NAME = 'WorstCaseRMDP'
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, intervals,
-                 zero_unseen=True, max_nb_it=100, checks=False, speed_up_dict=None, estimate_baseline=False):
+                 zero_unseen=True, max_nb_it=5000, checks=False, speed_up_dict=None, estimate_baseline=False):
         """
         :param transition_intervals: Dictionary mapping (s, a) pairs to a list of (s', [P_min, P_max]).
         """
@@ -74,7 +74,6 @@ class WorstCaseRMDP(BatchRLAlgorithm):
         estimate a new reward matrix in the shape (nb_states, nb_actions) such that self.R_state_action[s, a] is the
         expected reward when choosing action a in state s in the estimated MDP.
         """
-        print("begin")
         self.build_worst_case_model()
         result = defaultdict(float)
 
@@ -88,7 +87,6 @@ class WorstCaseRMDP(BatchRLAlgorithm):
 
         for (i, j), val in result.items():
             self.R_state_action[i, j] = val
-        print("end")
         # print(f"estimated R_state_action = {self.R_state_action}")      
     
     def _policy_evaluation(self):

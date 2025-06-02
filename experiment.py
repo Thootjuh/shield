@@ -272,6 +272,9 @@ class Experiment:
                 t_0 = time.time()
                 duipi.fit()
                 t_1 = time.time()
+                with open("standard.txt", "w") as file:
+                    for item in duipi.pi:
+                        file.write(f"{item}\n")
                 duipi_perf = self._policy_evaluation_exact(duipi.pi)
                 if bayesian:
                     name_addition = '_bayesian'
@@ -308,6 +311,9 @@ class Experiment:
                 t_0 = time.time()
                 duipi.fit()
                 t_1 = time.time()
+                with open("shielded.txt", "w") as file:
+                    for item in duipi.pi:
+                        file.write(f"{item}\n")
                 duipi_perf = self._policy_evaluation_exact(duipi.pi)
                 if bayesian:
                     name_addition = '_bayesian'
@@ -1803,7 +1809,7 @@ class GymTaxiExperiment(Experiment):
 
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         print("calcing rand perf")
-        print(pi_rand)
+        # print(pi_rand)
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
         print(f"pi_rand_perf = {pi_rand_perf}")
         
@@ -1819,7 +1825,7 @@ class GymTaxiExperiment(Experiment):
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
-        print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
+        # print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         print(f"pi_baseline_perf = {pi_base_perf}")
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
         if self.baseline_method == 'heuristic':

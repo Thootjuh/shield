@@ -17,12 +17,12 @@ class gymTaxi:
         self.state = observation
         self.terminated = False
         # print(self.goal_states)
-        for (state,action,next_state) in self.transition_model.keys():
-            if state != self.nb_states-1:
-                taxi_row, taxi_col, pass_loc, dest_idx = self.env.env.env.decode(state)
-                # prob = self.transition_model[(state,action,next_state)]
-                print(f"State: {state}: ({taxi_row},{taxi_col}), pass at {pass_loc}, dest at {dest_idx}), taking action {action} takes you to: {next_state}")
-        print("in ", state, "using ", action, "to ", next_state)
+        # for (state,action,next_state) in self.transition_model.keys():
+        #     if state != self.nb_states-1:
+        #         taxi_row, taxi_col, pass_loc, dest_idx = self.env.env.env.decode(state)
+        #         # prob = self.transition_model[(state,action,next_state)]
+        #         print(f"State: {state}: ({taxi_row},{taxi_col}), pass at {pass_loc}, dest at {dest_idx}), taking action {action} takes you to: {next_state}")
+        # print("in ", state, "using ", action, "to ", next_state)
             
     def reset(self):
         observation, _  = self.env.env.env.reset()
@@ -157,6 +157,7 @@ class gymIce:
         self.env.env.env.env.s = random_state
         self.state = random_state
         print(self.env.env.env.env.s, "==", self.state )
+        
     def step(self, action):
         old_state = self.state
         next_state, reward, terminated, truncated, info = self.env.env.env.env.step(action)

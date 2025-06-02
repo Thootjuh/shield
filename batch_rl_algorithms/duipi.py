@@ -10,7 +10,7 @@ class DUIPI(BatchRLAlgorithm):
     NAME = 'DUIPI'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, bayesian, xi, alpha_prior=0.1,
-                 zero_unseen=True, max_nb_it=100, checks=False, speed_up_dict=None, estimate_baseline = True):
+                 zero_unseen=True, max_nb_it=5000, checks=False, speed_up_dict=None, estimate_baseline = True):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
