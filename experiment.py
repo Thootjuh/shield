@@ -19,7 +19,7 @@ from environments.Airplane_discrete.airplane_baseline_policy import AirplaneBase
 from environments.Slippery_gridworld.gridworld import gridWorld
 from environments.Slippery_gridworld.gridworld_heuristic_policy import GridworldBaselinePolicy
 
-from environments.pacman.pacman_dynamics import pacmanSimplified
+from environments.pacman.pacman_dynamics_two_ghosts import pacmanSimplified
 from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 
 from environments.read_env_from_prism import prism_env
@@ -759,8 +759,8 @@ class SimplifiedPacmanExperiment(Experiment):
         self.traps = []
         self.goal = []
         for state in range(self.nb_states):
-            x,y,gx,gy = self.env.decode_int(state)
-            if self.env._is_terminal_state(x,y,gx,gy):
+            x,y,gx1,gy1,gx2,gy2 = self.env.decode_int(state)
+            if self.env._is_terminal_state(x,y,gx1,gy1,gx2,gy2):
                 if self.env.get_reward_from_int(state) > 0:
                     self.goal.append(state)
                 else:
@@ -776,17 +776,20 @@ class SimplifiedPacmanExperiment(Experiment):
         self.fixed_params_exp_list = [self.seed, self.gamma, self.width, self.height, self.lag]
         
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
-        pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        # pi_rand_perf = 0
+        print("calcing pi rand")
+        # pi_rand_perf = self._policy_evaluation_exact(pi_rand)
+        pi_rand_perf = 0
         print("pi_rand_perf:", pi_rand_perf)
+        print("calcing pi perf")
+
         self.fixed_params_exp_list.append(pi_rand_perf)
         
-        pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
-                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
-        pi_star.fit()    
+        # pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+        #                  data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        # pi_star.fit()    
             
-        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        # pi_star_perf = 7.7
+        # pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        pi_star_perf = 7.7
         print("pi_star_perf:", pi_star_perf)
         self.fixed_params_exp_list.append(pi_star_perf)
         

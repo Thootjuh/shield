@@ -13,7 +13,7 @@ class PacmanBaselinePolicy:
     def compute_baseline(self):
         pi = np.zeros((self.nb_states, self.nb_actions))
         for state in range(len(pi)):
-            x, y, gx, gy = self.env.decode_int(state)
+            x, y, gx1, gy1, gx2, gy2 = self.env.decode_int(state)
 
             # Define the preferred actions
             preferred_actions = [1, 0]  # Right (1), Up (0)
