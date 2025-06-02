@@ -50,10 +50,10 @@ class pacmanSimplified:
             (8,3)
         ] 
         
-        self.init = np.array([[0,0],[self.width-1, self.height-1]])
+        self.init = np.array([[0,0],[self.width-1, self.height-1], [4,4]])
         self.goal = [self.width-1, self.height-1]
         
-        self._state = np.zeros((2,2), dtype=int)
+        self._state = np.zeros((3,2), dtype=int)
         self.reset()
        
     def reset(self):
@@ -61,42 +61,68 @@ class pacmanSimplified:
         self._state[0][0] = self.init[0][0]
         self._state[0][1] = self.init[0][1]
         
-        # Set state of ghost
+        # Set state of ghost 1
         self._state[1][0] = self.init[1][0] 
         self._state[1][1] = self.init[1][1]
         
+        # Set state of ghost 2
+        self._state[2][0] = self.init[2][0] 
+        self._state[2][1] = self.init[2][1]
         
-    def encode_int(self, x, y, ax, ay):
-        if not (0 <= x < self.width and 0 <= y < self.height and 0 <= ax < self.width and 0 <= ay < self.height):
-            print(f"x = {x}, y = {y}, gx = {ax}, gy = {ay}")
+    def encode_int(self, x, y, ax, ay, bx, by):
+        if not (0 <= x < self.width and 0 <= y < self.height and
+                0 <= ax < self.width and 0 <= ay < self.height and
+                0 <= bx < self.width and 0 <= by < self.height):
+            print(f"x={x}, y={y}, ax={ax}, ay={ay}, bx={bx}, by={by}")
             raise ValueError("Input values out of range")
-        return (x * self.height * self.width * self.height) + (y * self.width * self.height) + (ax * self.height) + ay
+
+        H = self.height
+        W = self.width
+
+        return (
+            x * H * W * H * W * H +
+            y * W * H * W * H +
+            ax * H * W * H +
+            ay * W * H +
+            bx * H +
+            by
+        )
 
     def decode_int(self, state_int):
-        ay = state_int % self.height
-        state_int //= self.height
+        H = self.height
+        W = self.width
 
-        ax = state_int % self.width
-        state_int //= self.width
+        by = state_int % H
+        state_int //= H
 
-        y = state_int % self.height
-        state_int //= self.height
+        bx = state_int % W
+        state_int //= W
 
-        x = state_int % self.width
+        ay = state_int % H
+        state_int //= H
 
-        return x, y, ax, ay
+        ax = state_int % W
+        state_int //= W
+
+        y = state_int % H
+        state_int //= H
+
+        x = state_int % W
+
+        return x, y, ax, ay, bx, by
+
 
     def state_to_int(self):
-        return self.encode_int(self._state[0][0], self._state[0][1], self._state[1][0], self._state[1][1])
+        return self.encode_int(self._state[0][0], self._state[0][1], self._state[1][0], self._state[1][1], self._state[2][0], self._state[2][1])
     
     def set_random_state(self):
         
         #pick random state
         random_state = np.random.randint(self.nb_states)
-        x, y, gx, gy = self.decode_int(random_state)
-        while self._is_terminal_state(x, y, gx, gy):
+        x, y, gx1, gy1, gx2, gy2 = self.decode_int(random_state)
+        while self._is_terminal_state(x, y, gx1, gy1, gx2, gy2):
             random_state = np.random.randint(self.nb_states)
-            x, y, gx, gy = self.decode_int(random_state)
+            x, y, gx1, gy1, gx2, gy2 = self.decode_int(random_state)
         
         
         # set position of player
@@ -104,13 +130,21 @@ class pacmanSimplified:
         self._state[0][1] = y
         
         # Set state of ghost 1
-        self._state[1][0] = gx
-        self._state[1][1] = gy
+        self._state[1][0] = gx1
+        self._state[1][1] = gy1
+        
+        # Set state of ghost 2
+        self._state[1][0] = gx2
+        self._state[1][1] = gy2
+        
+        
 
-    def _is_terminal_state(self, x,y,gx,gy):
+    def _is_terminal_state(self, x,y,gx1,gy1, gx2, gy2):
         if x == self.goal[0] and y == self.goal[1]:
             return True
-        if x==gx and y==gy:
+        if x==gx1 and y==gy1:
+            return True
+        if x==gx2 and y==gy2:
             return True
         if (x,y) in self.walls:
             return True
@@ -129,6 +163,10 @@ class pacmanSimplified:
         if x == self._state[1][0] and y == self._state[1][1]:
             # print("GOT EATEN :(")
             return True
+                # Eaten
+        if x == self._state[2][0] and y == self._state[2][1]:
+            # print("GOT EATEN :(")
+            return True
         
         return False
     
@@ -137,13 +175,15 @@ class pacmanSimplified:
             return GOAL_REWARD
         if self._state[0][0] == self._state[1][0] and self._state[0][1] == self._state[1][1]:
             return EATEN_REWARD
+        if self._state[0][0] == self._state[2][0] and self._state[0][1] == self._state[2][1]:
+            return EATEN_REWARD
         return 0
     
     def get_reward_from_int(self, int):
-        x, y, gx, gy = self.decode_int(int)
+        x, y, gx1, gy1, gx2, gy2 = self.decode_int(int)
         if x == self.goal[0] and y == self.goal[1]:
             return GOAL_REWARD
-        if x == gx and y == gy:
+        if ((x == gx1 and y == gy1) or (x == gx2 and y == gy2)):
             return EATEN_REWARD
         return 0
     
@@ -192,7 +232,7 @@ class pacmanSimplified:
         self._state[0][0] = x_hat
         self._state[0][1] = y_hat
         
-        # Move the ghost:
+        # Move the first ghost:
         ghost_x = self._state[1][0]
         ghost_y = self._state[1][1]
         ghost_action = np.random.randint(0, 4)
@@ -205,6 +245,20 @@ class pacmanSimplified:
         ghost_y_hat = ghost_y + ghost_dy
         self._state[1][0] = ghost_x_hat
         self._state[1][1] = ghost_y_hat
+        
+        # Move the second ghost:
+        ghost_x = self._state[2][0]
+        ghost_y = self._state[2][1]
+        ghost_action = np.random.randint(0, 4)
+        valid_action = self.is_valid_move(ghost_x, ghost_y, ghost_action)
+        while not valid_action:
+            ghost_action = np.random.randint(0, 4)
+            valid_action = self.is_valid_move(ghost_x, ghost_y, ghost_action)
+        ghost_dx, ghost_dy = ACTION_TRANSLATOR[ghost_action]
+        ghost_x_hat = ghost_x + ghost_dx
+        ghost_y_hat = ghost_y + ghost_dy
+        self._state[2][0] = ghost_x_hat
+        self._state[2][1] = ghost_y_hat
         return old_state, self.state_to_int(), self.get_reward()
     
     def get_reward_function(self):
@@ -221,8 +275,8 @@ class pacmanSimplified:
 
         return reward_dict
     
-    def in_wall(self, x,y,gx,gy):
-        if (x,y) in self.walls or (gx,gy) in self.walls:
+    def in_wall(self, x,y,gx1,gy1, gy2, gx2):
+        if (x,y) in self.walls or (gx1,gy1) in self.walls or (gx2,gy2) in self.walls:
             return True
         return False
     
@@ -230,7 +284,7 @@ class pacmanSimplified:
         transition_dict = defaultdict(float)
         counter = 0
         for state in range(self.nb_states):
-            x,y,gx,gy = self.decode_int(state)
+            x,y,gx1,gy1, gx2, gy2  = self.decode_int(state)
             # check if done
             if self._is_terminal_state(x,y,gx,gy) or self.in_wall(x,y,gx,gy):
                 counter += 1
@@ -242,22 +296,32 @@ class pacmanSimplified:
                     if(next_x,next_y) in self.walls:
                         next_x = self.init[0][0]
                         next_y = self.init[0][1]
+                        
                     # Possible next positions ghost
-                    possible_g_actions = []
+                    possible_g1_actions = []
+                    possible_g2_actions = []
                     for g_action in range(self.nb_actions):
-                        if self.is_valid_move(gx, gy, g_action):
-                            next_gx = gx + ACTION_TRANSLATOR[g_action][0]
-                            next_gy = gy + ACTION_TRANSLATOR[g_action][1]
-                            possible_g_actions.append((next_gx, next_gy))
+                        if self.is_valid_move(gx1, gy1, g_action):
+                            next_gx = gx1 + ACTION_TRANSLATOR[g_action][0]
+                            next_gy = gy1 + ACTION_TRANSLATOR[g_action][1]
+                            possible_g1_actions.append((next_gx, next_gy))
+                            
+                            
+                        if self.is_valid_move(gx2, gy2, g_action):
+                            next_gx = gx2 + ACTION_TRANSLATOR[g_action][0]
+                            next_gy = gy2 + ACTION_TRANSLATOR[g_action][1]
+                            possible_g2_actions.append((next_gx, next_gy))
+                            
                     
-                    for next_g_state in possible_g_actions:
-                        #Player action succeeds
-                        next_state = self.encode_int(next_x, next_y, next_g_state[0], next_g_state[1])
-                        transition_dict[(state, action, next_state)] += (1-self.lag_chance) * (1/len(possible_g_actions))
-                        #Player action fails
-                        if self.lag_chance > 0:
-                            next_state = self.encode_int(x, y, next_g_state[0], next_g_state[1])
-                            transition_dict[(state, action, next_state)] += self.lag_chance * (1/len(possible_g_actions))
+                    for next_g1_state in possible_g1_actions:
+                        for next_g2_state in possible_g2_actions:
+                            #Player action succeeds
+                            next_state = self.encode_int(next_x, next_y, next_g1_state[0], next_g1_state[1], next_g2_state[0], next_g2_state[1])
+                            transition_dict[(state, action, next_state)] += (1-self.lag_chance) * (1/(len(possible_g1_actions)*len(possible_g2_actions)))
+                            #Player action fails
+                            if self.lag_chance > 0:
+                                next_state = self.encode_int(x, y, next_g1_state[0], next_g1_state[1], next_g2_state[0], next_g2_state[1])
+                                transition_dict[(state, action, next_state)] += self.lag_chance * (1/(len(possible_g1_actions)*len(possible_g2_actions)))
         # print(transition_dict.keys())                
         # print("we contain this many items",len(transition_dict))  
         for value in transition_dict.values():
