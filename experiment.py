@@ -1761,7 +1761,7 @@ import numpy as np
 from collections import defaultdict
 from scipy.sparse import dok_matrix, identity
 from scipy.sparse.linalg import spsolve
-
+from scipy.sparse.linalg import bicgstab
 
 def policy_evaluation_exact(pi, r, p, gamma):
     if isinstance(p, dict):
@@ -1787,28 +1787,30 @@ def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
     num_states, num_actions = pi.shape
     # Compute expected rewards under policy
     r_pi = np.einsum('ij,ij->i', pi, r)
-
+    print("a")
     # Build sparse p_pi as a dictionary {(s, s'): prob}
     p_pi_sparse = defaultdict(float)
 
     for (s, a, s_prime), prob in p_sparse.items():
         p_pi_sparse[(s, s_prime)] += pi[s, a] * prob
-
+    print("b")
     # Convert sparse p_pi to a scipy sparse matrix for solving
     P_pi = dok_matrix((num_states, num_states), dtype=np.float64)
     for (s, s_prime), prob in p_pi_sparse.items():
         P_pi[s, s_prime] = prob
-
+    print("c")
     # Solve (I - gamma * P_pi) * v = r_pi
     A = identity(num_states, format='csr') - gamma * P_pi.tocsr()
-    v = spsolve(A, r_pi)
-
+    v, info = bicgstab(A, r_pi, tol=1e-6)
+    if info != 0:
+        print("Warning: Iterative solver did not converge")
+    print("d")
     # Compute Q-values
     q = np.zeros((num_states, num_actions))
     for (s, a, s_prime), prob in p_sparse.items():
         q[s, a] += prob * v[s_prime]
     q = r + gamma * q
-
+    print("e")
     return v, q, dict(p_pi_sparse)
 
 def policy_evaluation_exact_dense(pi, r, p, gamma):
