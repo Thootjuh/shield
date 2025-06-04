@@ -191,7 +191,7 @@ class gymTaxi:
     
 class gymIce:
     def __init__(self):
-        self.env = gym.make("FrozenLake-v1", render_mode="rgb_array", map_name = "8x8", is_slippery=True)
+        self.env = gym.make("FrozenLakeCustom-v0", render_mode="rgb_array", map_name = "8x8", is_slippery=True)
         self.sv_model = gymnasium_grid_to_stormvogel(self.env)
         self.initial_calculations()
         observation, _ = self.env.env.env.reset()
@@ -201,19 +201,19 @@ class gymIce:
         self.terminated = False
         
     def reset(self):
-        observation, _  = self.env.env.env.env.reset()
+        observation, _  = self.env.env.env.reset()
         self.state = observation
     
     def set_random_state(self):
         possible_states = [s for s in range(self.nb_states) if s not in self.traps and s != self.goal]    
         random_state = random.choice(possible_states)
-        self.env.env.env.env.s = random_state
+        self.env.env.env.s = random_state
         self.state = random_state
-        print(self.env.env.env.env.s, "==", self.state )
+        print(self.env.env.env.s, "==", self.state )
         
     def step(self, action):
         old_state = self.state
-        next_state, reward, terminated, truncated, info = self.env.env.env.env.step(action)
+        next_state, reward, terminated, truncated, info = self.env.env.env.step(action)
         self.terminated = terminated
         self.state = next_state
         return old_state, next_state, reward
@@ -224,8 +224,8 @@ class gymIce:
         return self.terminated
     
     def initial_calculations(self):
-        # print("goal: ", self.env.env.env.env.desc[0][0])
-        P = self.env.env.env.env.P
+        # print("goal: ", self.env.env.env.desc[0][0])
+        P = self.env.env.env.P
         self.reward_model = {}
         self.transition_model = {}
         self.nb_states = len(P)
@@ -236,8 +236,8 @@ class gymIce:
                 for prob, next_state, reward, done in P[state][action]:
                     self.transition_model[(state, action, next_state)] = prob
                     self.reward_model[(state, next_state)] = reward
-            col, row = to_coordinate(state, self.env.env.env.env)
-            if self.env.env.env.env.desc[row][col] == b"H":
+            col, row = to_coordinate(state, self.env.env.env)
+            if self.env.env.env.desc[row][col] == b"H":
                 self.traps.append(state)
 
     def get_reward_function(self):

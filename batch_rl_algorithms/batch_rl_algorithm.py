@@ -122,6 +122,7 @@ class BatchRLAlgorithm:
         self.nb_it = 0
 
         while np.linalg.norm(self.q - old_q) > 10 ** (-3) and self.nb_it < self.max_nb_it:
+            # print(self.nb_it)
             self.nb_it += 1
             old_q = self.q.copy()
             self._policy_evaluation()

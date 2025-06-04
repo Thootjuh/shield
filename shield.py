@@ -569,7 +569,12 @@ class ShieldFrozenLake(Shield):
         row = int(state // self.grid_size)
         return col, row
     def printShield(self):
-            
+        ACTIONS = {
+            0 : "left",
+            1 : "down",
+            2 : "right",
+            3 : "up",
+        }   
         
         state_action_prob_pairs = []
         for state in range(len(self.shield)):

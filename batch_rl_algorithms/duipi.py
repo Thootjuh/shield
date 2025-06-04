@@ -48,6 +48,14 @@ class DUIPI(BatchRLAlgorithm):
                          speed_up_dict, estimate_baseline)
         self.variance_q = np.zeros([self.nb_states, self.nb_actions])
         self.pi = 1 / self.nb_actions * np.ones([self.nb_states, self.nb_actions])
+        self.states = set()
+        for (state, action, next_state) in self.transition_model.keys():
+            self.states.add(state)
+            self.states.add(next_state)
+        if isinstance(R, dict):
+            self.r_min = min(R.values())
+        else:
+            self.r_min = np.min(R)
         print("Starting DUIPI")
 
     def _initial_calculations(self):
@@ -133,6 +141,7 @@ class DUIPI(BatchRLAlgorithm):
         """
         Evaluates the current policy self.pi and calculates its variance, using a sparse transition model.
         """
+        # print("POLICY EVALUATING S")
         # Value function: v(s) = sum_a pi(s,a) * q(s,a)
         self.v = np.einsum('ij,ij->i', self.pi, self.q)
 
@@ -158,17 +167,18 @@ class DUIPI(BatchRLAlgorithm):
 
         # Replace any NaNs or infs due to numerical issues
         self.variance_q = np.nan_to_num(self.variance_q, nan=np.inf, posinf=np.inf)
- 
+        # print("POLICY EVALUATING E")
     def _policy_improvement(self):
         """
         Updates the current policy self.pi.
         """
+        # print("POLICY IMPROVING S")
         q_uncertainty_and_mask_corrected = self.q - self.xi * np.sqrt(self.variance_q)
         # The extra modification to avoid unobserved state-action pairs
-        q_uncertainty_and_mask_corrected[~self.mask] = - np.inf
+        q_uncertainty_and_mask_corrected[~self.mask] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
 
         best_action = np.argmax(q_uncertainty_and_mask_corrected, axis=1)
-        for state in range(self.nb_states):
+        for state in self.states:
             d_s = np.minimum(1 / self.nb_it, 1 - self.pi[state, best_action[state]])
             self.pi[state, best_action[state]] += d_s
             for action in range(self.nb_actions):
@@ -179,3 +189,4 @@ class DUIPI(BatchRLAlgorithm):
                 else:
                     self.pi[state, action] = self.pi[state, action] * (1 - self.pi[state, best_action[state]]) / (
                             1 - self.pi[state, best_action[state]] + d_s)
+        # print("POLICY IMPROVING E")

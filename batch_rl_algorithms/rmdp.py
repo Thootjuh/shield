@@ -6,7 +6,7 @@ from scipy.sparse.linalg import spsolve
 class WorstCaseRMDP(BatchRLAlgorithm):
     NAME = 'WorstCaseRMDP'
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, intervals,
-                 zero_unseen=True, max_nb_it=5000, checks=False, speed_up_dict=None, estimate_baseline=False):
+                 zero_unseen=True, max_nb_it=500, checks=False, speed_up_dict=None, estimate_baseline=False):
         """
         :param transition_intervals: Dictionary mapping (s, a) pairs to a list of (s', [P_min, P_max]).
         """

@@ -60,7 +60,7 @@ class RMin(BatchRLAlgorithm):
         this is that it is not necessary to compute the exact q in every PE step and it did not seem to have an impact
         on the performance of the algorithm
         """
-        self.q[~self.mask] = self.r_min * 1 / (1 - self.gamma)
+        self.q[~self.mask] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
         old_q = np.zeros([self.nb_states, self.nb_actions])
         nb_it = 0
         started = True
