@@ -1794,11 +1794,11 @@ class GymTaxiExperiment(Experiment):
         self.env = gymTaxi()
         print("get values")
         self.nb_states = self.env.get_nb_states()
-        self.traps = [self.nb_states-1]
+        self.traps = [self.nb_states-1, self.nb_states-3]
         self.nb_actions = self.env.get_nb_actions()
         # self.traps = self.env.get_traps()
         self.goal = self.env.get_goal()
-        self.initial_state = self.env.get_init_state()
+        self.initial_state = self.env.pick_initial_state()
         
         self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
@@ -1821,6 +1821,9 @@ class GymTaxiExperiment(Experiment):
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        with open("optimal.txt", "w") as file:
+            for item in pi_star.pi:
+                file.write(f"{item}\n")
         print(f"pi_star_perf = {pi_star_perf}")
         self.fixed_params_exp_list.append(pi_star_perf)
 
@@ -1863,7 +1866,7 @@ class GymTaxiExperiment(Experiment):
                 # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # # print(intervals)
@@ -1886,30 +1889,44 @@ class GymTaxiExperiment(Experiment):
         """
         trajectories = []
         env.reset()
+        goal_counter = 0
+        wrong_pickup_counter = 0
+        crash_counter = 0
+        wrong_drop_counter = 0
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
-            env.reset()
-            state = self.initial_state
+            state = env.get_state()
             is_done = False
             while nb_steps < max_steps and not is_done:
                 # print(is_done)
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
-                while state == -1:
-                    action_choice = np.random.choice(pi.shape[1], p=pi[state])
-                    state, next_state, reward = env.step(action_choice)
-                    print("help!!", action_choice)
-                is_done = env.is_done()                    
+                if reward == 150:
+                    goal_counter+=1
+                is_done = env.is_done() 
+                if is_done:
+                    if reward == -150:
+                        crash_counter+=1
+                    elif reward == -10:
+                        wrong_drop_counter+=1
+                    elif reward == -5:
+                        # print("state ", state, " next: ", next_state)
+                        wrong_pickup_counter+=1
+                                           
                 trajectorY.append([action_choice, state, next_state, reward])
                 state = next_state
                 nb_steps += 1
             trajectories.append(trajectorY)
             env.reset()
-            # env.set_random_state()
+            env.set_random_state()
         batch_traj = [val for sublist in trajectories for val in sublist]
         # temppp = np.array(trajectories)
         # print(temppp)
+        print(goal_counter)
+        print(wrong_pickup_counter)
+        print(wrong_drop_counter)
+        print(crash_counter)
         # print(trajectories)
         return trajectories, batch_traj
             

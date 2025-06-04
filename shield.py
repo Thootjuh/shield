@@ -453,15 +453,27 @@ class ShieldSimplifiedPacman(Shield):
         print(f"with crash states being {self.traps} and success states being {self.goal}")
         
 class ShieldTaxi(Shield):
-    def __init__(self, transition_matrix, traps, goal, intervals):
+    def __init__(self, transition_matrix, traps, goal, intervals, init=0):
         self.model_builder = IntervalMDPBuilderTaxi(transition_matrix, intervals, goal, traps)
+        self.init = init
         super().__init__(transition_matrix, traps, goal, intervals)
         
    
     def calculateShield(self):
         # How likely are we to step into a trap
         prop = "Pmax=? [!\"crash\"U\"goal\"]"
-        
+        # print("max_end_comp")
+        # decomposition = stormpy.get_maximal_end_components(self.model_builder.build_model())
+        # print(decomposition.size)
+        # for mec in decomposition:
+        #     print(mec.size)
+        #     for state, choices in mec:
+        #         taxi_row, taxi_col, pass_loc, dest_idx = self.decode(state)
+        #         print(f"State: {state}: ({taxi_row},{taxi_col}), pass at {pass_loc}, dest at {dest_idx})")
+        #         print(choices)
+        #     print("------------------")
+        # print(max_end.size)
+        # print(next(max_end))
         # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
         # self.printShield()
         # self.shield[:] = 0
@@ -469,7 +481,7 @@ class ShieldTaxi(Shield):
         # self.printShield()
         # self.printShield()
     
-    def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
+    def get_safe_actions_from_shield(self, state, threshold=0.3, buffer = 0.05):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):
@@ -482,9 +494,15 @@ class ShieldTaxi(Shield):
         return safe_actions  
     
     def decode(self, i):
-        if i == 500:
+        if i == self.num_states-1:
             out = [-1, -1, -1, -1]
             return reversed(out)
+        if i == self.num_states-2:
+            out = [-2, -2, -2, -2]
+            return reversed(out)
+        if i == self.num_states-3:
+            out = [-3, -3, -3, -3]
+            return reversed(out) 
         out = []
         out.append(i % 4)
         i = i // 4
@@ -526,6 +544,7 @@ class ShieldTaxi(Shield):
 
 
 class ShieldFrozenLake(Shield):
+
     def __init__(self, transition_matrix, traps, goal, intervals):
         self.model_builder = IntervalMDPBuilderFrozenLake(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
@@ -559,12 +578,6 @@ class ShieldFrozenLake(Shield):
         row = int(state // self.grid_size)
         return col, row
     def printShield(self):
-        ACTIONS = {
-            0 : "left",
-            1 : "down",
-            2 : "right",
-            3 : "up",
-        }
             
         
         state_action_prob_pairs = []

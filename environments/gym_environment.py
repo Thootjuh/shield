@@ -10,12 +10,30 @@ import random
 class gymTaxi:
     def __init__(self):
         self.env = gym.make("CustomTaxi-v0", render_mode="rgb_array")
-        self.sv_model = gymnasium_grid_to_stormvogel(self.env)
+        # self.sv_model = gymnasium_grid_to_stormvogel(self.env)
         self.initial_calculations()
         observation, _ = self.env.env.env.reset()
         self.init = observation
         self.state = observation
         self.terminated = False
+        
+        # print(self.env.env.env.encode(0, 0, 0, 0))
+        # print(self.env.env.env.encode(0, 0, 0, 1))
+        # print(self.env.env.env.encode(0, 0, 0, 2))
+        # print(self.env.env.env.encode(0, 0, 0, 3))
+        # print(self.env.env.env.encode(0, 4, 1, 0))
+        # print(self.env.env.env.encode(0, 4, 1, 1))
+        # print(self.env.env.env.encode(0, 4, 1, 2))
+        # print(self.env.env.env.encode(0, 4, 1, 3))
+        # print(self.env.env.env.encode(4, 0, 2, 0))
+        # print(self.env.env.env.encode(4, 0, 2, 1))
+        # print(self.env.env.env.encode(4, 0, 2, 2))
+        # print(self.env.env.env.encode(4, 0, 2, 3))
+        # print(self.env.env.env.encode(4, 3, 3, 0))
+        # print(self.env.env.env.encode(4, 3, 3, 1))
+        # print(self.env.env.env.encode(4, 3, 3, 2))
+        # print(self.env.env.env.encode(4, 3, 3, 3))
+        
         # print(self.goal_states)
         # for (state,action,next_state) in self.transition_model.keys():
         #     if state != self.nb_states-1:
@@ -23,24 +41,36 @@ class gymTaxi:
         #         # prob = self.transition_model[(state,action,next_state)]
         #         print(f"State: {state}: ({taxi_row},{taxi_col}), pass at {pass_loc}, dest at {dest_idx}), taking action {action} takes you to: {next_state}")
         # print("in ", state, "using ", action, "to ", next_state)
-            
+    
+    def pick_initial_state(self):
+        return self.env.env.env.pick_initial_state()  
     def reset(self):
         observation, _  = self.env.env.env.reset()
         self.state = observation
     
     def step(self, action):
-        if self.state == 500 or self.state in self.goal_states:
-            print("WTF IS ER HIER NOU WEER AAN DE FUCKING HAND DIT KLOPT VOOR GEEN METER!!")
         # Check if crash, if so, move to next anyways and end episode
         old_state = self.state
         next_state, reward, terminated, truncated, info = self.env.env.env.step(action)
         self.terminated = terminated
         self.state = next_state
-        if next_state in self.goal_states:
-            print("WE DID IT!! WE REACHED A GOAL!! BE PROUD!!")
+        if self.state == 5:
+            print("FUCK")
+        if old_state >= 500:
+            print(old_state, " to ", self.state)
+            print("WTF IS ER HIER NOU WEER AAN DE FUCKING HAND DIT KLOPT VOOR GEEN METER!!")
+        # if next_state in self.goal_states:
+        #     print("WE DID IT!! WE REACHED A GOAL!! BE PROUD!!")
         return old_state, next_state, reward
     
     def is_done(self):
+        # if self.terminated:
+        #     # if self.state == self.nb_states-1:
+        #     #     print("Died!!")
+        #     if self.state == self.nb_states-2:
+        #         print("correct drop off")
+        #     # elif self.state ==self.nb_states-3:
+        #     #     print("wrong drop off, passanger angry")
         return self.terminated
     
     
@@ -54,17 +84,21 @@ class gymTaxi:
         for state in P:
             if self.env.env.env.isGoalState(state):
                 self.goal_states.append(state)
-            elif state != self.nb_states-1:
+            if state < self.nb_states-3:
                 for action in P[state]:
                     for prob, next_state, reward, done in P[state][action]:
                         self.transition_model[(state, action, next_state)] = prob
                         self.reward_model[(state, next_state)] = reward
 
         print("goal States are: ", self.goal_states)
+        self.valid_states = []
+        for s in range(self.nb_states-3):
+            _, _, pass_loc, dest_loc = self.env.env.env.decode(s)
+            if pass_loc != dest_loc and s not in self.goal_states:
+                self.valid_states.append(s)
       
-    def set_random_state(self):
-        valid_states = [s for s in range(self.nb_states-1) if s not in self.goal_states]    
-        state = np.random.choice(valid_states)
+    def set_random_state(self):          
+        state = np.random.choice(self.valid_states)
         self.state = state
         self.env.env.env.set_state(state)
         
@@ -93,7 +127,7 @@ class gymTaxi:
         
         pi = (1-epsilon) * pi_sched + epsilon * pi_r        
         return pi    
-        
+    
     def get_baseline_policy(self, epsilon):
         pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         
@@ -106,20 +140,40 @@ class gymTaxi:
         for state in range(len(pi_b)-1):
             taxi_row, taxi_col, pass_loc, dest_loc = self.env.env.env.decode(state)
             dest_row, dest_col = self.env.env.env.locs[dest_loc]
+            
             if (taxi_row, taxi_col) in possible_destinations:
                 if pass_loc < 4:
-                    pi_b[state][4] = 0.5
-                    pi_b[state][0:4] = 0.125
+                    pass_row, pass_col = self.env.env.env.locs[pass_loc]
+                    if taxi_row == pass_row and taxi_col == pass_col:
+                        # print(f"STATE: {state}, where {taxi_row} == {pass_row}, {taxi_col} == {pass_col}")
+                        pi_b[state][4] = 1
+                        # pi_b[state][0:4] = 0.125
+                    else:
+                        pi_b[state][0] = 0.25
+                        pi_b[state][1] = 0.25
+                        pi_b[state][2] = 0.25
+                        pi_b[state][3] = 0.25
                 elif taxi_row == dest_row and taxi_col == dest_col and pass_loc == 4:
                     pi_b[state][5] = 1
                 else:
-                    pi_b[state][0:4] = 0.25
+                    pi_b[state][0] = 0.25
+                    pi_b[state][1] = 0.25
+                    pi_b[state][2] = 0.25
+                    pi_b[state][3] = 0.25
             else:
-                pi_b[state][0:4] = 0.25
+                pi_b[state][0] = 0.25
+                pi_b[state][1] = 0.25
+                pi_b[state][2] = 0.25
+                pi_b[state][3] = 0.25
             # print("state = ", pi_b[state], " which sums to ", sum(pi_b[state]))
         # print(pi_b)
         pi_b[self.nb_states-1][:] = 1/self.nb_actions
-        pi = (1-epsilon) * pi_b + epsilon * pi_r        
+        pi_b[self.nb_states-2][:] = 1/self.nb_actions
+        pi_b[self.nb_states-3][:] = 1/self.nb_actions
+        pi = (1-epsilon) * pi_b + epsilon * pi_r  
+        # for state in range(len(pi_b)):
+        #     print("state ", state, ": ", pi_b[state] ) 
+        # print(pi)     
         return pi
     
     def get_nb_states(self):
@@ -134,6 +188,9 @@ class gymTaxi:
     
     def get_init_state(self):
         return self.init
+    
+    def get_state(self):
+        return self.state
     
     
 class gymIce:
@@ -166,9 +223,6 @@ class gymIce:
         return old_state, next_state, reward
     
     def is_done(self):
-        if self.terminated:
-            if self.state == self.nb_states-1:
-                print("REACHED GOAL!!")
         #     else:
         #         print("Fell :(, self.state = )", self.state)
         return self.terminated
