@@ -331,18 +331,12 @@ class pacmanSimplified:
                                 transition_dict[(state, action, next_state)] += self.lag_chance * (1/(len(possible_g1_actions)*len(possible_g2_actions)))
         # print(transition_dict.keys())                
         # print("we contain this many items",len(transition_dict))  
-        x,y,gx1,gy1,gx2,gy2 = self.decode_int(113027)
-        print(f"From state 113027 a:({x}, {y}), ghost:({gx1},{gy1}) and ({gx2},{gy2})")
-        print(self._is_terminal_state(x,y,gx1,gy1,gx2,gy2))
-        print(self.in_wall(x,y,gx1,gy1,gx2,gy2, True))
+        # x,y,gx1,gy1,gx2,gy2 = self.decode_int(113027)
+        # print(f"From state 113027 a:({x}, {y}), ghost:({gx1},{gy1}) and ({gx2},{gy2})")
+        # print(self._is_terminal_state(x,y,gx1,gy1,gx2,gy2))
+        # print(self.in_wall(x,y,gx1,gy1,gx2,gy2, True))
         for (state, action, next_state), value in transition_dict.items():
-            if state == 113027:
-                x,y,gx1,gy1,gx2,gy2 = self.decode_int(next_state)
-                print(f"From state: {state} we go to: a:({x}, {y}), ghost:({gx1},{gy1}) and ({gx2},{gy2}) action: {action}, with probability: {value}")
-
             if value == 0.0:
-                print("YOU FUCKED IT!!")
-        print("fuck you i quit")           
-        print(counter)
+                print("Zero value in dict!!")      
         self.transition_function = transition_dict
         return transition_dict

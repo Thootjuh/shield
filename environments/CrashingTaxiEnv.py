@@ -216,9 +216,9 @@ class CustomTaxiEnv(TaxiEnv):
                     back_state = self.encode(back_pos[0], back_pos[1], new_pass_idx, dest_idx)
                     back_terminated = False
 
-                self.P[state][action].append((0.7, intended_state, reward, terminated))
-                self.P[state][action].append((0.15, left_state, left_pos[2], left_terminated))
-                self.P[state][action].append((0.15, right_state, right_pos[2], right_terminated))
+                self.P[state][action].append((0.6, intended_state, reward, terminated))
+                self.P[state][action].append((0.2, left_state, left_pos[2], left_terminated))
+                self.P[state][action].append((0.2, right_state, right_pos[2], right_terminated))
                 # self.P[state][action].append((0.05, back_state, back_pos[2], back_terminated))
             else:
                 self.P[state][action].append((1.0, intended_state, reward, terminated))

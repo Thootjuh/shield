@@ -10,7 +10,7 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
     NAME = 'shield-DUIPI'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, bayesian, xi, alpha_prior=0.1,
-                 zero_unseen=True, max_nb_it=5000, checks=False, speed_up_dict=None, estimate_baseline = True):
+                 zero_unseen=True, max_nb_it=500, checks=False, speed_up_dict=None, estimate_baseline = True):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -73,6 +73,7 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
             self.R_state_action_state[s, :, s_prime] = reward  # Assign reward for all actions at (s, s')
 
         self.variance_R = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
+        
 
     def _prepare_P_and_variance_P(self):
         """

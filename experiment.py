@@ -19,7 +19,7 @@ from environments.Airplane_discrete.airplane_baseline_policy import AirplaneBase
 from environments.Slippery_gridworld.gridworld import gridWorld
 from environments.Slippery_gridworld.gridworld_heuristic_policy import GridworldBaselinePolicy
 
-from environments.pacman.pacman_dynamics_two_ghosts import pacmanSimplified
+from environments.pacman.pacman_dynamics_smarter_ghost import pacmanSimplified
 from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 
 from environments.read_env_from_prism import prism_env
@@ -745,14 +745,15 @@ class Experiment:
 
 
 class SimplifiedPacmanExperiment(Experiment):
-    fixed_params_exp_columns = ['seed', 'gamma', 'width', 'height', 'lag_p', 'pi_rand_perf', 'pi_star_perf']   
+    fixed_params_exp_columns = ['seed', 'gamma', 'width', 'height', 'lag_p', 'ghost_opt_chance', 'pi_rand_perf', 'pi_star_perf']   
     variable_params_exp_columns = ['iteration', 'epsilon_baseline', 'pi_b_perf', 'nb_trajectories'] 
     
     def _set_env_params(self):
         self.episodic = True
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         self.lag = float(self.experiment_config['ENV_PARAMETERS']['LAG'])
-        self.env = pacmanSimplified(self.lag)
+        self.ghost_opt_chance = float(self.experiment_config['ENV_PARAMETERS']['GHOST_OPT_CHANCE'])
+        self.env = pacmanSimplified(self.lag, self.ghost_opt_chance)
         self.width = self.env.width
         self.height = self.env.height
         
@@ -766,8 +767,8 @@ class SimplifiedPacmanExperiment(Experiment):
         self.traps = []
         self.goal = []
         for state in range(self.nb_states):
-            x,y,gx1,gy1,gx2,gy2 = self.env.decode_int(state)
-            if self.env._is_terminal_state(x,y,gx1,gy1,gx2,gy2):
+            x,y,gx1,gy1 = self.env.decode_int(state)
+            if self.env._is_terminal_state(x,y,gx1,gy1):
                 if self.env.get_reward_from_int(state) > 0:
                     self.goal.append(state)
                 else:
@@ -780,23 +781,23 @@ class SimplifiedPacmanExperiment(Experiment):
         # for i, state in enumerate(self.R_state_action):
         #     print(f"for state {i} we have {state}")
         
-        self.fixed_params_exp_list = [self.seed, self.gamma, self.width, self.height, self.lag]
+        self.fixed_params_exp_list = [self.seed, self.gamma, self.width, self.height, self.lag, self.ghost_opt_chance]
         
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         print("calcing pi rand")
-        # pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        pi_rand_perf = 0
+        pi_rand_perf = self._policy_evaluation_exact(pi_rand)
+        # pi_rand_perf = 0
         print("pi_rand_perf:", pi_rand_perf)
         print("calcing pi perf")
 
         self.fixed_params_exp_list.append(pi_rand_perf)
         
-        # pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
-        #                  data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
-        # pi_star.fit()    
+        pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        pi_star.fit()    
             
-        # pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        pi_star_perf = 7.7
+        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        # pi_star_perf = 7.7
         print("pi_star_perf:", pi_star_perf)
         self.fixed_params_exp_list.append(pi_star_perf)
         
@@ -823,7 +824,6 @@ class SimplifiedPacmanExperiment(Experiment):
         for _ in np.arange(nb_itt):
             nb_steps = 0
             trajectorY = []
-            
             state = env.state_to_int()
             is_done = False
             while nb_steps < max_steps and not is_done:
@@ -867,14 +867,14 @@ class SimplifiedPacmanExperiment(Experiment):
                 print("Estimating Intervals")  
           
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # print(intervals)
                 print("Calculating Shield")  
                 self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height)
                 self.shielder.calculateShield()
-                self.shielder.printShield()
+                # self.shielder.printShield()
                 # print("----------------------------------------------------------------")
                 print("Running Algorithms")
                 self._run_algorithms()
@@ -1866,7 +1866,7 @@ class GymTaxiExperiment(Experiment):
                 # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
+                self.estimator = PACIntervalEstimator(self.structure, 0.15, self.data, self.nb_actions, alpha=20)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # # print(intervals)

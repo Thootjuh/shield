@@ -395,29 +395,20 @@ class ShieldSimplifiedPacman(Shield):
         super().calculateShieldIntervalFast(prop, self.model_builder.build_model())
     
     def decode_int(self, state_int):
-        H = self.height
-        W = self.width
+        ay = state_int % self.height
+        state_int //= self.height
 
-        by = state_int % H
-        state_int //= H
+        ax = state_int % self.width
+        state_int //= self.width
 
-        bx = state_int % W
-        state_int //= W
+        y = state_int % self.height
+        state_int //= self.height
 
-        ay = state_int % H
-        state_int //= H
+        x = state_int % self.width
 
-        ax = state_int % W
-        state_int //= W
-
-        y = state_int % H
-        state_int //= H
-
-        x = state_int % W
-
-        return x, y, ax, ay, bx, by
+        return x, y, ax, ay
     
-    def get_safe_actions_from_shield(self, state, threshold=0.01, buffer = 0.01):
+    def get_safe_actions_from_shield(self, state, threshold=0.01, buffer = 0.05):
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):
@@ -447,9 +438,9 @@ class ShieldSimplifiedPacman(Shield):
             state = pair[0]
             prob = pair[2]
             action = actions[pair[1]]
-            x, y, gx1, gy1, gx2,gy2 = self.decode_int(state)
-            if prob > 0.01 and prob < 1.0:
-                print(f"Trap State: {state}: a:({x}, {y}), ghost:({gx1},{gy1}) and ({gx2},{gy2}) action: {action}, with probability of getting trapped: {prob}")
+            x, y, gx1, gy1 = self.decode_int(state)
+            if prob > 0.01:
+                print(f"Trap State: {state}: a:({x}, {y}), ghost:({gx1},{gy1}) action: {action}, with probability of getting trapped: {prob}")
         print(f"with crash states being {self.traps} and success states being {self.goal}")
         
 class ShieldTaxi(Shield):
