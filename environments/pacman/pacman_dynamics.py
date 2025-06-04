@@ -262,6 +262,6 @@ class pacmanSimplified:
         # print("we contain this many items",len(transition_dict))  
         for value in transition_dict.values():
             if value == 0.0:
-                print("YOU FUCKED IT!!")           
+                print("zero value in dict")           
         print(counter)
         return transition_dict

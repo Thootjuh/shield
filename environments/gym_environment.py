@@ -54,13 +54,9 @@ class gymTaxi:
         next_state, reward, terminated, truncated, info = self.env.env.env.step(action)
         self.terminated = terminated
         self.state = next_state
-        if self.state == 5:
-            print("FUCK")
         if old_state >= 500:
             print(old_state, " to ", self.state)
-            print("WTF IS ER HIER NOU WEER AAN DE FUCKING HAND DIT KLOPT VOOR GEEN METER!!")
-        # if next_state in self.goal_states:
-        #     print("WE DID IT!! WE REACHED A GOAL!! BE PROUD!!")
+            print("Took action from unreachable state")
         return old_state, next_state, reward
     
     def is_done(self):
