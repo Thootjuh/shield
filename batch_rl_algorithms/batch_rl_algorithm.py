@@ -123,6 +123,7 @@ class BatchRLAlgorithm:
 
         while np.linalg.norm(self.q - old_q) > 10 ** (-9) and self.nb_it < self.max_nb_it:
             self.nb_it += 1
+            print(self.nb_it)
             old_q = self.q.copy()
             self._policy_evaluation()
             # q_func = self._policy_evaluation_old()

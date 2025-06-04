@@ -777,25 +777,25 @@ class SimplifiedPacmanExperiment(Experiment):
         
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         print("calcing pi rand")
-        pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        # pi_rand_perf = 0
+        # pi_rand_perf = self._policy_evaluation_exact(pi_rand)
+        pi_rand_perf = 0
         print("pi_rand_perf:", pi_rand_perf)
         print("calcing pi perf")
 
         self.fixed_params_exp_list.append(pi_rand_perf)
         
-        pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
-                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
-        pi_star.fit()    
+        # pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+        #                  data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        # pi_star.fit()    
             
-        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        # pi_star_perf = 7.7
+        # pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        pi_star_perf = 2.5
         print("pi_star_perf:", pi_star_perf)
         self.fixed_params_exp_list.append(pi_star_perf)
         
-        pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
-        pi_b_perf = self._policy_evaluation_exact(pi_b)
-        print("pi_b_perf:", pi_b_perf)
+        # pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
+        # pi_b_perf = self._policy_evaluation_exact(pi_b)
+        # print("pi_b_perf:", pi_b_perf)
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
 

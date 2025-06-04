@@ -10,7 +10,7 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
     NAME = 'shield-DUIPI'
 
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, bayesian, xi, alpha_prior=0.1,
-                 zero_unseen=True, max_nb_it=5000, checks=False, speed_up_dict=None, estimate_baseline = True):
+                 zero_unseen=True, max_nb_it=500, checks=False, speed_up_dict=None, estimate_baseline = True):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -48,7 +48,10 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
                          speed_up_dict, estimate_baseline)
         self.variance_q = np.zeros([self.nb_states, self.nb_actions])
         self.pi = 1 / self.nb_actions * np.ones([self.nb_states, self.nb_actions])
-        
+        self.states = set()
+        for (state, action, next_state) in self.transition_model.keys():
+            self.states.add(state)
+            self.states.add(next_state)
         self.shield_actions()
         self.mask = self.mask & self.allowed
 
@@ -171,7 +174,7 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
         q_uncertainty_and_mask_corrected[~self.mask] = - np.inf
 
         best_action = np.argmax(q_uncertainty_and_mask_corrected, axis=1)
-        for state in range(self.nb_states):
+        for state in self.states:
             d_s = np.minimum(1 / self.nb_it, 1 - self.pi[state, best_action[state]])
             self.pi[state, best_action[state]] += d_s
             for action in range(self.nb_actions):
