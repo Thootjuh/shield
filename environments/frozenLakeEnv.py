@@ -71,8 +71,9 @@ def generate_random_map(size: int = 8, p: float = 0.8) -> List[str]:
         valid = is_valid(board, size)
     return ["".join(x) for x in board]
 
-GOAL_REWARD = 5
-FALL_REWARD = -10
+GOAL_REWARD = 10
+FALL_REWARD = -20
+STEP_REWARD = -1
 
 class FrozenLakeEnv(Env):
     """
@@ -203,11 +204,12 @@ class FrozenLakeEnv(Env):
             newstate = to_s(newrow, newcol)
             newletter = desc[newrow, newcol]
             terminated = bytes(newletter) in b"GH"
-            reward = 0
+            reward = STEP_REWARD
             if newletter == b"G":
                 reward = GOAL_REWARD
             elif newletter == b"H":
                 reward = FALL_REWARD
+            
             return newstate, reward, terminated
 
         for row in range(nrow):

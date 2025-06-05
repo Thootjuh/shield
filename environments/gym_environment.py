@@ -232,11 +232,15 @@ class gymIce:
         self.nb_actions = len(P[0])
         self.traps = []
         for state in P:
-            for action in P[state]:
-                for prob, next_state, reward, done in P[state][action]:
-                    self.transition_model[(state, action, next_state)] = prob
-                    self.reward_model[(state, next_state)] = reward
             col, row = to_coordinate(state, self.env.env.env)
+            if self.env.env.env.desc[row][col] == b"H":
+                self.traps.append(state)
+            elif self.env.env.env.desc[row][col] != b"G": # Dont add terminal statess
+                for action in P[state]:
+                    for prob, next_state, reward, done in P[state][action]:
+                        self.transition_model[(state, action, next_state)] = prob
+                        if reward != 0:
+                            self.reward_model[(state, next_state)] = reward
             if self.env.env.env.desc[row][col] == b"H":
                 self.traps.append(state)
 
