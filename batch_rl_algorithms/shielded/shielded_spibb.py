@@ -6,7 +6,7 @@ from batch_rl_algorithms.shielded.shielded_batch_rl_algorithm import shieldedBat
 class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
     # Abstract base class for SPIBB (Pi_b-SPIBB) and Lower-SPIBB (Pi_<=b-SPIBB)
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, shield,  zero_unseen=True, checks=False,
-                 max_nb_it=5000, speed_up_dict=None, estimate_baseline=False, shield_baseline=False, shield_data=False, shield_action=True):
+                 max_nb_it=500, speed_up_dict=None, estimate_baseline=False, shield_baseline=False, shield_data=False, shield_action=True):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
