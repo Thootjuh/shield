@@ -1,0 +1,3 @@
+,seed,gamma,width,height,lag_p,pi_rand_perf,pi_star_perf,iteration,epsilon_baseline,pi_b_perf,nb_trajectories,method,hyperparam,method_perf,run_time
+0,1234,0.95,7,7,0.0,-0.7919324544909165,0.0,0,0.5,-1.3790545284254425,25000,SPIBB,3,1.6409779496830104,55.49105978012085
+1,1234,0.95,7,7,0.0,-0.7919324544909165,0.0,0,0.5,-1.3790545284254425,25000,shield-SPIBB,3,1.7140721557426897,53.32152605056763
