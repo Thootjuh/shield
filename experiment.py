@@ -590,6 +590,9 @@ class Experiment:
             r_min.fit()
             t_1 = time.time()
             r_min_perf = self._policy_evaluation_exact(r_min.pi)
+            with open("rmin.txt", "w") as file:
+                for item in r_min.pi:
+                    file.write(f"{item}\n")
             method = r_min.NAME
             method_perf = r_min_perf
             hyperparam = N_wedge
@@ -2025,6 +2028,9 @@ class GymFrozenLakeExperiment(Experiment):
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        with open("optimal.txt", "w") as file:
+            for item in pi_star.pi:
+                file.write(f"{item}\n")
         print(f"pi_star_perf = {pi_star_perf}")
         self.fixed_params_exp_list.append(pi_star_perf)
 

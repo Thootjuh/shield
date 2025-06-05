@@ -73,7 +73,7 @@ def generate_random_map(size: int = 8, p: float = 0.8) -> List[str]:
 
 GOAL_REWARD = 10
 FALL_REWARD = -20
-STEP_REWARD = -1
+STEP_REWARD = 0
 
 class FrozenLakeEnv(Env):
     """
@@ -222,9 +222,12 @@ class FrozenLakeEnv(Env):
                         li.append((1.0, s, 0, True))
                     else:
                         if is_slippery:
-                            for b in [(a - 1) % 4, a, (a + 1) % 4]:
+                            li.append(
+                                    (0.6, *update_probability_matrix(row, col, a))
+                                )
+                            for b in [(a - 1) % 4, (a + 1) % 4]:
                                 li.append(
-                                    (1.0 / 3.0, *update_probability_matrix(row, col, b))
+                                    (0.2, *update_probability_matrix(row, col, b))
                                 )
                         else:
                             li.append((1.0, *update_probability_matrix(row, col, a)))
