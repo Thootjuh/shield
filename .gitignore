@@ -4,6 +4,7 @@ SPIBBmaster/__pycache__/
 batch_rl_algorithms/__pycache__/
 *.py[cod]git 
 
+
 # Ignore specific files
 paths.ini
 output.txt
@@ -12,8 +13,9 @@ test.py
 tiny-01.drn
 standard.txt
 shielded.txt
-# Ignore all .png files except those in the graphs folder
+
 *.png
+*.txt
 
 # Ignore everything in the results folder
 results/

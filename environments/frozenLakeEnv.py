@@ -72,7 +72,7 @@ def generate_random_map(size: int = 8, p: float = 0.8) -> List[str]:
     return ["".join(x) for x in board]
 
 GOAL_REWARD = 10
-FALL_REWARD = -20
+FALL_REWARD = -25
 STEP_REWARD = 0
 
 class FrozenLakeEnv(Env):

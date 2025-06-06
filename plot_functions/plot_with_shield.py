@@ -20,14 +20,16 @@ def read_data_from_directory(directory_path):
         print(f"Reading file: {file}")
         data = pd.read_csv(file)
         # Rename `nb_trajectories` to `length_trajectory` for consistency
+        print(data.columns)
+        data = data.rename(columns={'baseline_perf': 'pi_b_perf'})
         data = data.rename(columns={'nb_trajectories': 'length_trajectory'})
         combined_data = pd.concat([combined_data, data], ignore_index=True)
-    
+        print(data.columns)
     return combined_data
 
 def extract_data(data):
     # Extract relevant columns
-    relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time']]
+    relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time', 'pi_b_perf', 'pi_star_perf']]
 
     # Group by method and calculate the average performance for each length_trajectory
     return relevant_data_new
@@ -83,13 +85,23 @@ def plot_data_interval(data, filename, method_name):
     
 def plot_data(data, filename, method_name):
     grouped_data = data.groupby(['method', 'length_trajectory'])
-    data = grouped_data.method_perf.mean().reset_index()
+    grouped_data = grouped_data.method_perf.mean().reset_index()
     # Plot average performance against length_trajectory for each method
     plt.figure(figsize=(12, 8))
-    for method in data['method'].unique():
-        method_data = data[data['method'] == method]
+    plt.xscale('log')
+    for method in grouped_data['method'].unique():
+        method_data = grouped_data[grouped_data['method'] == method]
         plt.plot(method_data['length_trajectory'], method_data['method_perf'], label=method)
-
+    
+    # Plot optimal and baseline policy if present
+    if 'pi_star_perf' in data.columns:
+        print("YESS")
+        grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
+        plt.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color='black', label='optimal policy')
+    if 'pi_b_perf' in data.columns:
+        print("YESS2")
+        grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
+        plt.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='black', label='baseline policy')
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance')
@@ -112,13 +124,23 @@ def calculate_cvar(data, alpha=0.01):
                     cvar_results.append({'method': method, 'length_trajectory': traj, 'cvar': cvar})
     return pd.DataFrame(cvar_results)
 
-def plot_cvar(cvar_data, filename, method_name):
+def plot_cvar(cvar_data, filename, method_name, data):
    # Plot CVaR against trajectory for each method
     plt.figure(figsize=(12, 8))
+    plt.xscale('log')
     for method in cvar_data['method'].unique():
         method_data = cvar_data[cvar_data['method'] == method]
         plt.plot(method_data['length_trajectory'], method_data['cvar'], label=method)
-
+    
+    # Plot optimal and baseline policy if present
+    if 'pi_star_perf' in data.columns:
+        print("YESS")
+        grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
+        plt.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color='black', label='optimal policy')
+    if 'pi_b_perf' in data.columns:
+        print("YESS2")
+        grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
+        plt.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='black', label='baseline policy')
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')
     plt.ylabel('1%-CVaR (Conditional Value at Risk)')
@@ -163,8 +185,8 @@ def plot_all_methods(data, filename):
 # Group by method/method-shield
 directory_path = sys.argv[1]
 data = read_data_from_directory(directory_path)
-column_names = data.columns
 data = extract_data(data)
+print(data.columns)
 data_list = group_by_methods(data)
     
 plot_all_methods(data, "results_all.png")
@@ -177,4 +199,4 @@ for method in data_list:
     plot_data_interval(method, filename, method_name)
     filename = "results_" + method_name + "_cvar.png"
     cvar_data = calculate_cvar(method)
-    plot_cvar(cvar_data, filename, method_name)
+    plot_cvar(cvar_data, filename, method_name, data)
