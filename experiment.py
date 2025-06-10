@@ -19,7 +19,7 @@ from environments.Airplane_discrete.airplane_baseline_policy import AirplaneBase
 from environments.Slippery_gridworld.gridworld import gridWorld
 from environments.Slippery_gridworld.gridworld_heuristic_policy import GridworldBaselinePolicy
 
-from environments.pacman.pacman_dynamics_smarter_ghost import pacmanSimplified
+from environments.pacman.pacman_dynamics_two_ghosts import pacmanSimplified
 from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 
 from environments.read_env_from_prism import prism_env
@@ -36,6 +36,7 @@ from batch_rl_algorithms.mbie import MBIE
 from batch_rl_algorithms.pi_star import PiStar
 from batch_rl_algorithms.rmdp import WorstCaseRMDP
 from batch_rl_algorithms.shielded.shielded_rmdp import Shield_WorstCaseRMDP
+from batch_rl_algorithms.shielded.shielded_baseline import shieldedBaseline
 from batch_rl_algorithms.shielded.shielded_spibb import Shield_SPIBB, Shield_Lower_SPIBB
 from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
@@ -178,12 +179,14 @@ class Experiment:
         self.speed_up_dict['count_state_action'] = preparer.count_state_action
         self.speed_up_dict['count_state_action_state'] = preparer.count_state_action_state
 
+        
     def _run_algorithms(self):
         """
         Runs all algorithms for one data set.
         """
         if self.speed_up:
             self._compute_speed_up_dict()
+        self._run_shielded_baseline()
         for key in self.algorithms_dict.keys():
             # print("key = ", key)
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
@@ -218,7 +221,21 @@ class Experiment:
                 self._run_rmdp_shielded(key)
             else:
                 print("KEY NOT FOUND")
+            
 
+    def _run_shielded_baseline(self):
+        pi_b_s = shieldedBaseline(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        t_0 = time.time()
+        pi_b_s.fit()
+        t_1 = time.time()
+        basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
+        method = pi_b_s.NAME
+        method_perf = basic_rl_perf
+        hyperparam = None
+        run_time = t_1 - t_0
+        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        
     def _run_rmdp_shielded(self, key):
         """
         Runs rmdp for one data set.
@@ -770,8 +787,8 @@ class SimplifiedPacmanExperiment(Experiment):
         self.traps = []
         self.goal = []
         for state in range(self.nb_states):
-            x,y,gx1,gy1 = self.env.decode_int(state)
-            if self.env._is_terminal_state(x,y,gx1,gy1):
+            x,y,gx1,gy1,gx2,gy2= self.env.decode_int(state)
+            if self.env._is_terminal_state(x,y,gx1,gy1,gx2,gy2):
                 if self.env.get_reward_from_int(state) > 0:
                     self.goal.append(state)
                 else:
@@ -2155,7 +2172,7 @@ import numpy as np
 from collections import defaultdict
 from scipy.sparse import dok_matrix, identity
 from scipy.sparse.linalg import spsolve
-
+from scipy.sparse.linalg import bicgstab
 
 def policy_evaluation_exact(pi, r, p, gamma):
     if isinstance(p, dict):
@@ -2181,28 +2198,30 @@ def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
     num_states, num_actions = pi.shape
     # Compute expected rewards under policy
     r_pi = np.einsum('ij,ij->i', pi, r)
-
+    print("a")
     # Build sparse p_pi as a dictionary {(s, s'): prob}
     p_pi_sparse = defaultdict(float)
 
     for (s, a, s_prime), prob in p_sparse.items():
         p_pi_sparse[(s, s_prime)] += pi[s, a] * prob
-
+    print("b")
     # Convert sparse p_pi to a scipy sparse matrix for solving
     P_pi = dok_matrix((num_states, num_states), dtype=np.float64)
     for (s, s_prime), prob in p_pi_sparse.items():
         P_pi[s, s_prime] = prob
-
+    print("c")
     # Solve (I - gamma * P_pi) * v = r_pi
     A = identity(num_states, format='csr') - gamma * P_pi.tocsr()
-    v = spsolve(A, r_pi)
-
+    v, info = bicgstab(A, r_pi, atol=1e-6)
+    if info != 0:
+        print("Warning: Iterative solver did not converge")
+    print("d")
     # Compute Q-values
     q = np.zeros((num_states, num_actions))
     for (s, a, s_prime), prob in p_sparse.items():
         q[s, a] += prob * v[s_prime]
     q = r + gamma * q
-
+    print("e")
     return v, q, dict(p_pi_sparse)
 
 def policy_evaluation_exact_dense(pi, r, p, gamma):

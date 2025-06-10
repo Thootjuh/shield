@@ -81,8 +81,8 @@ def get_subdirectories(parent_directory):
     subdirectories = [os.path.join(parent_directory, d) for d in os.listdir(parent_directory)
                       if os.path.isdir(os.path.join(parent_directory, d))]
     
-    if len(subdirectories) != 5:
-        raise ValueError(f"Expected 5 subdirectories, but found {len(subdirectories)} in {parent_directory}")
+    if len(subdirectories) != len(environments):
+        raise ValueError(f"Expected {len(environments)} subdirectories, but found {len(subdirectories)} in {parent_directory}")
     
     return subdirectories  # Sort for consistency
 
@@ -125,6 +125,6 @@ def plot_multiple_directories(parent_directory, output_filename):
     plt.show()
     
     
-environments = ["Aircraft Collision Avoidance", "Wet Chicken", "Slippery Grid World", "Random MDPs", "Pacman"]
+environments = ["Random MDPs","Wet Chicken", "Pacman", "Frozen Lake"]
 parent_directory = sys.argv[1]
 plot_multiple_directories(parent_directory, "combined_resultsBig.png")

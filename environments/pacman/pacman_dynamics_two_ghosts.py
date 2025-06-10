@@ -11,7 +11,7 @@ GOAL_REWARD = 10
 EATEN_REWARD = -10
 
 class pacmanSimplified:
-    def __init__(self, lag_chance):
+    def __init__(self, lag_chance, opt_chance):
         self.lag_chance = lag_chance
         print("lag chance = ", lag_chance)
         self.width = 7
