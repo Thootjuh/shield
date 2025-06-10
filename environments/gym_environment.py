@@ -265,9 +265,12 @@ class gymIce:
     
     def get_traps(self):
         return self.traps
+    
     def get_baseline_policy(self, epsilon):
         pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
-        
+        pi_b = np.zeros((self.nb_states, self.nb_actions))
+        pi_b[:,1] = 0.5
+        pi_b[:,2] = 0.5
         # stormpy_model = mapping.stormvogel_to_stormpy(self.sv_model)
         # prop = stormpy.parse_properties('Rmax=? [S]')
         # # res = model_checking(self.model, f)
@@ -279,5 +282,6 @@ class gymIce:
         #     choice = scheduler.get_choice(next_state).get_deterministic_choice()
         #     pi_sched[next_state][choice] = 1
         
-        # pi = (1-epsilon) * pi_sched + epsilon * pi_r        
-        return pi_r  
+        pi = (1-epsilon) * pi_b + epsilon * pi_r
+        print(pi_b)        
+        return pi  
