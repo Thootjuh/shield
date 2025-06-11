@@ -40,6 +40,7 @@ from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
 from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
+from batch_rl_algorithms.shielded.shielded_baseline import shieldedBaseline
 
 
 from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld, ShieldSimplifiedPacman, ShieldPrism, ShieldTaxi
@@ -183,6 +184,7 @@ class Experiment:
         """
         if self.speed_up:
             self._compute_speed_up_dict()
+        self._run_shielded_baseline()
         for key in self.algorithms_dict.keys():
             # print("key = ", key)
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
@@ -217,6 +219,21 @@ class Experiment:
                 self._run_rmdp_shielded(key)
             else:
                 print("KEY NOT FOUND")
+            
+
+    def _run_shielded_baseline(self):
+        pi_b_s = shieldedBaseline(pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
+        t_0 = time.time()
+        pi_b_s.fit()
+        t_1 = time.time()
+        basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
+        method = pi_b_s.NAME
+        method_perf = basic_rl_perf
+        hyperparam = None
+        run_time = t_1 - t_0
+        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
 
     def _run_rmdp_shielded(self, key):
         """
