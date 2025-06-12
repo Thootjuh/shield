@@ -20,7 +20,7 @@ class Garnets:
             
         self.current_state = self.initial_state
         self.final_state = nb_states - 1
-        self.punishment = -10
+        self.punishment = -5
         self._set_traps(nb_traps)
         print("traps are: ", self.traps)
         

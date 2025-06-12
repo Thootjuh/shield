@@ -224,8 +224,9 @@ class Experiment:
             
 
     def _run_shielded_baseline(self):
-        pi_b_s = shieldedBaseline(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
-                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        pi_b_s = shieldedBaseline(pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
         t_0 = time.time()
         pi_b_s.fit()
         t_1 = time.time()

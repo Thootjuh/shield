@@ -4,7 +4,7 @@ LENGTH = 5
 WIDTH = 5
 MAX_TURBULENCE = 3.5
 MAX_VELOCITY = 3
-FALL_REWARD = -100
+FALL_REWARD = -50
 ACTION_TRANSLATOR = {
     'Drift': np.zeros(2),
     'Neutral': np.array([-1, 0]),

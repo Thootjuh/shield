@@ -212,41 +212,68 @@ def plot_all_cvar(data, filename):
 def plot_all_methods(data, filename):
     grouped_data = data.groupby(['method', 'length_trajectory'])
     grouped_data = grouped_data.method_perf.mean().reset_index()
+    # base_methods = set(method.split('shield-')[-1] for method in grouped_data['method'].unique())
+    sorted_methods = sorted(grouped_data['method'].unique(), key=lambda x: (x.replace('shield-', ''), 'shield-' in x))
+
+    # Sort methods so they have the right color
+    color_methods = [m for m in sorted_methods if m != 'shielded_baseline']
+    unshielded = [m for m in color_methods if not m.startswith('shield-')]
+    shielded = [m for m in color_methods if m.startswith('shield-')]
+    shielded_dict = {m.replace('shield-', ''): m for m in shielded}
+    color_methods = []
+    for method in sorted(unshielded):
+        color_methods.append(method)
+        if method in shielded_dict:
+            color_methods.append(shielded_dict[method])
     
-    base_methods = set(method.split('shield-')[-1] for method in grouped_data['method'].unique())
-    colors = plt.cm.get_cmap('tab10', len(base_methods))
-    
+    # set colors
+    colors = plt.cm.get_cmap('tab20', 20)
     plt.figure(figsize=(12, 8))
     plt.xscale('log')
     color_map = {}
-    for idx, base_method in enumerate(sorted(base_methods)):
+    for idx, base_method in enumerate(color_methods):
         base_color = colors(idx)
         color_map[base_method] = base_color
+    
     
     sorted_methods = sorted(grouped_data['method'].unique(), key=lambda x: (x.replace('shield-', ''), 'shield-' in x))
     
     for method in sorted_methods:
-        base_method = method.split('shield-')[-1]
-        method_data = grouped_data[grouped_data['method'] == method]
-        linestyle = '--' if 'shield-' in method else '-'
-        color = color_map[base_method]
-        
-        plt.plot(method_data['length_trajectory'], method_data['method_perf'],
+        if method == 'shielded_baseline':
+            base_method = method.split('shield-')[-1]
+            method_data = grouped_data[grouped_data['method'] == method]
+            linestyle = '--'
+            color = 'black'
+            plt.plot(method_data['length_trajectory'], method_data['method_perf'],
                  label=method, linestyle=linestyle, color=color)
+        else:
+            # Plot the normal performance
+            base_method = method.split('shield-')[-1]
+            method_data = grouped_data[grouped_data['method'] == method]
+            linestyle = '-'
+            color = color_map[method]
+            
+            plt.plot(method_data['length_trajectory'], method_data['method_perf'],
+                    label=method, linestyle=linestyle, color=color)
+            
+            #plot the CVar performance
+            method_data_raw = data[data['method'] == method]
+            cvar_data = calculate_cvar(method_data_raw)
+            linestyle = '--'
+            plt.plot(cvar_data['length_trajectory'], cvar_data['cvar'],
+                    label=method+'_cvar', linestyle=linestyle, color=color)
     
     # Plot optimal and baseline policy if present
     if 'pi_star_perf' in data.columns:
-        print("YESS")
         grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
         plt.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color='black', label='optimal policy')
     if 'pi_b_perf' in data.columns:
-        print("YESS2")
         grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
         plt.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='black', label='baseline policy')
     
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance')
-    plt.title('Average Performance vs. Length Trajectory for all methods')
+    plt.title('Average Performance vs. Length Trajectory for all methods on the '+ env_name +' environment')
     plt.legend(title='Method', loc='best')
     plt.grid(True)
     plt.savefig(filename)
@@ -254,19 +281,20 @@ def plot_all_methods(data, filename):
    
 # Group by method/method-shield
 directory_path = sys.argv[1]
+env_name = sys.argv[2]
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
 print(data.columns)
 data_list = group_by_methods(data)
     
-# plot_all_methods(data, "results_all.png")
+plot_all_methods(data, "results_all_"+env_name+".png")
 # plot_all_cvar(data, "results_all_cvar.png")
-for method in data_list:
-    method_name = method.iloc[0]['method'] # This assumes that the first entry in the dataframe is the non-shielded variant, which is the case for the included experiments
-    # filename = "results_" + method_name + ".png"
-    # plot_data(method, filename, method_name)
-    # filename = "results_" + method_name + "_intervall.png"
-    # plot_data_interval(method, filename, method_name)
-    filename = "results_" + method_name + "_cvar.png"
-    cvar_data = calculate_cvar(method)
-    plot_cvar(cvar_data, filename, method_name, method)
+# for method in data_list:
+#     method_name = method.iloc[0]['method'] # This assumes that the first entry in the dataframe is the non-shielded variant, which is the case for the included experiments
+#     # filename = "results_" + method_name + ".png"
+#     # plot_data(method, filename, method_name)
+#     # filename = "results_" + method_name + "_intervall.png"
+#     # plot_data_interval(method, filename, method_name)
+#     filename = "results_" + method_name + "_cvar.png"
+#     cvar_data = calculate_cvar(method)
+#     plot_cvar(cvar_data, filename, method_name, method)
