@@ -88,7 +88,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
             allowed_actions = self.shield.get_safe_actions_from_shield(i)
             temp = np.zeros(len(state))
             for action in allowed_actions:
-                temp[action] = state[action]
+                temp[action] = state[action] + 0.01
             total_mass = np.sum(temp)
             for j in range(len(temp)):
                 policy[i][j] = temp[j]/total_mass
