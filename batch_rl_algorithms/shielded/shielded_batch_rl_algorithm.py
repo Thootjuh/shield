@@ -1,8 +1,8 @@
 from batch_rl_algorithms.batch_rl_algorithm import BatchRLAlgorithm
 import numpy as np
 class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
-    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen=True, max_nb_it=5000,
-                 checks=False, speed_up_dict=None, estimate_baseline=False, shield_baseline=False, shield_data=False):
+    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen=True, max_nb_it=100,
+                 checks=False, speed_up_dict=None, estimate_baseline=True, shield_baseline=True, shield_data=False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -88,7 +88,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
             allowed_actions = self.shield.get_safe_actions_from_shield(i)
             temp = np.zeros(len(state))
             for action in allowed_actions:
-                temp[action] = state[action]
+                temp[action] = state[action] + 0.01
             total_mass = np.sum(temp)
             for j in range(len(temp)):
                 policy[i][j] = temp[j]/total_mass

@@ -34,27 +34,6 @@ class shieldedBaseline(shieldedBatchRLAlgorithm):
         self.nb_states = nb_states
         self.nb_actions = nb_actions
         self.pi = self.pi_b.copy()
-
-
-
-
-        if estimate_baseline:
-            self.pi_b = self.estimate_baseline()
-            # self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
-            self.pi = self.pi_b.copy()
-            
-
-                   
-    def modifyPolicyWithShield(self, policy):
-        for i, state in enumerate(policy):
-            allowed_actions = self.shield.get_safe_actions_from_shield(i)
-            temp = np.zeros(len(state))
-            for action in allowed_actions:
-                temp[action] = state[action] + 0.01
-            total_mass = np.sum(temp)
-            for j in range(len(temp)):
-                policy[i][j] = temp[j]/total_mass
-        return policy 
     
     def fit(self):
         """

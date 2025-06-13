@@ -13,6 +13,10 @@ class Shield_WorstCaseRMDP(shieldedBatchRLAlgorithm):
         :param transition_intervals: Dictionary mapping (s, a) pairs to a list of (s', [P_min, P_max]).
         """
         self.intervals = intervals
+        if isinstance(R, dict):
+            self.r_min = min(R.values())
+        else:
+            self.r_min = np.min(R)
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen, max_nb_it, checks, speed_up_dict, estimate_baseline)
     
     def build_worst_case_model(self):
@@ -133,7 +137,7 @@ class Shield_WorstCaseRMDP(shieldedBatchRLAlgorithm):
         """
         
         self.q_shield = self.q.copy()
-        self.q_shield[~self.allowed] = -np.inf
+        self.q_shield[~self.allowed] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
         self.pi = np.zeros([self.nb_states, self.nb_actions])
         for s in range(self.nb_states):    
             self.pi[s, np.argmax(self.q_shield[s, :])] = 1

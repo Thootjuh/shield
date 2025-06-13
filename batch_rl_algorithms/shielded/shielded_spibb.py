@@ -6,7 +6,7 @@ from batch_rl_algorithms.shielded.shielded_batch_rl_algorithm import shieldedBat
 class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
     # Abstract base class for SPIBB (Pi_b-SPIBB) and Lower-SPIBB (Pi_<=b-SPIBB)
     def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, shield,  zero_unseen=True, checks=False,
-                 max_nb_it=500, speed_up_dict=None, estimate_baseline=False, shield_baseline=False, shield_data=False, shield_action=True):
+                 max_nb_it=500, speed_up_dict=None, estimate_baseline=False, shield_baseline=True, shield_data=False, shield_action=True):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
         choosing action a in state s by the behavior policy
@@ -42,11 +42,16 @@ class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
                          speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline, shield_baseline=shield_baseline, shield_data=shield_data)
         self.pi_b_masked = self.pi_b.copy()
         self.pi_b_masked[self.mask] = 0
-        
+        self.states = set()
+        for (state, action, next_state) in self.transition_model.keys():
+            self.states.add(state)
+            self.states.add(next_state)
         if self.shield_action:
             self.shield_actions()
             # print("shield action")
             self.mask = self.mask & self.allowed
+            self.pi_b_masked[self.mask] = 0
+        
 
     
     def _initial_calculations(self):
@@ -81,7 +86,7 @@ class Shield_SPIBB(Shield_SPIBB_abstract):
         Updates the current policy self.pi.
         """
         pi = self.pi_b_masked.copy()
-        for s in range(self.nb_states):
+        for s in self.states:
             if len(self.q[s, self.mask[s]]) > 0:
                 pi_b_masked_sum = np.sum(self.pi_b_masked[s])
                 pi[s][np.where(self.mask[s])[0][np.argmax(self.q[s, self.mask[s]])]] = 1 - pi_b_masked_sum

@@ -8,7 +8,7 @@ class BatchRLAlgorithm:
     # Dynamic Programming following 'Reinforcement Learning - An Introduction' by Sutton and Barto and
     # https://github.com/RomainLaroche/SPIBB. Additionally, it also implements the estimations of the transition
     # probabilities and reward matrix and some validation checks.
-    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen=True, max_nb_it=50,
+    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen=True, max_nb_it=100,
                  checks=False, speed_up_dict=None, estimate_baseline = False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
@@ -57,10 +57,11 @@ class BatchRLAlgorithm:
             self.count_state_action_state = self.speed_up_dict['count_state_action_state']
         else:
             self._count()
-        self._initial_calculations()
         if estimate_baseline:
             self.pi_b = self.estimate_baseline()
             self.pi = self.pi_b.copy()
+        self._initial_calculations()
+
             
     def array_to_dict(self, arr):
         sparse_dict = {}
@@ -121,10 +122,9 @@ class BatchRLAlgorithm:
         old_q = np.ones([self.nb_states, self.nb_actions])
         self.nb_it = 0
 
-        while np.linalg.norm(self.q - old_q) > 10 ** (-9) and self.nb_it < self.max_nb_it:
+        while np.linalg.norm(self.q - old_q) > 10 ** (-3) and self.nb_it < self.max_nb_it:
+            # print(self.nb_it)
             self.nb_it += 1
-            if self.nb_it % 25 == 0:
-                print(self.nb_it)
             old_q = self.q.copy()
             self._policy_evaluation()
             # q_func = self._policy_evaluation_old()
@@ -215,20 +215,27 @@ class BatchRLAlgorithm:
         """
         Computes the action-value function for the current policy self.pi.
         """
-        # Compute v(s) = sum_a pi(s,a) * q(s,a)
-        self.v = np.einsum('ij,ij->i', self.pi, self.q)
+        # nb_sa = self.nb_actions * self.nb_states
+        # M = np.eye(nb_sa) - self.gamma * np.einsum('ijk,kl->ijkl', self.transition_model_old, self.pi).reshape(nb_sa, nb_sa)
+        # self.q = np.linalg.solve(M, self.R_state_action.reshape(nb_sa)).reshape(self.nb_states, self.nb_actions)
+        nb_sa = self.nb_actions * self.nb_states
 
-        # Initialize new q-values
-        new_q = np.zeros_like(self.q)
+        # Create identity matrix I
+        M = eye(nb_sa, format="lil")  # LIL format allows efficient element-wise updates
 
-        # Update q(s,a) using Bellman expectation
-        for (s, a, s_prime), prob in self.transition_model.items():
-            new_q[s, a] += prob * self.gamma * self.v[s_prime]
+        # Iterate over sparse transition_model
+        for (i, j, k), value in self.transition_model.items():
+            for l in range(self.nb_actions):  # Iterate over action indices
+                M[i * self.nb_actions + j, k * self.nb_actions + l] -= self.gamma * value * self.pi[k, l]
 
-        # Add expected rewards
-        new_q += self.R_state_action
+        # Convert M to CSR for efficient solving
+        M = M.tocsr()
 
-        self.q = new_q
+        # Solve for q
+        q_vector = spsolve(M, self.R_state_action.reshape(nb_sa))  # Solve Mq = R
+        self.q = q_vector.reshape(self.nb_states, self.nb_actions)  # Reshape to desired format
+        # print("YAHOO! ITSA ME MARIO ANDA ITSA MY BROTHA LUIGI! YAHOO!!")
+        # print(self.q)
 
     def _check_if_valid_policy(self):
         checks = np.unique((np.sum(self.pi, axis=1)))

@@ -10,9 +10,12 @@ output.txt
 stormpy_test.py
 test.py
 tiny-01.drn
+standard.txt
+shielded.txt
 
 # Ignore all .png files except those in the graphs folder
 *.png
+*.txt
 
 # Ignore everything in the results folder
 results/

@@ -6,7 +6,7 @@ from batch_rl_algorithms.shielded.shielded_batch_rl_algorithm import shieldedBat
 class Shield_RMin(shieldedBatchRLAlgorithm):
     NAME = 'shield-R_min'
 
-    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, shield, zero_unseen=True, max_nb_it=5000,
+    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, shield, zero_unseen=True, max_nb_it=100,
                  checks=False, speed_up_dict=None, estimate_baseline=False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
@@ -59,7 +59,7 @@ class Shield_RMin(shieldedBatchRLAlgorithm):
         this is that it is not necessary to compute the exact q in every PE step and it did not seem to have an impact
         on the performance of the algorithm
         """
-        self.q[~self.mask] = self.r_min * 1 / (1 - self.gamma)
+        self.q[~self.mask] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
         old_q = np.zeros([self.nb_states, self.nb_actions])
         nb_it = 0
         started = True

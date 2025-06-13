@@ -47,7 +47,9 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen, max_nb_it, checks,
                          speed_up_dict, estimate_baseline)
         self.variance_q = np.zeros([self.nb_states, self.nb_actions])
-        self.pi = 1 / self.nb_actions * np.ones([self.nb_states, self.nb_actions])
+        # self.pi = 1 / self.nb_actions * np.ones([self.nb_states, self.nb_actions])
+        # print("pi_b = ", self.pi_b)
+        # print("pi_b = ", self.pi)
         self.states = set()
         for (state, action, next_state) in self.transition_model.keys():
             self.states.add(state)
@@ -175,13 +177,14 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
 
         best_action = np.argmax(q_uncertainty_and_mask_corrected, axis=1)
         for state in self.states:
-            d_s = np.minimum(1 / self.nb_it, 1 - self.pi[state, best_action[state]])
-            self.pi[state, best_action[state]] += d_s
-            for action in range(self.nb_actions):
-                if action == best_action[state]:
-                    continue
-                elif self.pi[state, best_action[state]] == 1:
-                    self.pi[state, action] = 0
-                else:
-                    self.pi[state, action] = self.pi[state, action] * (1 - self.pi[state, best_action[state]]) / (
-                            1 - self.pi[state, best_action[state]] + d_s)
+            if len(self.q[state, self.mask[state]]) > 0:
+                d_s = np.minimum(1 / self.nb_it, 1 - self.pi[state, best_action[state]])
+                self.pi[state, best_action[state]] += d_s
+                for action in range(self.nb_actions):
+                    if action == best_action[state]:
+                        continue
+                    elif self.pi[state, best_action[state]] == 1:
+                        self.pi[state, action] = 0
+                    else:
+                        self.pi[state, action] = self.pi[state, action] * (1 - self.pi[state, best_action[state]]) / (
+                                1 - self.pi[state, best_action[state]] + d_s)

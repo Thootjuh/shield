@@ -8,7 +8,7 @@ class RMin(BatchRLAlgorithm):
     # Algorithm for Near-Optimal Reinforcement Learning' from Ronen I. Brafman and Moshe Tennenholtz
     NAME = 'R_min'
 
-    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, zero_unseen=True, max_nb_it=5000,
+    def __init__(self, pi_b, gamma, nb_states, nb_actions, data, R, N_wedge, episodic, zero_unseen=True, max_nb_it=100,
                  checks=False, speed_up_dict=None, estimate_baseline=False):
         """
         :param pi_b: numpy matrix with shape (nb_states, nb_actions), such that pi_b(s,a) refers to the probability of
@@ -36,7 +36,6 @@ class RMin(BatchRLAlgorithm):
         times a state-action-next-state triplet has been visited
         :param N_wedge: Hyper-parameter of R-MIN
         """
-        print("initializing R-MIN")
         self.N_wedge = N_wedge
         if isinstance(R, dict):
             self.r_min = min(R.values())
@@ -61,12 +60,12 @@ class RMin(BatchRLAlgorithm):
         this is that it is not necessary to compute the exact q in every PE step and it did not seem to have an impact
         on the performance of the algorithm
         """
-        self.q[~self.mask] = self.r_min * 1 / (1 - self.gamma)
+        self.q[~self.mask] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
         old_q = np.zeros([self.nb_states, self.nb_actions])
         nb_it = 0
         started = True
 
-        while started or (np.linalg.norm(self.q - old_q) > 0.00001 and nb_it < self.max_nb_it / 10):
+        while started or (np.linalg.norm(self.q - old_q) > 0.001 and nb_it < self.max_nb_it / 10):
             started = False
             nb_it += 1
             old_q = self.q.copy()
