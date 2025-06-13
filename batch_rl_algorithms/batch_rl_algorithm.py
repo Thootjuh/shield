@@ -215,27 +215,20 @@ class BatchRLAlgorithm:
         """
         Computes the action-value function for the current policy self.pi.
         """
-        # nb_sa = self.nb_actions * self.nb_states
-        # M = np.eye(nb_sa) - self.gamma * np.einsum('ijk,kl->ijkl', self.transition_model_old, self.pi).reshape(nb_sa, nb_sa)
-        # self.q = np.linalg.solve(M, self.R_state_action.reshape(nb_sa)).reshape(self.nb_states, self.nb_actions)
-        nb_sa = self.nb_actions * self.nb_states
+        # Compute v(s) = sum_a pi(s,a) * q(s,a)
+        self.v = np.einsum('ij,ij->i', self.pi, self.q)
 
-        # Create identity matrix I
-        M = eye(nb_sa, format="lil")  # LIL format allows efficient element-wise updates
+        # Initialize new q-values
+        new_q = np.zeros_like(self.q)
 
-        # Iterate over sparse transition_model
-        for (i, j, k), value in self.transition_model.items():
-            for l in range(self.nb_actions):  # Iterate over action indices
-                M[i * self.nb_actions + j, k * self.nb_actions + l] -= self.gamma * value * self.pi[k, l]
+        # Update q(s,a) using Bellman expectation
+        for (s, a, s_prime), prob in self.transition_model.items():
+            new_q[s, a] += prob * self.gamma * self.v[s_prime]
 
-        # Convert M to CSR for efficient solving
-        M = M.tocsr()
+        # Add expected rewards
+        new_q += self.R_state_action
 
-        # Solve for q
-        q_vector = spsolve(M, self.R_state_action.reshape(nb_sa))  # Solve Mq = R
-        self.q = q_vector.reshape(self.nb_states, self.nb_actions)  # Reshape to desired format
-        # print("YAHOO! ITSA ME MARIO ANDA ITSA MY BROTHA LUIGI! YAHOO!!")
-        # print(self.q)
+        self.q = new_q
 
     def _check_if_valid_policy(self):
         checks = np.unique((np.sum(self.pi, axis=1)))
