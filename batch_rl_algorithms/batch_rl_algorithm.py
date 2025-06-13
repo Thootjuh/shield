@@ -57,10 +57,11 @@ class BatchRLAlgorithm:
             self.count_state_action_state = self.speed_up_dict['count_state_action_state']
         else:
             self._count()
-        self._initial_calculations()
         if estimate_baseline:
             self.pi_b = self.estimate_baseline()
             self.pi = self.pi_b.copy()
+        self._initial_calculations()
+
             
     def array_to_dict(self, arr):
         sparse_dict = {}
