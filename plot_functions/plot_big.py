@@ -83,34 +83,6 @@ def plot_data_interval(data, filename, method_name):
     plt.savefig(filename)
     plt.show()
     
-def plot_data(data, filename, method_name):
-    grouped_data = data.groupby(['method', 'length_trajectory'])
-    grouped_data = grouped_data.method_perf.mean().reset_index()
-    # Plot average performance against length_trajectory for each method
-    plt.figure(figsize=(12, 8))
-    plt.xscale('log')
-    for method in grouped_data['method'].unique():
-        method_data = grouped_data[grouped_data['method'] == method]
-        plt.plot(method_data['length_trajectory'], method_data['method_perf'], label=method)
-    
-    # Plot optimal and baseline policy if present
-    if 'pi_star_perf' in data.columns:
-        print("YESS")
-        grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
-        plt.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color='black', label='optimal policy')
-    if 'pi_b_perf' in data.columns:
-        print("YESS2")
-        grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
-        plt.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='black', label='baseline policy')
-    # Set plot labels and legend
-    plt.xlabel('Length Trajectory')
-    plt.ylabel('Average Method Performance')
-    plt.title(f'Average Performance vs. Length Trajectory for {method_name}')
-    plt.legend(title='Method')
-    plt.grid(True)
-    plt.savefig(filename)
-    plt.show()
-    
 def calculate_cvar(data, alpha=0.01):
     # Calculate CVaR for each method and trajectory
     cvar_results = []
@@ -123,91 +95,6 @@ def calculate_cvar(data, alpha=0.01):
                     cvar = traj_data[traj_data <= threshold].mean()  # Calculate the mean of the bottom 1%
                     cvar_results.append({'method': method, 'length_trajectory': traj, 'cvar': cvar})
     return pd.DataFrame(cvar_results)
-
-def plot_cvar(cvar_data, filename, method_name, data):
-    grouped_data = data.groupby(['method', 'length_trajectory'])
-    grouped_data = grouped_data.method_perf.mean().reset_index()
-    # Plot average performance against length_trajectory for each method
-    plt.figure(figsize=(12, 8))
-    # plt.xscale('log')
-    for method in grouped_data['method'].unique():
-        method_data = grouped_data[grouped_data['method'] == method]
-        linestyle = '-'
-        color ='blue' if 'shield-' in method else 'orange'
-        plt.plot(method_data['length_trajectory'], method_data['method_perf'], label=method, linestyle=linestyle, color=color)
-        
-    # Plot CVaR against trajectory for each method
-    # plt.figure(figsize=(12, 8))
-    # plt.xscale('log')
-    for method in cvar_data['method'].unique():
-        method_data = cvar_data[cvar_data['method'] == method]
-        linestyle = '--'
-        color ='blue' if 'shield-' in method else 'orange'
-        plt.plot(method_data['length_trajectory'], method_data['cvar'], label=method+'_cvar', linestyle=linestyle, color=color)
-    
-    # Plot optimal and baseline policy if present
-    if 'pi_star_perf' in data.columns:
-        print("YESS")
-        grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
-        plt.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color='black', label='optimal policy')
-    if 'pi_b_perf' in data.columns:
-        print("YESS2")
-        grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
-        plt.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='black', label='baseline policy')
-    # Set plot labels and legend
-    plt.xlabel('Length Trajectory')
-    plt.ylabel('1%-CVaR (Conditional Value at Risk)')
-    plt.title(f'1%-CVaR vs. Length Trajectory for {method_name}')
-    handles, labels = plt.gca().get_legend_handles_labels()
-    order = [0, 2, 1, 3, 4, 5]
-    plt.legend([handles[i] for i in order], [labels[i] for i in order], title='Method')
-    plt.grid(True)
-    plt.savefig(filename)
-    plt.show()
-
-def plot_all_cvar(data, filename):
-    grouped_data = data.groupby(['method', 'length_trajectory'])
-    grouped_data = grouped_data.method_perf.mean().reset_index()
-    
-    base_methods = set(method.split('shield-')[-1] for method in grouped_data['method'].unique())
-    colors = plt.cm.get_cmap('tab10', len(base_methods))
-    
-    plt.figure(figsize=(12, 8))
-    plt.xscale('log')
-    color_map = {}
-    for idx, base_method in enumerate(sorted(base_methods)):
-        base_color = colors(idx)
-        color_map[base_method] = base_color
-    
-    sorted_methods = sorted(grouped_data['method'].unique(), key=lambda x: (x.replace('shield-', ''), 'shield-' in x))
-    
-    for method in sorted_methods:
-        base_method = method.split('shield-')[-1]
-        method_data = grouped_data[grouped_data['method'] == method]
-        cvar_data = calculate_cvar(method_data)
-        linestyle = '--' if 'shield-' in method else '-'
-        color = color_map[base_method]
-        
-        plt.plot(cvar_data['length_trajectory'], cvar_data['cvar'],
-                 label=method, linestyle=linestyle, color=color)
-    
-    # Plot optimal and baseline policy if present
-    if 'pi_star_perf' in data.columns:
-        print("YESS")
-        grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
-        plt.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color='black', label='optimal policy')
-    if 'pi_b_perf' in data.columns:
-        print("YESS2")
-        grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
-        plt.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='black', label='baseline policy')
-    
-    plt.xlabel('Length Trajectory')
-    plt.ylabel('Average Method Performance')
-    plt.title('Average Performance vs. Length Trajectory for all methods')
-    plt.legend(title='Method', loc='best')
-    plt.grid(True)
-    plt.savefig(filename)
-    plt.show()
 
 def plot_all_methods(data, filename):
     grouped_data = data.groupby(['method', 'length_trajectory'])

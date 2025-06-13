@@ -59,6 +59,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
             # self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
             self.pi = self.pi_b.copy()
         if shield_baseline:
+            print("WAHOO")
             self.pi_b = self.modifyPolicyWithShield(pi_b.copy())
             self.pi = self.pi_b.copy()
         self._initial_calculations()

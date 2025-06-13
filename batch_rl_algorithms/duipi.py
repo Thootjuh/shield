@@ -189,4 +189,3 @@ class DUIPI(BatchRLAlgorithm):
                 else:
                     self.pi[state, action] = self.pi[state, action] * (1 - self.pi[state, best_action[state]]) / (
                             1 - self.pi[state, best_action[state]] + d_s)
-        # print("POLICY IMPROVING E")

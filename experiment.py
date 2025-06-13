@@ -363,6 +363,10 @@ class Experiment:
             spibb.fit()
             t_1 = time.time()
             spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            
+            with open("spibb_shielded.txt", "w") as file:
+                    for item in spibb.pi:
+                        file.write(f"{item}\n")
             method = spibb.NAME
             method_perf = spibb_perf
             hyperparam = N_wedge
@@ -522,6 +526,9 @@ class Experiment:
             spibb.fit()
             t_1 = time.time()
             spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            with open("spibb_standard.txt", "w") as file:
+                for item in spibb.pi:
+                    file.write(f"{item}\n")
             method = spibb.NAME
             method_perf = spibb_perf
             hyperparam = N_wedge
