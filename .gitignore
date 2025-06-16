@@ -16,6 +16,7 @@ shielded.txt
 
 *.png
 *.txt
+*.pdf
 
 # Ignore everything in the results folder
 results/

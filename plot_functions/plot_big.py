@@ -163,18 +163,19 @@ def plot_all_methods(data, filename):
     plt.title('Average Performance vs. Length Trajectory for all methods on the '+ env_name +' environment')
     plt.legend(title='Method', loc='best')
     plt.grid(True)
-    plt.savefig(filename)
+    plt.savefig(filename, format='pdf')
     plt.show()
    
 # Group by method/method-shield
 directory_path = sys.argv[1]
-env_name = sys.argv[2]
+# env_name = sys.argv[2]
+env_name = "Random MDPs"
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
 print(data.columns)
 data_list = group_by_methods(data)
     
-plot_all_methods(data, "results_all_"+env_name+".png")
+plot_all_methods(data, "results_all_random_MDPs.pdf")
 # plot_all_cvar(data, "results_all_cvar.png")
 # for method in data_list:
 #     method_name = method.iloc[0]['method'] # This assumes that the first entry in the dataframe is the non-shielded variant, which is the case for the included experiments
