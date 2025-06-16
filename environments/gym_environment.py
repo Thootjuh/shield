@@ -284,4 +284,4 @@ class gymIce:
         
         pi = (1-epsilon) * pi_b + epsilon * pi_r
         # print(pi_b)        
-        return pi_r
+        return pi
