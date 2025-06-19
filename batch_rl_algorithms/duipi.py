@@ -162,8 +162,6 @@ class DUIPI(BatchRLAlgorithm):
             var1 = (self.gamma ** 2) * (prob ** 2) * self.variance_v[s_prime]
             var2 = (r_term ** 2) * self.variance_P[s, a, s_prime]
             var3 = (prob ** 2) * self.variance_R[s, a, s_prime]
-            if var2 != 0:
-                print("var 2 = ", var2)
             self.variance_q[s, a] += var1 + var2 + var3
 
         # Replace any NaNs or infs due to numerical issues

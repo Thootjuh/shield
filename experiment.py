@@ -895,7 +895,7 @@ class SimplifiedPacmanExperiment(Experiment):
                 print("Estimating Intervals")  
           
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # print(intervals)
@@ -1329,7 +1329,7 @@ class WetChickenExperiment(Experiment):
                     #         y = state % 5
                     #         print(f"In state ({x},{y}), using action {actions[action]} has the following possible next states: {self.structure[state][action]}")
                     goal_states = self.find_closest_states(list(range(len(self.structure))), self.length)
-                    self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
+                    self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=2)
                     self.intervals = self.estimator.get_intervals()
                     self.shielder = ShieldWetChicken(self.structure, self.width, self.length, goal_states, self.intervals)
                     self.shielder.calculateShield()
@@ -1495,7 +1495,7 @@ class RandomMDPsExperiment(Experiment):
 
                 # print("----------------------------------------------------------------")                
                 self.structure = self.reduce_transition_matrix(self.P)
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 self.shielder = ShieldRandomMDP(self.structure, self.traps, [self.garnet.final_state], self.intervals)
@@ -2098,7 +2098,7 @@ class GymFrozenLakeExperiment(Experiment):
                 # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # # print(intervals)

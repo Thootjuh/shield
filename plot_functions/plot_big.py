@@ -175,7 +175,7 @@ data = extract_data(data)
 print(data.columns)
 data_list = group_by_methods(data)
     
-plot_all_methods(data, "results_all_random_MDPs.pdf")
+plot_all_methods(data, "results_test.pdf")
 # plot_all_cvar(data, "results_all_cvar.png")
 # for method in data_list:
 #     method_name = method.iloc[0]['method'] # This assumes that the first entry in the dataframe is the non-shielded variant, which is the case for the included experiments
