@@ -1894,7 +1894,7 @@ class GymTaxiExperiment(Experiment):
                 # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.15, self.data, self.nb_actions, alpha=20)
+                self.estimator = PACIntervalEstimator(self.structure, 0.15, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # # print(intervals)
