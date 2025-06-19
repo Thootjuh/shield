@@ -13,7 +13,6 @@ EATEN_REWARD = -10
 class pacmanSimplified:
     def __init__(self, lag_chance):
         self.lag_chance = lag_chance
-        print("lag chance = ", lag_chance)
         self.width = 9
         self.height = 9
         self.nb_states = ((self.width)*(self.height))**2
@@ -122,12 +121,10 @@ class pacmanSimplified:
         
         # Reached Goal
         if x == self.goal[0] and y == self.goal[1]:
-            # print("REACHED THE GOAL!!")
             return True
         
         # Eaten
         if x == self._state[1][0] and y == self._state[1][1]:
-            # print("GOT EATEN :(")
             return True
         
         return False
@@ -150,21 +147,18 @@ class pacmanSimplified:
     def is_valid_move(self, x, y, action):
         # Get the movement offset from the ACTION_TRANSLATOR
         dx, dy = ACTION_TRANSLATOR[action]
-        # print(f"x = {x}, y = {y}, dx = {dx}, dy = {dy}")
+
         # Compute the new position
         x_hat = x + dx
         y_hat = y + dy
 
         # Check if the new position is valid
         if x_hat < 0 or x_hat >= self.width or y_hat < 0 or y_hat >= self.height:
-            # print("wrong")
             return False # Invalid move (out of bounds)
             
         if (x_hat, y_hat) in self.walls:
-            # print("wrong")
             return False  # Invalid move (collision with a wall)
         
-        # print("right")
         return True  # Valid move
 
     def step(self, action_choice):
@@ -212,8 +206,6 @@ class pacmanSimplified:
 
         for next_state in range(self.nb_states):
             reward = self.get_reward_from_int(next_state)
-            # if next_state % 100 == 0:
-            #     print(next_state)
             if reward != 0:
                 for state in range(self.nb_states):
                     # reward_matrix[state, next_state] = self.get_reward_from_int(next_state)
@@ -258,10 +250,5 @@ class pacmanSimplified:
                         if self.lag_chance > 0:
                             next_state = self.encode_int(x, y, next_g_state[0], next_g_state[1])
                             transition_dict[(state, action, next_state)] += self.lag_chance * (1/len(possible_g_actions))
-        # print(transition_dict.keys())                
-        # print("we contain this many items",len(transition_dict))  
-        for value in transition_dict.values():
-            if value == 0.0:
-                print("zero value in dict")           
-        print(counter)
+
         return transition_dict

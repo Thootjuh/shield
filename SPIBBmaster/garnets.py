@@ -22,11 +22,9 @@ class Garnets:
         self.final_state = nb_states - 1
         self.punishment = -5
         self._set_traps(nb_traps)
-        print("traps are: ", self.traps)
         
         _, _, q_star, _ = self._find_farther_state(self.gamma)
         while isinstance(q_star, int):
-            print("regenerating transitions and traps")
             self.transition_function = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
             self._generate_transition_function()
             self._set_traps(self.nb_traps)
@@ -182,8 +180,6 @@ class Garnets:
         pi, v, q = self._perturb_policy(pi, q_star, p, r_reshaped, baseline_target_perf,
                                         perturbation_reduction_factor, gamma)
 
-        # print("trans = ", self.transition_function)
-        # print("final = ", self.final_state)
         return pi, q, pi_star_perf, v[0], pi_rand_perf
 
     def _perturb_policy(self, pi, q_star, p, r_reshaped, baseline_target_perf,

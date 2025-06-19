@@ -60,8 +60,6 @@ def state_action_density(pi, p):
     x_0[0] = 1
     p_pi = np.einsum('ijk, ij->ik', p, pi)
     d = np.dot(x_0, np.linalg.inv((np.eye(p_pi.shape[0]) - p_pi)))
-    print(d)
-    print(d.sum())
     dxa = np.minimum(1,np.einsum('i, ij->ij', d, pi))
     dxaf = dxa[:,2:]
     xs = [1,2,3,5,7,10,15,20,30,50,70,100,150,200,300,500,700,1000,1500,2000,3000,5000,7000,10000]
@@ -72,10 +70,6 @@ def state_action_density(pi, p):
         z = (x*dxaf*(1-dxaf)**(x-1)).sum()
         ys.append(y)
         zs.append(z)
-    print(ys)
-    print(zs)
-    print(dxa)
-    print(dxaf)
 
 
 def softmax(q, temp):

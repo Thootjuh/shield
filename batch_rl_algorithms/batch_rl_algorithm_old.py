@@ -136,9 +136,6 @@ class BatchRLAlgorithm:
         expected reward when choosing action a in state s in the estimated MDP.
         """
         self.R_state_action = np.einsum('ijk,ik->ij', self.transition_model, self.R_state_state)
-        # print(f"estimated R_state_action = ")
-        # for i, state in enumerate(self.R_state_action):
-        #     print(f"for state {i} we have {state}")
     
 
     def _policy_improvement(self):

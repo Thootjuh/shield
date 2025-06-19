@@ -125,9 +125,6 @@ class WetChicken:
                         transition_function[(state, action_nb, x_hat * self.length + y_new)] += prob_mass
                     transition_function[(nb_states-1, action_nb, 0)] = 1.0
         
-        # for state in range(len(P)):
-        #     for action in range(len(P[state])):
-        #         print(P[state][action])
         transition_function = {key: value for key, value in transition_function.items() if value != 0.0}
         return transition_function
 
@@ -145,7 +142,6 @@ class WetChicken:
             reward_function[(state, nb_states-1)] = FALL_REWARD
         # R[:, nb_states-1] = FALL_REWARD
         reward_function = {key: value for key, value in reward_function.items() if value != 0.0}
-        # print(reward_function)
         return reward_function
 
     def evaluate_policy(self, nb_evaluations):
@@ -158,7 +154,4 @@ class WetChicken:
 if __name__ == '__main__':
     wet_chicken = WetChicken(5, 5, 3.5, 3, discrete=False)
     action = 0
-    print(wet_chicken.step(action))
-    print(wet_chicken.step(action))
-    print(wet_chicken.step(action))
 

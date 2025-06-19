@@ -24,7 +24,6 @@ WINDOW_SIZE = (550, 350)
 class CustomTaxiEnv(TaxiEnv):
     def __init__(self, render_mode: Optional[str] = None):
         self.desc = np.asarray(MAP, dtype="c")
-        # print(self.desc)
         self.locs = locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
         self.locs_colors = [(255, 0, 0), (0, 255, 0), (255, 255, 0), (0, 0, 255)]
         self.goal_states = [0, 85, 410, 475, 501]
@@ -104,7 +103,6 @@ class CustomTaxiEnv(TaxiEnv):
                             # )
         for act in range(num_actions):
             self.P[500][act].append((0.0, 500, 0, True))
-        # print(self.P)                
         self.initial_state_distrib /= self.initial_state_distrib.sum()
         self.action_space = spaces.Discrete(num_actions)
         self.observation_space = spaces.Discrete(self.num_states)

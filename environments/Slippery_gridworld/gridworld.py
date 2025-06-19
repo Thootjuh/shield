@@ -142,8 +142,7 @@ class gridWorld:
         self._state[0] = x_hat
         self._state[1] = y_hat
         new_state = self.get_state_int()
-        # if new_state > 21:
-        #     print("new state", new_state)
+
         return old_state, new_state, self.get_reward()
     
     def get_reward_function(self):
@@ -153,8 +152,7 @@ class gridWorld:
         
         for state in range(self.nb_states):
             reward_matrix[(state,goal_state)] = REWARD
-        # reward_matrix[:, goal_state] = REWARD
-        # print(reward_matrix)
+
         return reward_matrix
     
     def get_transition_function(self):
@@ -200,10 +198,7 @@ class gridWorld:
                     # Action Reset
                     transition_function[(state,2,init)] = 1
                     transition_function[(state,3, init)] = 1        
-        # for state in range(len(transition_function)):
-        #     print(f"in state {self.get_state_from_int(state)}, we have the following transition functions:")
-        #     for action in range(len(transition_function[state])):
-        #          print(f"for action {action}: {transition_function[state][action]}")
+
         return transition_function
                 
                         

@@ -48,7 +48,6 @@ class Shield_SPIBB_abstract(shieldedBatchRLAlgorithm):
             self.states.add(next_state)
         if self.shield_action:
             self.shield_actions()
-            # print("shield action")
             self.mask = self.mask & self.allowed
             self.pi_b_masked[self.mask] = 0
         

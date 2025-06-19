@@ -46,8 +46,6 @@ class Shield:
                     transition.value
                     transitions[transition.column] = transition.value()
                 transition_probs[(state.id, action.id)] = transitions
-        # print("and now for something completely different: the scheduler")
-        # print(result.scheduler)
         return probs, transition_probs
     
     def calculateShieldIntervalFast(self, prop, model):
@@ -69,16 +67,13 @@ class Shield:
                     for next_state, trans_prob in trans.items():
                         worst_case_transitions[next_state] = trans_prob.lower()
                     remaining_states = list(worst_case_transitions.keys())
-                    # print("remaining states are: ", remaining_states)
                     total_mass = sum(worst_case_transitions.values())
                     
                     #get the worst next state and add mass untill we reach upper
                     while total_mass < 1 and len(remaining_states) >= 1:
                         # get the worst next state
                         worst_next_state = min(remaining_states, key=lambda i: state_probabilities[i])
-                        # print("worst_next_state = ", worst_next_state)
                         remaining_states = [state for state in remaining_states if state != worst_next_state]
-                        # print("remaining states are: ", remaining_states)
                         # add mass untill we reach max_prob or total_mass = 1
                         bounds = trans[worst_next_state]
                         difference = bounds.upper()-bounds.lower()
@@ -89,7 +84,6 @@ class Shield:
                     value = 0  
                     for next_state, trans_prob in worst_case_transitions.items():                        
                         value += trans_prob*state_probabilities[next_state]
-                        # print("mid = ", trans_prob, "prob = ", state_probabilities[next_state], "new value = ", value)
                     self.shield[state][action] = max(min(1.0, 1-value), 0.0)
         end_total_time = time.time()
         
@@ -99,7 +93,6 @@ class Shield:
         start_total_time = time.time()
         for state in range(len(self.structure)):
             for action in range(len(self.structure[state])):
-                # print(f"shield for state {state} and action {action}")
                 if state in self.traps:
                     self.shield[state][action] = 1
                 elif state in self.goal:
@@ -109,8 +102,6 @@ class Shield:
                     model = model_function(state, action, next_states)
                     r1 = self.invokeStorm(model, prop)
                     self.shield[state][action] = 1-r1
-                    # raise("hold on a god damn second")
-                # time.sleep(100)
         end_total_time = time.time()
         
 
@@ -132,11 +123,6 @@ class Shield:
         task.set_robust_uncertainty(True)
         result = stormpy.check_interval_mdp(model, task, env)
         initial_state = model.initial_states[0]
-        
-        # for state in model.states:
-        #     for action in state.actions:
-        #         for transition in action.transitions:
-        #             print("From state {} by action {}, with probability {}, go to state {}".format(state, action, transition.value(), transition.column))
         
         return result.at(initial_state)
 
@@ -453,18 +439,7 @@ class ShieldTaxi(Shield):
     def calculateShield(self):
         # How likely are we to step into a trap
         prop = "Pmax=? [!\"crash\"U\"goal\"]"
-        # print("max_end_comp")
-        # decomposition = stormpy.get_maximal_end_components(self.model_builder.build_model())
-        # print(decomposition.size)
-        # for mec in decomposition:
-        #     print(mec.size)
-        #     for state, choices in mec:
-        #         taxi_row, taxi_col, pass_loc, dest_idx = self.decode(state)
-        #         print(f"State: {state}: ({taxi_row},{taxi_col}), pass at {pass_loc}, dest at {dest_idx})")
-        #         print(choices)
-        #     print("------------------")
-        # print(max_end.size)
-        # print(next(max_end))
+    
         # super().calculateShieldInterval(prop, self.builder.build_model_with_init)
         # self.printShield()
         # self.shield[:] = 0

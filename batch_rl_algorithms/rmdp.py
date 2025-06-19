@@ -87,7 +87,6 @@ class WorstCaseRMDP(BatchRLAlgorithm):
 
         for (i, j), val in result.items():
             self.R_state_action[i, j] = val
-        # print(f"estimated R_state_action = {self.R_state_action}")      
     
     def _policy_evaluation(self):
         """

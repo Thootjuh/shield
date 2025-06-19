@@ -141,7 +141,6 @@ class DUIPI(BatchRLAlgorithm):
         """
         Evaluates the current policy self.pi and calculates its variance, using a sparse transition model.
         """
-        # print("POLICY EVALUATING S")
         # Value function: v(s) = sum_a pi(s,a) * q(s,a)
         self.v = np.einsum('ij,ij->i', self.pi, self.q)
 
@@ -166,12 +165,10 @@ class DUIPI(BatchRLAlgorithm):
 
         # Replace any NaNs or infs due to numerical issues
         self.variance_q = np.nan_to_num(self.variance_q, nan=np.inf, posinf=np.inf)
-        # print("POLICY EVALUATING E")
     def _policy_improvement(self):
         """
         Updates the current policy self.pi.
         """
-        # print("POLICY IMPROVING S")
         q_uncertainty_and_mask_corrected = self.q - self.xi * np.sqrt(self.variance_q)
         # The extra modification to avoid unobserved state-action pairs
         q_uncertainty_and_mask_corrected[~self.mask] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))

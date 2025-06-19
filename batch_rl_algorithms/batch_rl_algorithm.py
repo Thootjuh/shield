@@ -123,17 +123,11 @@ class BatchRLAlgorithm:
         self.nb_it = 0
 
         while np.linalg.norm(self.q - old_q) > 10 ** (-3) and self.nb_it < self.max_nb_it:
-            # print(self.nb_it)
             self.nb_it += 1
             old_q = self.q.copy()
             self._policy_evaluation()
-            # q_func = self._policy_evaluation_old()
             self._policy_improvement()
-            # for i in range(len(q_func)):
-            #     for j in range(len(q_func[i])):
-            #         if q_func[i,j] != self.q[i,j]:
-            #             print(q_func[i,j], " does not equal ", self.q[i,j])
-            # print("next_it")
+            
             if self.checks:
                 self._check_if_valid_policy()            
             
@@ -234,8 +228,6 @@ class BatchRLAlgorithm:
         # Solve for q
         q_vector = spsolve(M, self.R_state_action.reshape(nb_sa))  # Solve Mq = R
         self.q = q_vector.reshape(self.nb_states, self.nb_actions)  # Reshape to desired format
-        # print("YAHOO! ITSA ME MARIO ANDA ITSA MY BROTHA LUIGI! YAHOO!!")
-        # print(self.q)
 
     def _check_if_valid_policy(self):
         checks = np.unique((np.sum(self.pi, axis=1)))

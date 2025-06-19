@@ -17,12 +17,11 @@ def read_data_from_directory(directory_path):
     for file in csv_files:
         print(f"Reading file: {file}")
         data = pd.read_csv(file)
+        
         # Rename `nb_trajectories` to `length_trajectory` for consistency
-        # print(data.columns)
         data = data.rename(columns={'baseline_perf': 'pi_b_perf'})
         data = data.rename(columns={'nb_trajectories': 'length_trajectory'})
         combined_data = pd.concat([combined_data, data], ignore_index=True)
-        # print(data.columns)
     return combined_data
 
 def extract_data(data):
@@ -152,7 +151,7 @@ def main(parent_directory):
     labels = ['DUIPI', 'DUIPI (CVaR)', 'Shielded-DUIPI', 'Shielded-DUIPI (CVaR)', 
     'SPIBB', 'SPIBB (CVaR)', 'Shielded-SPIBB', 'Shielded-SPIBB (CVaR)', 
     'Shielded Baseline', 'Optimal', 'Baseline']
-    # print(labels)
+
     fig.legend(handles, labels, loc='lower center', ncol=3, fontsize='15', title='Methods')
 
     plt.subplots_adjust(hspace=0.3)

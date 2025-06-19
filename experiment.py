@@ -188,7 +188,6 @@ class Experiment:
             self._compute_speed_up_dict()
         self._run_shielded_baseline()
         for key in self.algorithms_dict.keys():
-            # print("key = ", key)
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
                 self._run_spibb(key)
             elif key in {ExactSoftSPIBB.NAME, ApproxSoftSPIBB.NAME, LowerApproxSoftSPIBB.NAME,
@@ -380,7 +379,6 @@ class Experiment:
         :param key: shield_SPIBB.NAME or shield_Lower_SPIBB.NAME, depending on which algorithm is supposed to be run
         """
         # 1. Modified data
-        # print("modified data")
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
@@ -398,7 +396,7 @@ class Experiment:
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
         
         # 2. Shield on Actions 
-        # print("shield Actions")
+        # shield Actions")
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
@@ -417,7 +415,6 @@ class Experiment:
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
         
         # 3. Shield on Actions + Modified Data
-        # print("shield_actions + modified data")
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
@@ -436,7 +433,6 @@ class Experiment:
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
         
         # 4. Shield on Baseline
-        # print("shield baseline")
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
@@ -455,7 +451,6 @@ class Experiment:
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
         
         # 5. Shield on Baseline + Modified Data
-        # print("shield baseline + modified data")
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
@@ -474,7 +469,6 @@ class Experiment:
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
         
         # 6. Shield on Baseline + Shield on sactions
-        # print("shield baseline + shield actions")
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
@@ -493,7 +487,6 @@ class Experiment:
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
         
         # 7. Shield on Baseline + Shield on actions + Modified Data
-        # print("shield baseline + shield actions + modified data")
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                              nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
@@ -789,7 +782,7 @@ class SimplifiedPacmanExperiment(Experiment):
         self.nb_actions = 4
         
         self.initial_state = self.env.state_to_int()
-        print("init = ", self.initial_state)
+        
         print("create transition function")
         self.P = self.env.get_transition_function()
         self.traps = []
@@ -806,8 +799,7 @@ class SimplifiedPacmanExperiment(Experiment):
         self.R_state_state = self.env.get_reward_function()
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         
-        # for i, state in enumerate(self.R_state_action):
-        #     print(f"for state {i} we have {state}")
+
         
         self.fixed_params_exp_list = [self.seed, self.gamma, self.width, self.height, self.lag, self.ghost_opt_chance]
         
@@ -816,7 +808,7 @@ class SimplifiedPacmanExperiment(Experiment):
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
         # pi_rand_perf = 0
         print("pi_rand_perf:", pi_rand_perf)
-        print("calcing pi perf")
+        print("calcing pi star")
 
         self.fixed_params_exp_list.append(pi_rand_perf)
         
@@ -847,7 +839,6 @@ class SimplifiedPacmanExperiment(Experiment):
         """
         current_nb_trajectories = len(trajectories)
         nb_itt =nb_trajectories - current_nb_trajectories
-        # print(pi)
         env.reset()
         for _ in np.arange(nb_itt):
             nb_steps = 0
@@ -857,9 +848,7 @@ class SimplifiedPacmanExperiment(Experiment):
             while nb_steps < max_steps and not is_done:
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
-                # print(f"in state {env.decode_int(state)}, action {action_choice} leads to state {env.decode_int(next_state)} with reward of {reward}")
                 is_done = env.is_done()                    
-                # print(is_done)
                 trajectorY.append([action_choice, state, next_state, reward])
                 state = next_state
                 nb_steps += 1
@@ -891,19 +880,15 @@ class SimplifiedPacmanExperiment(Experiment):
                 self.data = trajectories
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")  
           
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                # print(intervals)
                 print("Calculating Shield")  
                 self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
-                # print("----------------------------------------------------------------")
                 print("Running Algorithms")
                 self._run_algorithms()
 
@@ -960,14 +945,8 @@ class SlipperyGridworldExperiment(Experiment):
         self.P = self.env.get_transition_function()
         self.traps = self.env.get_traps()
         self.goal = self.env.get_int_from_state(self.env.goal)
-        # print("real transition model = ")
-        # print(self.P)
-        # for state in range(len(self.P)):
-        #     print(f"in state {self.env.decode_int(state)}, we have the following actions")
-        #     for action in range(len(self.P[state])):
-        #         print(self.P[state][action])
+
         self.R_state_state = self.env.get_reward_function()
-        # print(self.R_state_state)
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         self.fixed_params_exp_list = [self.seed, self.gamma, self.width, self.height, self.slip_p, self.escape_p]
         
@@ -1000,7 +979,6 @@ class SlipperyGridworldExperiment(Experiment):
         """
         current_trajectories = len(trajectories)
         nb_itt = nb_trajectories - current_trajectories
-        # print(pi)
         counter = 0
         for _ in np.arange(nb_itt):
             nb_steps = 0
@@ -1009,19 +987,15 @@ class SlipperyGridworldExperiment(Experiment):
             state = env.get_state_int()
             is_done = False
             while nb_steps < max_steps and not is_done:
-                # print(pi[state])
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
-                # print(f"in state {env.decode_int(state)}, action {action_choice} leads to state {env.decode_int(next_state)} with reward of {reward}")
                 is_done = env.is_finished()                    
-                # print(is_done)
                 trajectorY.append([action_choice, state, next_state, reward])
                 state = next_state
                 nb_steps += 1
             trajectories.append(trajectorY)
             if is_done:
                 counter+=1
-        print(counter)
         batch_traj = [val for sublist in trajectories for val in sublist]
         return trajectories, batch_traj  
 
@@ -1040,24 +1014,20 @@ class SlipperyGridworldExperiment(Experiment):
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
-                print("before ", len(trajectories))
                 trajectories, batch_traj = self.generate_batch(trajectories, nb_trajectories, self.env, self.pi_b)
-                print("after ", len(trajectories))
                 self.data = trajectories
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                # print(intervals)
+                
                 print("Calculating Shield")  
                 self.shielder = ShieldSlipperyGridworld(self.structure, self.traps, [self.goal], self.intervals, self.width, self.height)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
-                # print("----------------------------------------------------------------")
+
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -1106,14 +1076,9 @@ class AirplaneExperiment(Experiment):
         self.env = Airplane(self.maxY, self.maxX, self.response, self.adv_prob)
         self.initial_state = self.env.get_state_int()
         self.P = self.env.get_transition_function()
-        print("real transition model = ")
-        # print(self.P)
-        # for state in range(len(self.P)):
-        #     print(f"in state {self.env.decode_int(state)}, we have the following actions")
-        #     for action in range(len(self.P[state])):
-        #         print(self.P[state][action])
+
+
         self.R_state_state = self.env.get_reward_function()
-        # print(self.R_state_state)
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         self.set_success_and_crash_states()
         self.fixed_params_exp_list = [self.seed, self.gamma, self.maxX, self.maxY, self.response, self.adv_prob]
@@ -1167,16 +1132,12 @@ class AirplaneExperiment(Experiment):
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # print("----------------------------------------------------------------")                
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                # print(intervals)
                 self.shielder = ShieldAirplane(self.structure, self.crash, self.success, self.intervals, self.maxX, self.maxY)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
-                # print("----------------------------------------------------------------")
                 self._run_algorithms()
                 
     
@@ -1189,7 +1150,6 @@ class AirplaneExperiment(Experiment):
         :return: data batch as a list of sublists of the form [state, action, next_state, reward]
         """
         trajectories = []
-        # print(pi)
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
@@ -1197,12 +1157,9 @@ class AirplaneExperiment(Experiment):
             state = env.get_state_int()
             is_done = False
             while nb_steps < max_steps and not is_done:
-                # print(pi[state])
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
-                # print(f"in state {env.decode_int(state)}, action {action_choice} leads to state {env.decode_int(next_state)} with reward of {reward}")
                 is_done = env.is_done_state()
-                # print(is_done)
                 trajectorY.append([action_choice, state, next_state, reward])
                 state = next_state
                 nb_steps += 1
@@ -1260,12 +1217,6 @@ class WetChickenExperiment(Experiment):
                               max_velocity=self.max_velocity)
         self.initial_state = self.env.get_state_int()
         self.P = self.env.get_transition_function()
-        # for state in range(len(self.P)):
-        #     x = int(state / self.length)
-        #     y = state % self.width
-        #     print(f"in state {x},{y}, we have the following actions")
-        #     for action in range(len(self.P[state])):
-        #         print(self.P[state][action])
         self.R_state_state = self.env.get_reward_function()
         
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
@@ -1314,27 +1265,12 @@ class WetChickenExperiment(Experiment):
                     print(f'Starting with length_trajectory {length_trajectory} out of {self.lengths_trajectory}.')
                     self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
                     self.to_append = self.to_append_run_one_iteration + [length_trajectory]
-                    # print("----------------------------------------------------------------")    
                     self.structure = self.reduce_transition_matrix(self.P)
-                    # actions = [
-                    #     "drift",
-                    #     "hold",
-                    #     "paddle_back",
-                    #     "right",
-                    #     "left",
-                    # ]
-                    # for state in range(len(self.structure)):
-                    #     for action in range(len(self.structure[state])):
-                    #         x = int(state / 5)
-                    #         y = state % 5
-                    #         print(f"In state ({x},{y}), using action {actions[action]} has the following possible next states: {self.structure[state][action]}")
                     goal_states = self.find_closest_states(list(range(len(self.structure))), self.length)
                     self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=2)
                     self.intervals = self.estimator.get_intervals()
                     self.shielder = ShieldWetChicken(self.structure, self.width, self.length, goal_states, self.intervals)
                     self.shielder.calculateShield()
-                    # self.shielder.printShield()
-                    # print("----------------------------------------------------------------")
                     self._run_algorithms()
                 
 
@@ -1468,15 +1404,7 @@ class RandomMDPsExperiment(Experiment):
                                                      baseline_target_perf_ratio=baseline_target_perf_ratio)
             self.R_state_state = self.garnet.compute_reward()
             self.P = self.garnet.transition_function
-            # for state in range(len(self.P)):
-            #     print(f"in state {state}, we have the following actions")
-            #     for action in range(len(self.P[state])):
-            #         print(self.P[state][action])
-            # print("The final state = ", self.garnet.final_state, "which has the following")
-            # for action in range(len(self.P[self.garnet.final_state])):
-            #     print(self.P[self.garnet.final_state][action])
-            # print(self.R_state_state)
-            # print(self.R_state_state[:, self.garnet.final_state])
+
             self.traps = self.garnet.get_traps()
             self.easter_egg = None
 
@@ -1493,15 +1421,12 @@ class RandomMDPsExperiment(Experiment):
                                                             easter_egg=self.easter_egg)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # print("----------------------------------------------------------------")                
                 self.structure = self.reduce_transition_matrix(self.P)
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 self.shielder = ShieldRandomMDP(self.structure, self.traps, [self.garnet.final_state], self.intervals)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
-                # print("----------------------------------------------------------------")
                 self._run_algorithms()
 
 
@@ -1573,7 +1498,6 @@ class RandomMDPsExperiment(Experiment):
         :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
         :return: data batch as a list of sublists of the form [state, action, next_state, reward]
         """
-        print(self.traps)
         trajectories = []
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
@@ -1645,9 +1569,7 @@ class PrismExperiment(Experiment):
         self.episodic = True
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         
-        print("start env")
         self.env = prism_env()
-        print("get values")
         self.nb_states = self.env.get_nb_states()
         self.nb_actions = self.env.get_nb_actions()
         self.traps = self.env.get_traps()
@@ -1657,13 +1579,11 @@ class PrismExperiment(Experiment):
         self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
 
-        print("calcing r_sa")
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         self.baseline_method = self.experiment_config['BASELINE']['method']
         self.fixed_params_exp_list = [self.seed, self.gamma, self.baseline_method]
 
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
-        print("calcing rand perf")
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
         print(f"pi_rand_perf = {pi_rand_perf}")
         
@@ -1694,10 +1614,8 @@ class PrismExperiment(Experiment):
             
             print("creating Baseline Policy")
             self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
-            print("a")
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]
-            print("b")
             
             for nb_trajectories in self.nb_trajectories_list:
                 print(
@@ -1708,18 +1626,14 @@ class PrismExperiment(Experiment):
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                # print(intervals)
                 print("Calculating Shield")  
                 self.shielder = ShieldPrism(self.structure, self.traps, self.goal, self.intervals)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
-                # print("----------------------------------------------------------------")
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -1746,15 +1660,12 @@ class PrismExperiment(Experiment):
                 while state == -1:
                     action_choice = np.random.choice(pi.shape[1], p=pi[state])
                     state, next_state, reward = env.step(action_choice)
-                    print("help!!", action_choice)
                 is_done = env.is_done()                    
                 trajectorY.append([action_choice, state, next_state, reward])
                 state = next_state
                 nb_steps += 1
             trajectories.append(trajectorY)
         batch_traj = [val for sublist in trajectories for val in sublist]
-        # temppp = np.array(trajectories)
-        # print(temppp)
         return trajectories, batch_traj
             
     
@@ -1818,9 +1729,7 @@ class GymTaxiExperiment(Experiment):
         self.episodic = True
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         
-        print("start env")
         self.env = gymTaxi()
-        print("get values")
         self.nb_states = self.env.get_nb_states()
         self.traps = [self.nb_states-1, self.nb_states-3]
         self.nb_actions = self.env.get_nb_actions()
@@ -1839,7 +1748,7 @@ class GymTaxiExperiment(Experiment):
 
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         print("calcing rand perf")
-        # print(pi_rand)
+
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
         print(f"pi_rand_perf = {pi_rand_perf}")
         
@@ -1858,7 +1767,6 @@ class GymTaxiExperiment(Experiment):
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
-        # print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         print(f"pi_baseline_perf = {pi_base_perf}")
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
         if self.baseline_method == 'heuristic':
@@ -1877,11 +1785,8 @@ class GymTaxiExperiment(Experiment):
             
             print("creating Baseline Policy")
             self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
-            # print("a")
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
-                                                                        self._policy_evaluation_exact(self.pi_b)]
-            # print("b")
-            
+                                                                        self._policy_evaluation_exact(self.pi_b)]            
             for nb_trajectories in self.nb_trajectories_list:
                 print(
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
@@ -1891,18 +1796,15 @@ class GymTaxiExperiment(Experiment):
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.15, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                # # print(intervals)
                 print("Calculating Shield")  
                 self.shielder = ShieldTaxi(self.structure, self.traps, self.goal, self.intervals)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
-                # print("----------------------------------------------------------------")
+
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -1917,31 +1819,15 @@ class GymTaxiExperiment(Experiment):
         """
         trajectories = []
         env.reset()
-        goal_counter = 0
-        wrong_pickup_counter = 0
-        crash_counter = 0
-        wrong_drop_counter = 0
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
             state = env.get_state()
             is_done = False
             while nb_steps < max_steps and not is_done:
-                # print(is_done)
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
-                if reward == 150:
-                    goal_counter+=1
-                is_done = env.is_done() 
-                if is_done:
-                    if reward == -150:
-                        crash_counter+=1
-                    elif reward == -10:
-                        wrong_drop_counter+=1
-                    elif reward == -5:
-                        # print("state ", state, " next: ", next_state)
-                        wrong_pickup_counter+=1
-                                           
+                is_done = env.is_done()                              
                 trajectorY.append([action_choice, state, next_state, reward])
                 state = next_state
                 nb_steps += 1
@@ -1949,13 +1835,6 @@ class GymTaxiExperiment(Experiment):
             env.reset()
             env.set_random_state()
         batch_traj = [val for sublist in trajectories for val in sublist]
-        # temppp = np.array(trajectories)
-        # print(temppp)
-        print(goal_counter)
-        print(wrong_pickup_counter)
-        print(wrong_drop_counter)
-        print(crash_counter)
-        # print(trajectories)
         return trajectories, batch_traj
             
     
@@ -2081,10 +1960,8 @@ class GymFrozenLakeExperiment(Experiment):
             
             print("creating Baseline Policy")
             self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
-            # print("a")
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]
-            # print("b")
             
             for nb_trajectories in self.nb_trajectories_list:
                 print(
@@ -2095,18 +1972,14 @@ class GymFrozenLakeExperiment(Experiment):
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                # # print(intervals)
                 print("Calculating Shield")  
                 self.shielder = ShieldFrozenLake(self.structure, self.traps, [self.goal], self.intervals)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
-                # print("----------------------------------------------------------------")
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -2128,7 +2001,6 @@ class GymFrozenLakeExperiment(Experiment):
             state = self.initial_state
             is_done = False
             while nb_steps < max_steps and not is_done:
-                # print(is_done)
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
                 is_done = env.is_done()                    
@@ -2137,10 +2009,6 @@ class GymFrozenLakeExperiment(Experiment):
                 nb_steps += 1
             trajectories.append(trajectorY)
         batch_traj = [val for sublist in trajectories for val in sublist]
-        # temppp = np.array(trajectories)
-        # print(temppp)
-        # print(trajectories)
-        # print(trajectories)
         return trajectories, batch_traj
             
     
@@ -2206,30 +2074,25 @@ def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
     num_states, num_actions = pi.shape
     # Compute expected rewards under policy
     r_pi = np.einsum('ij,ij->i', pi, r)
-    print("a")
     # Build sparse p_pi as a dictionary {(s, s'): prob}
     p_pi_sparse = defaultdict(float)
 
     for (s, a, s_prime), prob in p_sparse.items():
         p_pi_sparse[(s, s_prime)] += pi[s, a] * prob
-    print("b")
     # Convert sparse p_pi to a scipy sparse matrix for solving
     P_pi = dok_matrix((num_states, num_states), dtype=np.float64)
     for (s, s_prime), prob in p_pi_sparse.items():
         P_pi[s, s_prime] = prob
-    print("c")
     # Solve (I - gamma * P_pi) * v = r_pi
     A = identity(num_states, format='csr') - gamma * P_pi.tocsr()
     v, info = bicgstab(A, r_pi, atol=1e-6)
     if info != 0:
         print("Warning: Iterative solver did not converge")
-    print("d")
     # Compute Q-values
     q = np.zeros((num_states, num_actions))
     for (s, a, s_prime), prob in p_sparse.items():
         q[s, a] += prob * v[s_prime]
     q = r + gamma * q
-    print("e")
     return v, q, dict(p_pi_sparse)
 
 def policy_evaluation_exact_dense(pi, r, p, gamma):

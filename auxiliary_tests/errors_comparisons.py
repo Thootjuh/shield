@@ -80,5 +80,3 @@ if __name__ == '__main__':
     print(f'L1 distance (interpreted as long vector instead of matrix) : {np.sum(np.abs(e_hoeffding - e_mpeb))}')
 
     # count_state_action = approx_soft_spibb.count_state_action
-
-    print(f'Hi')

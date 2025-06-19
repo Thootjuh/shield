@@ -15,7 +15,6 @@ class pacmanSimplified:
     def __init__(self, lag_chance, ghost_opt_chance):
         self.lag_chance = lag_chance
         self.ghost_opt_chance = ghost_opt_chance
-        print("lag chance = ", lag_chance)
         self.width = 9
         self.height = 9
         self.nb_states = ((self.width)*(self.height))**2
@@ -79,9 +78,7 @@ class pacmanSimplified:
         # Set state of ghost
         self._state[1][0] = self.init[1][0] 
         self._state[1][1] = self.init[1][1]
-        
-        # print("---RESETTING---")
-         
+             
     def encode_int(self, x, y, ax, ay):
         if not (0 <= x < self.width and 0 <= y < self.height and 0 <= ax < self.width and 0 <= ay < self.height):
             print(f"x = {x}, y = {y}, gx = {ax}, gy = {ay}")
@@ -137,12 +134,10 @@ class pacmanSimplified:
         
         # Reached Goal
         if x == self.goal[0] and y == self.goal[1]:
-            # print("REACHED THE GOAL!!")
             return True
         
         # Eaten
         if x == self._state[1][0] and y == self._state[1][1]:
-            # print("GOT EATEN :(")
             return True
         
         return False
@@ -211,21 +206,18 @@ class pacmanSimplified:
     def is_valid_move(self, x, y, action):
         # Get the movement offset from the ACTION_TRANSLATOR
         dx, dy = ACTION_TRANSLATOR[action]
-        # print(f"x = {x}, y = {y}, dx = {dx}, dy = {dy}")
+
         # Compute the new position
         x_hat = x + dx
         y_hat = y + dy
 
         # Check if the new position is valid
         if x_hat < 0 or x_hat >= self.width or y_hat < 0 or y_hat >= self.height:
-            # print("wrong")
             return False # Invalid move (out of bounds)
             
         if (x_hat, y_hat) in self.walls:
-            # print("wrong")
             return False  # Invalid move (collision with a wall)
         
-        # print("right")
         return True  # Valid move
     
     def find_optimal_ghost_action(self):
@@ -278,7 +270,6 @@ class pacmanSimplified:
         ghost_y_hat = ghost_y + ghost_dy
         self._state[1][0] = ghost_x_hat
         self._state[1][1] = ghost_y_hat
-        # print(f"Old_state - ghost at: ({ghost_x}, {ghost_y}), pac at ({x, y}). New state - ghost at: ({ghost_x_hat}, {ghost_y_hat}), pac at ({x_hat, y_hat}), ghosts_action: ({ghost_dx}{ghost_dy}), Player_action = {ACTION_TRANSLATOR[action_choice]}" )
         return old_state, self.state_to_int(), self.get_reward()
     
     def get_reward_function(self):
@@ -286,8 +277,7 @@ class pacmanSimplified:
 
         for next_state in range(self.nb_states):
             reward = self.get_reward_from_int(next_state)
-            # if next_state % 100 == 0:
-            #     print(next_state)
+
             if reward != 0:
                 for state in range(self.nb_states):
                     # reward_matrix[state, next_state] = self.get_reward_from_int(next_state)
@@ -342,15 +332,12 @@ class pacmanSimplified:
                         next_gy = gy + ACTION_TRANSLATOR[opt_g_action][1]
                         next_state = self.encode_int(next_x, next_y, next_gx, next_gy)
                         transition_dict[(state, action, next_state)] += (1-self.lag_chance) * self.ghost_opt_chance
+                        
                         #Player action fails
                         if self.lag_chance > 0:
                             next_state = self.encode_int(x, y, next_gx, next_gy)
                             transition_dict[(state, action, next_state)] += self.lag_chance * self.ghost_opt_chance
                     
-        # print(transition_dict.keys())                
-        # print("we contain this many items",len(transition_dict))  
-        for (state, action, next_state), value in transition_dict.items():
-            if value == 0.0:
-                print("zero value in dict!!")      
-        print(counter)
+          
+
         return transition_dict

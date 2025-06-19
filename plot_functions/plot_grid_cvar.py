@@ -32,7 +32,6 @@ def extract_data(data):
 
 def calculate_cvar(data, alpha=0.01):
     # Calculate CVaR for each method and trajectory
-    print(type(data))
     cvar_results = []
     for method in data['method'].unique():
             method_data = data[data['method'] == method]

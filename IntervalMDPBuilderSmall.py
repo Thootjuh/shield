@@ -109,16 +109,8 @@ class IntervalMDPBuilderWetChickenSmall(IntervalMDPBuilderSmall):
                 next_states = self.transitions[state][action]
                 for next_state in next_states:
                     bounds = self.intervals[(state, action, next_state)]
-                    # Check if you have fallen of the waterfall
-                    # if next_state == 25:
-                    #     x = int(state / 5)
-                    #     y = state % 5
-                    #     print(f"In state ({x},{y}), using action {actions[action]} has a chance of falling off the waterfall between {bounds[0]} and {bounds[1]}")
-                    #     builder.add_next_value(counter, self.num_states+1, pycarl.Interval(bounds[0], bounds[1]))
-                    # else:
                     builder.add_next_value(counter, next_state, pycarl.Interval(bounds[0], bounds[1]))
                     
-                    # print(next_state)
                 counter+=1
         
                 
@@ -199,7 +191,6 @@ class IntervalMDPBuilderWetChickenSmall(IntervalMDPBuilderSmall):
 class IntervalMDPBuilderPacmanSmall(IntervalMDPBuilderSmall):
     def build_model(self):
         # initialize builder
-        # print(next_states_init)
         builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
         
         # Create sparse matrix
@@ -326,7 +317,7 @@ class IntervalMDPBuilderAirplaneSmall(IntervalMDPBuilderSmall):
 class IntervalMDPBuilderSlipperyGridworldSmall(IntervalMDPBuilderSmall):
     def build_model(self):
         # initialize builder
-        # print(next_states_init)
+
         builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
         
         # Create sparse matrix
@@ -341,7 +332,6 @@ class IntervalMDPBuilderSlipperyGridworldSmall(IntervalMDPBuilderSmall):
                         builder.add_next_value(counter, next_state, pycarl.Interval(bounds[0], bounds[1]))
                 else:
                       builder.add_next_value(counter, state, pycarl.Interval(1, 1))
-                    #   print(f"We do this for state {state}")  
                 counter+=1
                 
 
@@ -400,7 +390,6 @@ class IntervalMDPBuilderSlipperyGridworldSmall(IntervalMDPBuilderSmall):
 class IntervalMDPBuilderTaxi(IntervalMDPBuilderSmall):
     def build_model(self):
         # initialize builder
-        # print(next_states_init)
         builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
         
         # Create sparse matrix
@@ -414,8 +403,7 @@ class IntervalMDPBuilderTaxi(IntervalMDPBuilderSmall):
                         bounds = self.intervals[(state, action, next_state)]
                         builder.add_next_value(counter, next_state, pycarl.Interval(bounds[0], bounds[1]))
                 else:
-                      builder.add_next_value(counter, state, pycarl.Interval(1, 1))
-                    #   print(f"We do this for state {state}")  
+                      builder.add_next_value(counter, state, pycarl.Interval(1, 1)) 
                 counter+=1
                 
 
@@ -468,7 +456,6 @@ class IntervalMDPBuilderTaxi(IntervalMDPBuilderSmall):
 class IntervalMDPBuilderFrozenLake(IntervalMDPBuilderSmall):
     def build_model(self):
         # initialize builder
-        # print(next_states_init)
         builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
         
         # Create sparse matrix
@@ -482,8 +469,7 @@ class IntervalMDPBuilderFrozenLake(IntervalMDPBuilderSmall):
                         bounds = self.intervals[(state, action, next_state)]
                         builder.add_next_value(counter, next_state, pycarl.Interval(bounds[0], bounds[1]))
                 else:
-                      builder.add_next_value(counter, state, pycarl.Interval(1, 1))
-                    #   print(f"We do this for state {state}")  
+                      builder.add_next_value(counter, state, pycarl.Interval(1, 1)) 
                 counter+=1
                 
 
@@ -534,7 +520,6 @@ class IntervalMDPBuilderFrozenLake(IntervalMDPBuilderSmall):
 class IntervalMDPBuilderPrism(IntervalMDPBuilderSmall):
     def build_model(self):
         # initialize builder
-        # print(next_states_init)
         builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
         
         # Create sparse matrix
@@ -549,7 +534,6 @@ class IntervalMDPBuilderPrism(IntervalMDPBuilderSmall):
                         builder.add_next_value(counter, next_state, pycarl.Interval(bounds[0], bounds[1]))
                 else:
                       builder.add_next_value(counter, state, pycarl.Interval(1, 1))
-                    #   print(f"We do this for state {state}")  
                 counter+=1
                 
 

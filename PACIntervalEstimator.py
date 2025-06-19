@@ -41,8 +41,6 @@ class PACIntervalEstimator:
         confidence_interval = self.computePACBound(triplet)
         lower_bound = max(point - confidence_interval, self.precision)
         upper_bound = min(point + confidence_interval, 1-self.precision)
-        # print(f"({lower_bound},{upper_bound})")
-        # print("the size of the interval is ", upper_bound-lower_bound)
         return lower_bound, upper_bound
     
     def mode(self, triplet):

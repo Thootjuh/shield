@@ -20,11 +20,9 @@ def read_data_from_directory(directory_path):
         print(f"Reading file: {file}")
         data = pd.read_csv(file)
         # Rename `nb_trajectories` to `length_trajectory` for consistency
-        print(data.columns)
         data = data.rename(columns={'baseline_perf': 'pi_b_perf'})
         data = data.rename(columns={'nb_trajectories': 'length_trajectory'})
         combined_data = pd.concat([combined_data, data], ignore_index=True)
-        print(data.columns)
     return combined_data
 
 def extract_data(data):
@@ -172,7 +170,6 @@ directory_path = sys.argv[1]
 env_name = "Random MDPs"
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
-print(data.columns)
 data_list = group_by_methods(data)
     
 plot_all_methods(data, "results_test.pdf")

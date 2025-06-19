@@ -20,11 +20,9 @@ def read_data_from_directory(directory_path):
         print(f"Reading file: {file}")
         data = pd.read_csv(file)
         # Rename `nb_trajectories` to `length_trajectory` for consistency
-        print(data.columns)
         data = data.rename(columns={'baseline_perf': 'pi_b_perf'})
         data = data.rename(columns={'nb_trajectories': 'length_trajectory'})
         combined_data = pd.concat([combined_data, data], ignore_index=True)
-        print(data.columns)
     return combined_data
 
 def extract_data(data):
@@ -95,11 +93,9 @@ def plot_data(data, filename, method_name):
     
     # Plot optimal and baseline policy if present
     if 'pi_star_perf' in data.columns:
-        print("YESS")
         grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
         plt.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color='black', label='optimal policy')
     if 'pi_b_perf' in data.columns:
-        print("YESS2")
         grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
         plt.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='black', label='baseline policy')
     # Set plot labels and legend
@@ -134,11 +130,9 @@ def plot_cvar(cvar_data, filename, method_name, data):
     
     # Plot optimal and baseline policy if present
     if 'pi_star_perf' in data.columns:
-        print("YESS")
         grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
         plt.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color='black', label='optimal policy')
     if 'pi_b_perf' in data.columns:
-        print("YESS2")
         grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
         plt.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='black', label='baseline policy')
     # Set plot labels and legend
@@ -186,11 +180,9 @@ def plot_all_methods(data, filename):
 directory_path = sys.argv[1]
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
-print(data.columns)
 data_list = group_by_methods(data)
     
 plot_all_methods(data, "results_all.png")
-print(data_list[0])
 for method in data_list:
     method_name = method.iloc[0]['method'] # This assumes that the first entry in the dataframe is the non-shielded variant, which is the case for the included experiments
     filename = "results_" + method_name + ".png"
