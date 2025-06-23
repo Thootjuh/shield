@@ -91,17 +91,17 @@ def plot_all_methods_avg(data, env_name, ax):
             marker = 'x' if 'shield-' in method else 's'
             method_data = grouped_data[grouped_data['method'] == method]
             color = color_map[method]
-            # ax.errorbar(x, y, yerr=yerr, label=method, linestyle='-', color=color, marker=marker, capsize=4)
+            ax.errorbar(x, y, yerr=yerr, label=method, linestyle='-', color=color, marker=marker, capsize=4)
 
             # CVar plotting
-            method_data_raw = data[data['method'] == method]
-            if env_name == 'Pacman':
-                cvar_data = calculate_cvar(method_data_raw, 0.1)
-            else:
-                cvar_data = calculate_cvar(method_data_raw)
+            # method_data_raw = data[data['method'] == method]
+            # if env_name == 'Pacman':
+            #     cvar_data = calculate_cvar(method_data_raw, 0.1)
+            # else:
+            #     cvar_data = calculate_cvar(method_data_raw)
  
-            ax.errorbar(cvar_data['length_trajectory'], cvar_data['cvar'], yerr=cvar_data['std'],
-                    label=method+' (cvar)', linestyle='--', color=color, marker=marker, markersize=4)
+            # ax.errorbar(cvar_data['length_trajectory'], cvar_data['cvar'], yerr=cvar_data['std'],
+            #         label=method+' (cvar)', linestyle='--', color=color, marker=marker, capsize=4)
 
     if 'pi_star_perf' in data.columns:
         grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
@@ -112,7 +112,7 @@ def plot_all_methods_avg(data, env_name, ax):
         
     ax.set_xscale('log')
     ax.set_xlabel('Dataset Size')
-    ax.set_ylabel('Performance')
+    ax.set_ylabel('Avg. Performance')
     ax.set_title(f'{env_name}')
     ax.grid(True)
         
@@ -196,19 +196,27 @@ def main(parent_directory):
         data = extract_data(data)
         data_list = group_by_methods(data)
         
-        plot_all_methods_avg(data, environments[idx], axes[idx])
+        plot_all_methods(data, environments[idx], axes[idx])
         
     handles, labels = axes[0].get_legend_handles_labels()
     labels = ['DUIPI', 'DUIPI (CVaR)', 'Shielded-DUIPI', 'Shielded-DUIPI (CVaR)', 
               'SPIBB', 'SPIBB (CVaR)', 'Shielded-SPIBB', 'Shielded-SPIBB (CVaR)', 
               'Shielded Baseline', 'Optimal', 'Baseline']
+    # labels = ['Shielded Baseline', 'Optimal', 'Baseline',
+    #             'DUIPI (CVaR)', 'Shielded-DUIPI (CVaR)', 
+    #             'SPIBB (CVaR)', 'Shielded-SPIBB (CVaR)', 
+    #           ]
+    # labels = ['Shielded Baseline', 'Optimal', 'Baseline',
+    #             'DUIPI', 'Shielded-DUIPI', 
+    #             'SPIBB', 'Shielded-SPIBB', 
+    #           ]
     
     fig.legend(handles, labels, loc='lower center', ncol=3, fontsize='15', title='Methods')
-
+    fig.suptitle("Method performance plotted against dataset size")
     plt.subplots_adjust(hspace=0.4, wspace=0.3)
     plt.subplots_adjust(bottom=0.23)
-    plt.savefig("results_grid_plot_CVaR.png", format='png')
-    plt.savefig("results_grid_plot_CVaR.pdf", format='pdf')
+    plt.savefig("results_grid_plot.png", format='png')
+    plt.savefig("results_grid_plot.pdf", format='pdf')
     plt.show()
 
 if __name__ == "__main__":

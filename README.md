@@ -5,6 +5,7 @@ et al. [2] and their code https://github.com/RomainLaroche/SPIBB.
 
 ## Requirements
 The code is implemented in Python version 3.10 and requires the packages specified in ``requirements.txt``. Additionally, Stormpy is required. https://github.com/moves-rwth/stormpy.
+Some of the included bechmarks also require stormvogel, which can be found at https://moves-rwth.github.io/stormvogel/index.html
 
 Before running the experiments, you
 have to create a file called `paths.ini` (on the highest directory level) which contains the following:
