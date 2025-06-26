@@ -4,7 +4,8 @@ by building on the paper "Safe Policy Improvement with Soft Baseline Bootstrappi
 et al. [2] and their code https://github.com/RomainLaroche/SPIBB.
 
 ## Requirements
-The code is implemented in Python version 3.10 and requires the packages specified in ``requirements.txt``. Additionally, Stormpy is required. https://github.com/moves-rwth/stormpy.
+The code is implemented in Python version 3.10 and requires the packages specified in ``requirements.txt``. Additionally [Storm](https://www.stormchecker.org/documentation/obtain-storm/build.html) and [Stormpy](https://github.com/moves-rwth/stormpy) are required. 
+The experiments where performed using Storm and Stormpy version 1.9.0.
 Some of the included bechmarks also require stormvogel, which can be found at https://moves-rwth.github.io/stormvogel/index.html
 
 Before running the experiments, you
