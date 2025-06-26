@@ -14,6 +14,7 @@ have to create a file called `paths.ini` (on the highest directory level) which 
 results_path = D:\results
 ````
 Where results_path should be the absolute path pointing to the place where the results should be stored (I store the results outside of this repository as the results are often huge (>1GB))
+
 ## Structure
 To run the experiment on the randomMDPs benchmark, one can use 
 
