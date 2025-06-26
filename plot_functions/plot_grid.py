@@ -216,7 +216,7 @@ def main(parent_directory):
     plt.subplots_adjust(hspace=0.4, wspace=0.3)
     plt.subplots_adjust(bottom=0.23)
     plt.savefig("results_grid_plot.png", format='png')
-    plt.savefig("results_grid_plot.pdf", format='pdf')
+    plt.savefig("results_grid_plot_avg.pdf", format='pdf')
     plt.show()
 
 if __name__ == "__main__":

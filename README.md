@@ -13,21 +13,49 @@ have to create a file called `paths.ini` (on the highest directory level) which 
 [PATHS]
 results_path = D:\results
 ````
-Where results_path should be the absolute path pointing to the place where the results should be stored (I store the results outside of this repository as the results are often huge (>1GB))
+Where results_path should be the absolute path pointing to the place where the results should be stored.
 
 ## Structure
 To run the experiment on the randomMDPs benchmark, one can use 
 
-`python run_experiments.py random_mdps_shield_compare.ini experiment_results 1234 1 4`  
-or
-`python run_experiments.py wet_chicken_full.ini wet_chicken_results 1234 1 4` 
+`python run_experiments.py random_mdps_shield.ini experiment_results 1234 1 10`  
 
-The `random_mdps_shield_full.ini` is the name of the config file used for this experiment. `experiment_results` is the folder name where the results are going to be stored, 1234 is the seed for the experiment, 1 is the number of threads and 4 is the number of iterations performed per thread per algorithm. The previous mentioned config file has to be stored in the folder experiments/ and contains parameters about:
+
+Where `random_mdps_shield.ini` is the name of the config file used for this experiment. `experiment_results` is the folder name where the results are going to be stored, 1234 is the seed for the experiment, 1 is the number of threads and 10 is the number of iterations performed per thread per algorithm. The previous mentioned config file has to be stored in the folder experiments/ and contains parameters about:
 
 1. the experiment itself (storage path, which benchmark, speedup function etc.),
 2. the environment parameters,
 3. the behavior/baseline policy parameters and
 4. the algorithms and their hyper-parameters.
+
+To run the experiment on the Wet Chicken, Pacman or Frozen Lake benchmarks, you can use
+`python run_experiments.py wet_chicken_shield.ini wet_chicken_results 1234 1 10` 
+
+or
+
+`python run_experiments.py pacman_shield.ini wet_chicken_results 1234 1 10` 
+
+or
+
+`python run_experiments.py frozen_lake_shield.ini wet_chicken_results 1234 1 10` 
+
+respectively.
+
+## Plotting
+The files in the `plot_functions` folder can be used to plot the data.
+To plot the results of an experiment, you can run:
+
+`python plot_functions/plot_with_shield.py path/to/results`
+
+This creates the following plots:
+
+1. `results_all.png`, which plots the shielded and non-shielded data, as well as the corresponding CVaR data, for all methods, alongside the  baseline , optimal, and shielded baseline performance
+
+Additionally, for all methods, it creates the plots:
+
+2. `results_method.png`, which which plots the shielded and non-shielded performance of the method, alongside the alongside the  baseline , optimal, and shielded baseline performance
+3. `results_method_cvar.png`, which plots the cvar data, alongside the  baseline , optimal, and shielded baseline performance
+4. `results_method_interval.png`, which plots the 95% confidence interval of the data, alongside the  baseline , optimal, and shielded baseline performance
 
 ## References
 
