@@ -1267,7 +1267,7 @@ class WetChickenExperiment(Experiment):
                     self.to_append = self.to_append_run_one_iteration + [length_trajectory]
                     self.structure = self.reduce_transition_matrix(self.P)
                     goal_states = self.find_closest_states(list(range(len(self.structure))), self.length)
-                    self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=2)
+                    self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
                     self.intervals = self.estimator.get_intervals()
                     self.shielder = ShieldWetChicken(self.structure, self.width, self.length, goal_states, self.intervals)
                     self.shielder.calculateShield()

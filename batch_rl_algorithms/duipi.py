@@ -172,7 +172,7 @@ class DUIPI(BatchRLAlgorithm):
         q_uncertainty_and_mask_corrected = self.q - self.xi * np.sqrt(self.variance_q)
         # The extra modification to avoid unobserved state-action pairs
         q_uncertainty_and_mask_corrected[~self.mask] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
-
+        # q_uncertainty_and_mask_corrected[~self.mask] = -np.inf
         best_action = np.argmax(q_uncertainty_and_mask_corrected, axis=1)
         for state in self.states:
             if len(self.q[state, self.mask[state]]) > 0:

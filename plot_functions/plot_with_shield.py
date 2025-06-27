@@ -216,6 +216,9 @@ def plot_all_methods(data, filename):
     if 'pi_b_perf' in data.columns:
         grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
         plt.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='#656565', label='baseline policy')
+    plt.xscale('log')
+    bottom, top = plt.ylim()
+    plt.ylim((-60, top))
     plt.xlabel('Dataset Size')
     plt.ylabel('Performance')
     plt.title('Average Performance vs. Dataset Size for all methods')
