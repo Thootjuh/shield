@@ -1,7 +1,4 @@
-This repository was adapted from https://github.com/Philipp238/Safe-Policy-Improvement-Approaches-on-Discrete-Markov-Decision-Processes/tree/master, which contains the code accompanying the paper "Safe Policy Improvement Approaches on Discrete Markov Decision Processes" by Philipp Scholl, Felix Dietrich, Clemens Otte, and Steffen Udluft published at ICAART 2022, the chapter "Safe Policy Improvement Approaches and Their Limitations" by Philipp Scholl, Felix Dietrich, Clemens Otte, and Steffen Udluft of the Springer book series "Lecture notes in Artificial Intelligence" and the master's thesis "Evaluation of Safe Policy Improvement with Soft Baseline Bootstrapping" by Philipp Scholl [1], which 
-investigates safe reinforcement learning
-by building on the paper "Safe Policy Improvement with Soft Baseline Bootstrapping" by Nadjahi 
-et al. [2] and their [code](https://github.com/RomainLaroche/SPIBB).
+This repository was adapted from https://github.com/Philipp238/Safe-Policy-Improvement-Approaches-on-Discrete-Markov-Decision-Processes/tree/master, which contains the code accompanying the paper "Safe Policy Improvement Approaches and Their Limitations" by Philipp Scholl, Felix Dietrich, Clemens Otte, and Steffen Udluft.
 
 ## Requirements
 The code is implemented in Python version 3.10 and requires the packages specified in ``requirements.txt``. Additionally [Storm](https://www.stormchecker.org/documentation/obtain-storm/build.html) and [Stormpy](https://github.com/moves-rwth/stormpy) are required. 
@@ -48,10 +45,6 @@ To plot the results of an experiment, you can run:
 
 `python plot_functions/plot.py path/to/results`
 
-To plot the results of all methods separately, you could usr:
-
-`python plot_functions/plot_separate.py path/to/results`
-
 This creates the following plots:
 
 1. `results_all.png`, which plots the shielded and non-shielded data, as well as the corresponding CVaR data, for all methods, alongside the  baseline , optimal, and shielded baseline performance
@@ -64,10 +57,5 @@ Additionally, for all methods, it creates the plots:
 
 ## References
 
-[1] P. Scholl. *Evaluation of Safe Policy Improvement with Soft Baseline Bootstrapping*. Master's thesis. Technical University of Munich. Germany. 2021.
-
-[2] K. Nadjahi, R. Laroche, R. Tachet des Combes. *Safe
-			Policy Improvement with Soft Baseline Bootstrapping*. Proceedings of the 2019
-		European Conference on Machine Learning and Principles and Practice of Knowledge
-		Discovery in Databases (ECML-PKDD). 2019.
+[1] P. Scholl, F. Dietrich, C. Otte, and S. Udluft. Safe policy improvement approaches and their limitations. CoRR, abs/2208.00724, 2022.
 		
