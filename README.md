@@ -1,11 +1,11 @@
-This repository was adapted fro https://github.com/Philipp238/Safe-Policy-Improvement-Approaches-on-Discrete-Markov-Decision-Processes/tree/master, which contains the code accompanying the paper "Safe Policy Improvement Approaches on Discrete Markov Decision Processes" by Philipp Scholl, Felix Dietrich, Clemens Otte, and Steffen Udluft published at ICAART 2022, the chapter "Safe Policy Improvement Approaches and Their Limitations" by Philipp Scholl, Felix Dietrich, Clemens Otte, and Steffen Udluft of the Springer book series "Lecture notes in Artificial Intelligence" and the master's thesis "Evaluation of Safe Policy Improvement with Soft Baseline Bootstrapping" by Philipp Scholl [1], which 
+This repository was adapted from https://github.com/Philipp238/Safe-Policy-Improvement-Approaches-on-Discrete-Markov-Decision-Processes/tree/master, which contains the code accompanying the paper "Safe Policy Improvement Approaches on Discrete Markov Decision Processes" by Philipp Scholl, Felix Dietrich, Clemens Otte, and Steffen Udluft published at ICAART 2022, the chapter "Safe Policy Improvement Approaches and Their Limitations" by Philipp Scholl, Felix Dietrich, Clemens Otte, and Steffen Udluft of the Springer book series "Lecture notes in Artificial Intelligence" and the master's thesis "Evaluation of Safe Policy Improvement with Soft Baseline Bootstrapping" by Philipp Scholl [1], which 
 investigates safe reinforcement learning
 by building on the paper "Safe Policy Improvement with Soft Baseline Bootstrapping" by Nadjahi 
-et al. [2] and their code https://github.com/RomainLaroche/SPIBB.
+et al. [2] and their [code](https://github.com/RomainLaroche/SPIBB).
 
 ## Requirements
 The code is implemented in Python version 3.10 and requires the packages specified in ``requirements.txt``. Additionally [Storm](https://www.stormchecker.org/documentation/obtain-storm/build.html) and [Stormpy](https://github.com/moves-rwth/stormpy) are required. 
-The experiments where performed using Storm and Stormpy version 1.9.0.
+The experiments where performed using Storm and Stormpy version 1.9.0, which also requires you to manually install [Pycarl](https://moves-rwth.github.io/pycarl/index.html).
 Some of the included bechmarks also require stormvogel, which can be found at https://moves-rwth.github.io/stormvogel/index.html
 
 Before running the experiments, you
@@ -46,7 +46,11 @@ respectively.
 The files in the `plot_functions` folder can be used to plot the data.
 To plot the results of an experiment, you can run:
 
-`python plot_functions/plot_with_shield.py path/to/results`
+`python plot_functions/plot.py path/to/results`
+
+To plot the results of all methods separately, you could usr:
+
+`python plot_functions/plot_separate.py path/to/results`
 
 This creates the following plots:
 
