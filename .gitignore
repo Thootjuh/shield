@@ -9,6 +9,8 @@ batch_rl_algorithms/__pycache__/
 paths.ini
 output.txt
 stormpy_test.py
+storm_vogel_test.py
+modify_csv.py
 test.py
 tiny-01.drn
 standard.txt
