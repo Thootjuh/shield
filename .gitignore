@@ -10,7 +10,6 @@ paths.ini
 output.txt
 stormpy_test.py
 storm_vogel_test.py
-GIF.html
 modify_csv.py
 test.py
 tiny-01.drn
@@ -21,7 +20,7 @@ shielded.txt
 *.txt
 *.pdf
 *.nm
-
+*.html
 # Ignore everything in the results folder
 results/
 data/

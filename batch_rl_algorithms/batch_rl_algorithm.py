@@ -196,22 +196,12 @@ class BatchRLAlgorithm:
         for s in range(self.nb_states):
             self.pi[s, np.argmax(self.q[s, :])] = 1
             
-    def _policy_evaluation_old(self):
-        """
-        Computes the action-value function for the current policy self.pi.
-        """
-        nb_sa = self.nb_actions * self.nb_states
-        M = np.eye(nb_sa) - self.gamma * np.einsum('ijk,kl->ijkl', self.transition_model_old, self.pi).reshape(nb_sa, nb_sa)
-        q_func = np.linalg.solve(M, self.R_state_action.reshape(nb_sa)).reshape(self.nb_states, self.nb_actions)
-        return q_func
     
     def _policy_evaluation(self):
         """
         Computes the action-value function for the current policy self.pi.
         """
-        # nb_sa = self.nb_actions * self.nb_states
-        # M = np.eye(nb_sa) - self.gamma * np.einsum('ijk,kl->ijkl', self.transition_model_old, self.pi).reshape(nb_sa, nb_sa)
-        # self.q = np.linalg.solve(M, self.R_state_action.reshape(nb_sa)).reshape(self.nb_states, self.nb_actions)
+
         nb_sa = self.nb_actions * self.nb_states
 
         # Create identity matrix I

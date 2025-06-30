@@ -49,7 +49,72 @@ def calculate_cvar(data, alpha=0.01):
                 std = traj_data[traj_data <= threshold].std()
                 cvar_results.append({'method': method, 'length_trajectory': traj, 'cvar': cvar, 'std': std})
     return pd.DataFrame(cvar_results)
+def plot_all_methods_avg(data, env_name, ax):
+    grouped_data = data.groupby(['method', 'length_trajectory']).agg(
+        method_perf_mean=('method_perf', 'mean'),
+        method_perf_std=('method_perf', 'std')  # calculate std deviation
+    ).reset_index()
+    
+    sorted_methods = sorted(grouped_data['method'].unique(), key=lambda x: (x.replace('shield-', ''), 'shield-' in x))
 
+    # Sort methods so they have the right color
+    color_methods = [m for m in sorted_methods if m != 'shielded_baseline']
+    unshielded = [m for m in color_methods if not m.startswith('shield-')]
+    shielded = [m for m in color_methods if m.startswith('shield-')]
+    shielded_dict = {m.replace('shield-', ''): m for m in shielded}
+    color_methods = []
+    for method in sorted(unshielded):
+        color_methods.append(method)
+        if method in shielded_dict:
+            color_methods.append(shielded_dict[method])
+    
+    # set colors
+    cmap = plt.cm.get_cmap('tab20', 20)
+    colors = [cmap(1), cmap(0), cmap(3), cmap(2)]
+    color_map = {}
+    for idx, base_method in enumerate(color_methods):
+        base_color = colors[idx]
+        color_map[base_method] = base_color
+    
+    for method in sorted_methods:
+        method_data = grouped_data[grouped_data['method'] == method]
+        x = method_data['length_trajectory']
+        y = method_data['method_perf_mean']
+        yerr = method_data['method_perf_std']
+        
+        if method == 'shielded_baseline':
+            method_data = grouped_data[grouped_data['method'] == method]
+            ax.plot(x, y,
+                    label=method, linestyle='--', color="black")
+        else:  
+            marker = 'x' if 'shield-' in method else 's'
+            method_data = grouped_data[grouped_data['method'] == method]
+            color = color_map[method]
+            # ax.errorbar(x, y, yerr=yerr, label=method, linestyle='-', color=color, marker=marker, capsize=4)
+
+            # CVar plotting
+            method_data_raw = data[data['method'] == method]
+            if env_name == 'Pacman':
+                cvar_data = calculate_cvar(method_data_raw, 0.1)
+            else:
+                cvar_data = calculate_cvar(method_data_raw)
+ 
+            ax.errorbar(cvar_data['length_trajectory'], cvar_data['cvar'], yerr=cvar_data['std'],
+                    label=method+' (cvar)', linestyle='--', color=color, marker=marker, capsize=4)
+
+    if 'pi_star_perf' in data.columns:
+        grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
+        ax.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color='#656565', label='optimal policy')
+    if 'pi_b_perf' in data.columns:
+        grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
+        ax.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color='#656565', label='baseline policy')
+        
+    ax.set_xscale('log')
+    ax.set_xlabel('Dataset Size')
+    ax.set_ylabel('Avg. Performance')
+    ax.set_title(f'{env_name}')
+    ax.grid(True)
+    
 def plot_all_methods_avg(data, env_name, ax):
     grouped_data = data.groupby(['method', 'length_trajectory']).agg(
         method_perf_mean=('method_perf', 'mean'),
