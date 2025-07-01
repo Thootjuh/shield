@@ -65,6 +65,12 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
 
     
     def _modify_data(self):
+        """
+        Modify the dataset to remove any unsafe action
+
+        Returns:
+            safe_data(np.array): the dataset without any unsafe actions
+        """
         safe_data = []
         if self.episodic:
             batch_trajectory = [val for sublist in self.data for val in sublist]
@@ -77,6 +83,9 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         return safe_data
     
     def shield_actions(self):
+        """
+        create an array that contains information on what actions are safe or unsafe
+        """
         self.allowed = np.full((self.nb_states, self.nb_actions), False, dtype=bool)
         for s in range(len(self.allowed)):
             allowed_actions = self.shield.get_safe_actions_from_shield(s)
@@ -84,6 +93,15 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
                 self.allowed[s][a]=True 
                    
     def modifyPolicyWithShield(self, policy):
+        """
+        Remove any unsafe actions from a given policy. Their probability mass is spread across all other actions
+
+        Args:
+            policy (np.ndarray): the policy to be modified
+
+        Returns:
+            policy (np.ndarray): the policy with all unsafe actions removed
+        """
         for i, state in enumerate(policy):
             allowed_actions = self.shield.get_safe_actions_from_shield(i)
             temp = np.zeros(len(state))

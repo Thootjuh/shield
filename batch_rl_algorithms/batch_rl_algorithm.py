@@ -63,18 +63,17 @@ class BatchRLAlgorithm:
         self._initial_calculations()
 
             
-    def array_to_dict(self, arr):
-        sparse_dict = {}
-
-        # Iterate over the 3D array and add non-zero elements to the dictionary
-        for i in range(arr.shape[0]):
-            for j in range(arr.shape[1]):
-                for k in range(arr.shape[2]):
-                    if arr[i, j, k] != 0:
-                        sparse_dict[(i, j, k)] = arr[i, j, k]
-        return sparse_dict
     
     def reward_function_to_dict(self, arr):
+        """
+        Turns the given reward function into a dictionary
+
+        Args:
+            arr (np.ndarray): the reward function
+
+        Returns:
+            sparse_dict(dictionairy): the sparse dictionary representation of the reward function
+        """
         sparse_dict = {}
 
         # Iterate over the 3D array and add non-zero elements to the dictionary
@@ -85,6 +84,12 @@ class BatchRLAlgorithm:
         return sparse_dict
            
     def estimate_baseline(self):
+        """
+        Estimates the baseline policy based on the data
+
+        Returns:
+            result (np.array): The estimated baseline policy
+        """
         result = np.zeros((self.nb_states, self.nb_actions), dtype=float)
 
         # First, compute n(s): total visits per state

@@ -73,7 +73,6 @@ class gymTaxi:
         
         stormpy_model = mapping.stormvogel_to_stormpy(self.sv_model)
         prop = stormpy.parse_properties('Rmax=? [S]')
-        # res = model_checking(self.model, f)
         res = stormpy.model_checking(stormpy_model, prop[0], extract_scheduler=True)
         scheduler = res.scheduler
         

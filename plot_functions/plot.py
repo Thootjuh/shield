@@ -9,6 +9,15 @@ import matplotlib.pyplot as plt
 
 
 def read_data_from_directory(directory_path):
+    """
+    Reads and aggregates all CSV files from a given directory.
+
+    Args:
+        directory_path (str): Path to the directory containing CSV files.
+
+    Returns:
+        pd.DataFrame: Combined DataFrame with all CSV data, with renamed columns for consistency.
+    """
     # List all CSV files in the directory
     csv_files = glob.glob(os.path.join(directory_path, "*.csv"))
     
@@ -26,6 +35,15 @@ def read_data_from_directory(directory_path):
     return combined_data
 
 def extract_data(data):
+    """
+    Extracts relevant columns needed for analysis.
+
+    Args:
+        data (pd.DataFrame): The input DataFrame containing the full dataset.
+
+    Returns:
+        pd.DataFrame: Filtered DataFrame with selected columns only.
+    """
     # Extract relevant columns
     relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time', 'pi_b_perf', 'pi_star_perf']]
 
@@ -34,6 +52,15 @@ def extract_data(data):
 
 
 def group_by_methods(data):
+    """
+    Groups data by method types (e.g., shielded/unshielded variants).
+
+    Args:
+        data (pd.DataFrame): The input DataFrame.
+
+    Returns:
+        List[pd.DataFrame]: A list of grouped DataFrames by base method type.
+    """
     method_groups = defaultdict(list)
     
     for method in data['method'].unique():
@@ -47,6 +74,19 @@ def group_by_methods(data):
     return grouped_dfs
 
 def plot_data_interval(data, baseline_data, filename, method_name):
+    """
+    Plots the average performance with 80% confidence intervals (10th-90th percentile) 
+    against trajectory length for each method.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing the performance metrics for a method.
+        baseline_data (pd.DataFrame): Baseline data to compare against.
+        filename (str): Path to save the plot.
+        method_name (str): Name of the method being plotted.
+
+    Returns:
+        None
+    """
     grouped_data = data.groupby(['method', 'length_trajectory'])
     
     # Calculate mean, lower, and upper bounds of the 90% confidence interval
@@ -97,6 +137,18 @@ def plot_data_interval(data, baseline_data, filename, method_name):
     plt.show()
     
 def plot_data(data, baseline_data, filename, method_name):
+    """
+    Plots the average performance against trajectory length for each method without confidence intervals.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing performance metrics.
+        baseline_data (pd.DataFrame): Baseline data for comparison.
+        filename (str): Path to save the plot.
+        method_name (str): Name of the method.
+
+    Returns:
+        None
+    """
     grouped_data = data.groupby(['method', 'length_trajectory'])
     grouped_data = grouped_data.method_perf.mean().reset_index()
     # Plot average performance against length_trajectory for each method
@@ -129,6 +181,16 @@ def plot_data(data, baseline_data, filename, method_name):
     plt.show()
     
 def calculate_cvar(data, alpha=0.01):
+    """
+    Calculates Conditional Value at Risk (CVaR) for each method and trajectory length.
+
+    Args:
+        data (pd.DataFrame): The input DataFrame with performance data.
+        alpha (float, optional): The quantile level to compute CVaR. Default is 0.01 (1%).
+
+    Returns:
+        pd.DataFrame: DataFrame with CVaR values per method and trajectory length.
+    """
     # Calculate CVaR for each method and trajectory
     cvar_results = []
     for method in data['method'].unique():
@@ -142,6 +204,19 @@ def calculate_cvar(data, alpha=0.01):
     return pd.DataFrame(cvar_results)
 
 def plot_cvar(cvar_data, baseline_data, filename, method_name, data):
+    """
+    Plots the 1%-CVaR values for each method over trajectory lengths.
+
+    Args:
+        cvar_data (pd.DataFrame): DataFrame containing calculated CVaR values.
+        baseline_data (pd.DataFrame): Baseline performance data for comparison.
+        filename (str): Path to save the generated plot.
+        method_name (str): Method name being visualized.
+        data (pd.DataFrame): The full original dataset (used for optimal/baseline plotting).
+
+    Returns:
+        None
+    """
    # Plot CVaR against trajectory for each method
     plt.figure(figsize=(12, 8))
     plt.xscale('log')
@@ -172,6 +247,17 @@ def plot_cvar(cvar_data, baseline_data, filename, method_name, data):
     plt.show()
     
 def plot_all_methods(data, filename):
+    """
+    Plots average and CVaR performance curves for all methods, 
+    distinguishing between shielded/unshielded variants.
+
+    Args:
+        data (pd.DataFrame): The complete dataset with all methods.
+        filename (str): Path to save the resulting plot.
+
+    Returns:
+        None
+    """
     grouped_data = data.groupby(['method', 'length_trajectory'])
     grouped_data = grouped_data.method_perf.mean().reset_index()
     

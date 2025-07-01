@@ -9,6 +9,15 @@ import numpy as np
 import math
 
 def read_data_from_directory(directory_path):
+    """
+    Reads and aggregates all CSV files from a given directory.
+
+    Args:
+        directory_path (str): Path to the directory containing CSV files.
+
+    Returns:
+        pd.DataFrame: Combined DataFrame with all CSV data, with renamed columns for consistency.
+    """
     csv_files = glob.glob(os.path.join(directory_path, "*.csv"))
     combined_data = pd.DataFrame()
 
@@ -21,10 +30,28 @@ def read_data_from_directory(directory_path):
     return combined_data
 
 def extract_data(data):
+    """
+    Extracts relevant columns needed for analysis.
+
+    Args:
+        data (pd.DataFrame): The input DataFrame containing the full dataset.
+
+    Returns:
+        pd.DataFrame: Filtered DataFrame with selected columns only.
+    """
     relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time', 'pi_b_perf', 'pi_star_perf']]
     return relevant_data_new
 
 def group_by_methods(data):
+    """
+    Groups data by method types (e.g., shielded/unshielded variants).
+
+    Args:
+        data (pd.DataFrame): The input DataFrame.
+
+    Returns:
+        List[pd.DataFrame]: A list of grouped DataFrames by base method type.
+    """
     method_groups = defaultdict(list)
     
     for method in data['method'].unique():
@@ -38,6 +65,16 @@ def group_by_methods(data):
     return grouped_dfs
 
 def calculate_cvar(data, alpha=0.01):
+    """
+    Calculates Conditional Value at Risk (CVaR) for each method and trajectory length.
+
+    Args:
+        data (pd.DataFrame): The input DataFrame with performance data.
+        alpha (float, optional): The quantile level to compute CVaR. Default is 0.01 (1%).
+
+    Returns:
+        pd.DataFrame: DataFrame with CVaR values per method and trajectory length.
+    """
     cvar_results = []
     for method in data['method'].unique():
         method_data = data[data['method'] == method]
@@ -49,7 +86,20 @@ def calculate_cvar(data, alpha=0.01):
                 std = traj_data[traj_data <= threshold].std()
                 cvar_results.append({'method': method, 'length_trajectory': traj, 'cvar': cvar, 'std': std})
     return pd.DataFrame(cvar_results)
-def plot_all_methods_avg(data, env_name, ax):
+
+def plot_all_methods_cvar(data, env_name, ax):
+    """
+    Plots CVaR performance curves for all methods and environments, 
+    distinguishing between shielded/unshielded variants.
+
+    Args:
+        data (pd.DataFrame): The complete dataset with all methods and performance metrics.
+        env_name (str): Name of the environment (e.g., "Gridworld", "Pacman") to customize CVaR alpha.
+        ax (matplotlib.axes.Axes): Matplotlib Axes object where the plot will be drawn.
+
+    Returns:
+        None
+    """
     grouped_data = data.groupby(['method', 'length_trajectory']).agg(
         method_perf_mean=('method_perf', 'mean'),
         method_perf_std=('method_perf', 'std')  # calculate std deviation
@@ -116,6 +166,18 @@ def plot_all_methods_avg(data, env_name, ax):
     ax.grid(True)
     
 def plot_all_methods_avg(data, env_name, ax):
+    """
+    Plots mean performance curves for all methods and environments, 
+    distinguishing between shielded/unshielded variants.
+
+    Args:
+        data (pd.DataFrame): The complete dataset with all methods and performance metrics.
+        env_name (str): Name of the environment (e.g., "Gridworld", "Pacman") to customize CVaR alpha.
+        ax (matplotlib.axes.Axes): Matplotlib Axes object where the plot will be drawn.
+
+    Returns:
+        None
+    """
     grouped_data = data.groupby(['method', 'length_trajectory']).agg(
         method_perf_mean=('method_perf', 'mean'),
         method_perf_std=('method_perf', 'std')  # calculate std deviation
@@ -182,6 +244,18 @@ def plot_all_methods_avg(data, env_name, ax):
     ax.grid(True)
         
 def plot_all_methods(data, env_name, ax):
+    """
+    Plots mean and CVaR performance curves for all methods and environments, 
+    distinguishing between shielded/unshielded variants.
+
+    Args:
+        data (pd.DataFrame): The complete dataset with all methods and performance metrics.
+        env_name (str): Name of the environment (e.g., "Gridworld", "Pacman") to customize CVaR alpha.
+        ax (matplotlib.axes.Axes): Matplotlib Axes object where the plot will be drawn.
+
+    Returns:
+        None
+    """
     grouped_data = data.groupby(['method', 'length_trajectory'])
     grouped_data = grouped_data.method_perf.mean().reset_index()
     
@@ -262,7 +336,8 @@ def main(parent_directory):
         data_list = group_by_methods(data)
         
         plot_all_methods(data, environments[idx], axes[idx])
-        
+        plot_all_methods_avg(data, environments[idx], axes[idx])
+        plot_all_methods_cvar(data, environments[idx], axes[idx])
     handles, labels = axes[0].get_legend_handles_labels()
     labels = ['DUIPI', 'DUIPI (CVaR)', 'Shielded-DUIPI', 'Shielded-DUIPI (CVaR)', 
               'SPIBB', 'SPIBB (CVaR)', 'Shielded-SPIBB', 'Shielded-SPIBB (CVaR)', 

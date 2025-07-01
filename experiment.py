@@ -1406,6 +1406,7 @@ class RandomMDPsExperiment(Experiment):
                                                             easter_egg=self.easter_egg)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
+                # Generate the shield: First, we compute the PAC estimate IMDP, then we compute the shield
                 self.structure = self.reduce_transition_matrix(self.P)
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
