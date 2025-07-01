@@ -30,7 +30,7 @@ To run the experiment on the Wet Chicken, Pacman or Frozen Lake benchmarks, you 
 
 or
 
-`python run_experiments.py pacman_shield.ini wet_chicken_results 1234 1 1000` 
+`python run_experiments.py pacman_shield.ini wet_chicken_results 1234 1 100` 
 
 or
 
