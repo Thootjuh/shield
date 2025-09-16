@@ -242,7 +242,29 @@ def plot_all_methods_avg(data, env_name, ax):
     ax.set_ylabel('Avg. Performance')
     ax.set_title(f'{env_name}')
     ax.grid(True)
-        
+def plot_results(subdirs, environments, plot_func, title, filename_prefix):
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    axes = axes.flatten()
+
+    for idx, subdir in enumerate(subdirs):
+        data = read_data_from_directory(subdir)
+        data = extract_data(data)
+        data_list = group_by_methods(data)
+        plot_func(data, environments[idx], axes[idx])
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    labels = [
+        'DUIPI', 'DUIPI (CVaR)', 'Shielded-DUIPI', 'Shielded-DUIPI (CVaR)',
+        'SPIBB', 'SPIBB (CVaR)', 'Shielded-SPIBB', 'Shielded-SPIBB (CVaR)',
+        'Shielded Baseline', 'Optimal', 'Baseline'
+    ]
+    fig.legend(handles, labels, loc='lower center', ncol=3, fontsize='15', title='Methods')
+    fig.suptitle(title)
+    plt.subplots_adjust(hspace=0.4, wspace=0.3, bottom=0.23)
+    plt.savefig(f"{filename_prefix}.png", format='png')
+    plt.savefig(f"{filename_prefix}.pdf", format='pdf')
+    plt.show()
+    
 def plot_all_methods(data, env_name, ax):
     """
     Plots mean and CVaR performance curves for all methods and environments, 
@@ -315,6 +337,45 @@ def plot_all_methods(data, env_name, ax):
     ax.set_title(f'{env_name}')
     ax.grid(True)
 
+def plot_results(subdirs, environments, plot_func, title, filename_prefix):
+    """
+    Plots performance curves (mean, CVaR, or all) for multiple methods across 
+    different environments, saving the figure to disk.
+
+    Args:
+        subdirs (list[str]): List of directories containing experimental results.
+        environments (list[str]): List of environment names corresponding to subdirs.
+        plot_func (callable): Plotting function to use 
+            (e.g., plot_all_methods, plot_all_methods_cvar, plot_all_methods_avg).
+        title (str): Title for the figure.
+        filename_prefix (str): Prefix for the output file names 
+            (files are saved as <prefix>.png and <prefix>.pdf).
+
+    Returns:
+        None
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    axes = axes.flatten()
+
+    for idx, subdir in enumerate(subdirs):
+        data = read_data_from_directory(subdir)
+        data = extract_data(data)
+        data_list = group_by_methods(data)
+        plot_func(data, environments[idx], axes[idx])
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    labels = [
+        'DUIPI', 'DUIPI (CVaR)', 'Shielded-DUIPI', 'Shielded-DUIPI (CVaR)',
+        'SPIBB', 'SPIBB (CVaR)', 'Shielded-SPIBB', 'Shielded-SPIBB (CVaR)',
+        'Shielded Baseline', 'Optimal', 'Baseline'
+    ]
+    fig.legend(handles, labels, loc='lower center', ncol=3, fontsize='15', title='Methods')
+    fig.suptitle(title)
+    plt.subplots_adjust(hspace=0.4, wspace=0.3, bottom=0.23)
+    plt.savefig(f"{filename_prefix}.png", format='png')
+    plt.savefig(f"{filename_prefix}.pdf", format='pdf')
+    plt.show()
+    
 def main(parent_directory):
     # Seaborn style settings
     sns.set_context("paper", font_scale=2.5)  # Can be adjusted (e.g., "paper", "poster")
@@ -327,37 +388,25 @@ def main(parent_directory):
         print("Error: Expected exactly 4 subdirectories in the provided parent directory.")
         return
 
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    axes = axes.flatten()
-
-    for idx, subdir in enumerate(subdirs):
-        data = read_data_from_directory(subdir)
-        data = extract_data(data)
-        data_list = group_by_methods(data)
-        
-        plot_all_methods(data, environments[idx], axes[idx])
-        plot_all_methods_avg(data, environments[idx], axes[idx])
-        plot_all_methods_cvar(data, environments[idx], axes[idx])
-    handles, labels = axes[0].get_legend_handles_labels()
-    labels = ['DUIPI', 'DUIPI (CVaR)', 'Shielded-DUIPI', 'Shielded-DUIPI (CVaR)', 
-              'SPIBB', 'SPIBB (CVaR)', 'Shielded-SPIBB', 'Shielded-SPIBB (CVaR)', 
-              'Shielded Baseline', 'Optimal', 'Baseline']
-    # labels = ['Shielded Baseline', 'Optimal', 'Baseline',
-    #             'DUIPI (CVaR)', 'Shielded-DUIPI (CVaR)', 
-    #             'SPIBB (CVaR)', 'Shielded-SPIBB (CVaR)', 
-    #           ]
-    # labels = ['Shielded Baseline', 'Optimal', 'Baseline',
-    #             'DUIPI', 'Shielded-DUIPI', 
-    #             'SPIBB', 'Shielded-SPIBB', 
-    #           ]
     
-    fig.legend(handles, labels, loc='lower center', ncol=3, fontsize='15', title='Methods')
-    fig.suptitle("Method performance plotted against dataset size")
-    plt.subplots_adjust(hspace=0.4, wspace=0.3)
-    plt.subplots_adjust(bottom=0.23)
-    plt.savefig("results_grid_plot.png", format='png')
-    plt.savefig("results_grid_plot_avg.pdf", format='pdf')
-    plt.show()
+    plot_results(
+    subdirs, environments, plot_all_methods,
+    title="Method performance plotted against dataset size",
+    filename_prefix="results_grid_plot"
+    )
+
+    plot_results(
+        subdirs, environments, plot_all_methods_cvar,
+        title="CVaR performance plotted against dataset size",
+        filename_prefix="results_grid_plot_cvar"
+    )
+
+    plot_results(
+        subdirs, environments, plot_all_methods_avg,
+        title="Mean performance plotted against dataset size",
+        filename_prefix="results_grid_plot_avg"
+    )
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
