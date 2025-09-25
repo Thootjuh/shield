@@ -115,7 +115,7 @@ class prism_env:
         return self.transition_function
     
     def get_reward_function(self):
-        return seclf.reward_model
+        return self.reward_model
     
     def get_baseline_policy(self, epsilon):
         pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
