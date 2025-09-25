@@ -378,7 +378,7 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix):
     
 def main(parent_directory):
     # Seaborn style settings
-    sns.set_context("paper", font_scale=2.5)  # Can be adjusted (e.g., "paper", "poster")
+    sns.set_context("paper", font_scale=2.5)
     sns.set_style("whitegrid")
     sns.set_palette("muted")
     plt.rcParams['font.family'] = 'serif'
