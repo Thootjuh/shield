@@ -24,7 +24,7 @@ from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 
 from environments.read_env_from_prism import prism_env
 from environments.gym_environment import gymTaxi, gymIce
-from environments.gym_cartpole_env import cartPole
+from environments.gym_cartpole_env import cartPole, cartPolePolicy
 
 from batch_rl_algorithms.basic_rl import Basic_rl
 from batch_rl_algorithms.pi_star import PiStar
@@ -47,6 +47,7 @@ from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
 
 from shield import ShieldRandomMDP, ShieldCartpole
 from PACIntervalEstimator import PACIntervalEstimator
+from evaluate_cartpole import evaluate_policy
 directory = os.path.dirname(os.path.expanduser(__file__))
 
 
@@ -103,6 +104,7 @@ class Experiment:
         :param iteration: iteration + 1 iterations are done, usage only for naming
         """
         print(self.fixed_params_exp_columns + self.variable_params_exp_columns + self.algorithms_columns + self.safety_columns)
+        print(self.results)
         results_df = pd.DataFrame(self.results,
                                   columns=self.fixed_params_exp_columns + self.variable_params_exp_columns + self.algorithms_columns + self.safety_columns)
         filename = self.filename_header + f"_up_to_iteration_{iteration + 1}.csv"
@@ -187,7 +189,7 @@ class Experiment:
         """
         if self.speed_up:
             self._compute_speed_up_dict()
-        self._run_shielded_baseline()
+        # self._run_shielded_baseline()
         for key in self.algorithms_dict.keys():
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
                 self._run_spibb(key)
@@ -356,10 +358,10 @@ class Experiment:
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
-            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             
             method = spibb.NAME
-            method_perf = spibb_perf
+            method_perf = 0
             hyperparam = N_wedge
             run_time = t_1 - t_0
             
@@ -510,7 +512,8 @@ class Experiment:
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
-            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 10)
+            # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method = spibb.NAME
             method_perf = spibb_perf
             hyperparam = N_wedge
@@ -946,7 +949,7 @@ class RandomMDPsExperiment(Experiment):
         return reduced_matrix  
 
 class GymCartPoleExperiment(Experiment):
-    fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method','pi_rand_perf', 'pi_star_perf']
+    fixed_params_exp_columns = ['seed', 'gamma']
     def _set_env_params(self):
         """
         Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
@@ -964,14 +967,13 @@ class GymCartPoleExperiment(Experiment):
         self.goal = self.env.get_goal_state()
         self.initial_state = self.env.get_init_state()
         
-        self.P = self.env.get_transition_function()
+        # self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
 
-        print("calcing r_sa")
-        self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
+        # print("calcing r_sa")
+        # self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         
-        self.baseline_method = self.experiment_config['BASELINE']['method']
-        self.fixed_params_exp_list = [self.seed, self.gamma, self.baseline_method]
+        self.fixed_params_exp_list = [self.seed, self.gamma]
 
         # pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         # print("calcing rand perf")
@@ -989,17 +991,14 @@ class GymCartPoleExperiment(Experiment):
         pi_star_perf = 0
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
+        
         # pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         # print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         # print(f"pi_baseline_perf = {pi_base_perf}")
         pi_base_perf = 0
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
-        if self.baseline_method == 'heuristic':
-            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
-        else:
-            self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
-            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
-                                                'length_trajectory']
+        self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
+
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         
         
@@ -1009,10 +1008,11 @@ class GymCartPoleExperiment(Experiment):
                   f' {self.epsilons_baseline}')
             
             print("creating Baseline Policy")
-            self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
+            self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
+            # self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+            #                                                             self._policy_evaluation_exact(self.pi_b)]
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
-                                                                        self._policy_evaluation_exact(self.pi_b)]
-            
+                                                                        0]
             for nb_trajectories in self.nb_trajectories_list:
                 print(
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
@@ -1032,8 +1032,8 @@ class GymCartPoleExperiment(Experiment):
                 # self.intervals = self.estimator.get_intervals()
                 
                 print("Calculating Shield")  
-                self.shielder = ShieldCartpole(self.structure, self.traps, [self.goal], self.intervals)
-                self.shielder.calculateShield()
+                # self.shielder = ShieldCartpole(self.structure, self.traps, [self.goal], self.intervals)
+                # self.shielder.calculateShield()
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -1052,9 +1052,10 @@ class GymCartPoleExperiment(Experiment):
             nb_steps = 0
             trajectorY = []
             env.reset()
-            state = self.initial_state
+            state = env.get_init_state()
             is_done = False
             while nb_steps < max_steps and not is_done:
+                # print("AAAAA")
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
                 is_done = env.is_done()                    
@@ -1099,173 +1100,7 @@ class GymCartPoleExperiment(Experiment):
         #         reduced_matrix[state, action] = np.array(possible_states)
         return reduced_matrix
 
-class GymFrozenLakeExperiment(Experiment):
-    # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
-    fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method','pi_rand_perf', 'pi_star_perf']
-    
-    def compute_r_state_action(self, P, R):
-        result = defaultdict(float)
 
-        for (i, j, k), p_val in P.items():
-            r_val = R.get((i, k), 0.0)
-            result[(i, j)] += p_val * r_val
-
-        # Convert result to dense NumPy array
-
-        dense_result = np.zeros((self.nb_states, self.nb_actions))
-
-        for (i, j), val in result.items():
-            dense_result[i, j] = val
-
-        return dense_result
-    
-    def _set_env_params(self):
-        """
-        Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
-        """
-        self.episodic = True
-        self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
-        
-        print("start env")
-        self.env = gymIce()
-        print("get values")
-        self.nb_states = self.env.get_nb_states()
-        # self.traps = [self.nb_states-1]
-        self.nb_actions = self.env.get_nb_actions()
-        self.traps = self.env.get_traps()
-        print("traps are: ", self.traps)
-        self.goal = self.env.get_goal_state()
-        self.initial_state = self.env.get_init_state()
-        
-        self.P = self.env.get_transition_function()
-        self.R_state_state = self.env.get_reward_function()
-
-        print("calcing r_sa")
-        self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
-        
-        self.baseline_method = self.experiment_config['BASELINE']['method']
-        self.fixed_params_exp_list = [self.seed, self.gamma, self.baseline_method]
-
-        pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
-        print("calcing rand perf")
-        pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        print(f"pi_rand_perf = {pi_rand_perf}")
-        
-        self.fixed_params_exp_list.append(pi_rand_perf)
-
-        pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
-                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
-        pi_star.fit()
-        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        print(f"pi_star_perf = {pi_star_perf}")
-        self.fixed_params_exp_list.append(pi_star_perf)
-
-
-        self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
-        pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
-        print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
-        print(f"pi_baseline_perf = {pi_base_perf}")
-        self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
-        if self.baseline_method == 'heuristic':
-            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
-        else:
-            self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
-            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
-                                                'length_trajectory']
-        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
-
-        
-    def _run_one_iteration(self):
-        for epsilon_baseline in self.epsilons_baseline:
-            print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
-                  f' {self.epsilons_baseline}')
-            
-            print("creating Baseline Policy")
-            self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
-            self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
-                                                                        self._policy_evaluation_exact(self.pi_b)]
-            
-            for nb_trajectories in self.nb_trajectories_list:
-                print(
-                    f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
-                    f'{self.nb_trajectories_list}')
-                # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
-                print("Generating Trajectories")
-                self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
-                self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
-
-                print("Estimating Intervals")            
-                self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
-                self.estimator.calculate_intervals()
-                self.intervals = self.estimator.get_intervals()
-                print("Calculating Shield")  
-                self.shielder = ShieldFrozenLake(self.structure, self.traps, [self.goal], self.intervals)
-                self.shielder.calculateShield()
-                print("Running Algorithms")
-                self._run_algorithms()
-                
-
-    def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
-        """
-        Generates a data batch for an episodic MDP.
-        :param nb_steps: number of steps in the data batch
-        :param env: environment to be used to generate the batch on
-        :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
-        :return: data batch as a list of sublists of the form [state, action, next_state, reward]
-        """
-        trajectories = []
-        
-        for _ in np.arange(nb_trajectories):
-            nb_steps = 0
-            trajectorY = []
-            env.reset()
-            state = self.initial_state
-            is_done = False
-            while nb_steps < max_steps and not is_done:
-                action_choice = np.random.choice(pi.shape[1], p=pi[state])
-                state, next_state, reward = env.step(action_choice)
-                is_done = env.is_done()                    
-                trajectorY.append([action_choice, state, next_state, reward])
-                state = next_state
-                nb_steps += 1
-            trajectories.append(trajectorY)
-        batch_traj = [val for sublist in trajectories for val in sublist]
-        return trajectories, batch_traj
-            
-    
-
-    def reduce_transition_matrix(self, transition_matrix):
-        """
-        Reduces a transition matrix to only include possible end states for each state-action pair.
-
-        Args:
-        - transition_matrix (numpy.ndarray): A 3D numpy array of shape (num_states, num_actions, num_states) 
-        where each element represents the probability of transitioning from one state to another
-        given a certain action.
-
-        Returns:
-        - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
-        where each element contains the indices of possible end states.
-        """
-
-        # Prepare the reduced matrix to hold the indices of possible states
-        reduced_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
-
-        for state in range(self.nb_states):
-            for action in range(self.nb_actions):
-                reduced_matrix[state, action] = []
-        
-        # Loop through each state and action to populate the reduced matrix
-        for (state,action,next_state) in transition_matrix.keys():
-            reduced_matrix[state][action].append(next_state)
-            
-        # for state in range(num_states):
-        #     for action in range(num_actions):
-        #         # Get indices of nonzero probabilities (possible end states)
-        #         possible_states = np.nonzero(transition_matrix[state, action])[0]
-        #         reduced_matrix[state, action] = np.array(possible_states)
-        return reduced_matrix
 import numpy as np
 from collections import defaultdict
 from scipy.sparse import dok_matrix, identity

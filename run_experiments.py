@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import WetChickenExperiment, RandomMDPsExperiment, AirplaneExperiment, SlipperyGridworldExperiment, SimplifiedPacmanExperiment, PrismExperiment, GymTaxiExperiment, GymFrozenLakeExperiment
+from experiment import RandomMDPsExperiment, GymCartPoleExperiment
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
@@ -36,30 +36,13 @@ nb_iterations = int(sys.argv[5])
 
 
 def run_experiment(seed):
-    if environment == 'wet_chicken':
-        experiment = WetChickenExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+    if environment == 'cartpole':
+        experiment = GymCartPoleExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
     elif environment == 'random_mdps':
         experiment = RandomMDPsExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
-    elif environment == 'airplane':
-        experiment = AirplaneExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
-                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
-    elif environment == 'slippery_gridworld':
-        experiment = SlipperyGridworldExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
-                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
-    elif environment == 'pacman_simplified':
-        experiment = SimplifiedPacmanExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
-                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
-    elif environment =='taxi':
-        experiment = GymTaxiExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
-                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
-    elif environment =='frozen_lake':
-        experiment = GymFrozenLakeExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
-                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
-    else:
-        experiment = PrismExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
-                                        machine_specific_experiment_directory=machine_specific_experiment_directory)
+
     experiment.run()
 
 
