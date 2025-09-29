@@ -64,8 +64,6 @@ class Shield:
                     transition.value
                     transitions[transition.column] = transition.value()
                 transition_probs[(state.id, action.id)] = transitions
-        print(type(probs))
-        print(transition_probs)
         return probs, transition_probs
     
     def calculateShieldInterval(self, prop, model):
@@ -228,7 +226,7 @@ class ShieldCartpole(Shield):
             A dictionary mapping (state, action, next_state) tuples to a (min, max) interval tuple representing
             the range of possible transition probabilities due to uncertainty.
         """
-        self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps)
+        self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps) 
         super().__init__(transition_matrix, traps, goal, intervals)
         
     def calculateShield(self):

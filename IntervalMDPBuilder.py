@@ -20,7 +20,7 @@ class IntervalMDPBuilder:
     def set_choice_labels(self):
         pass
     
-    def set_reward_model_MDP(self):
+    def set_reward_model_MDP(self): 
         reward_models = {}
         reward_models["random MDP"] = stormpy.SparseIntervalRewardModel()
         return reward_models
@@ -530,8 +530,11 @@ class IntervalMDPBuilderPrism(IntervalMDPBuilder):
                 next_states = self.transitions[state][action]
                 if(len(next_states) > 0):
                     for next_state in next_states:
-                        bounds = self.intervals[(state, action, next_state)]
-                        builder.add_next_value(counter, next_state, pycarl.Interval(bounds[0], bounds[1]))
+                        if (state, action, next_state) in self.intervals:
+                            bounds = self.intervals[(state, action, next_state)]
+                            builder.add_next_value(counter, next_state, pycarl.Interval(bounds[0], bounds[1]))
+                        else:
+                            builder.add_next_value(counter, next_state, pycarl.Interval(0, 1-(1e-4)))
                 else:
                       builder.add_next_value(counter, state, pycarl.Interval(1, 1))
                 counter+=1

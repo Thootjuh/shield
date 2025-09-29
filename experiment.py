@@ -48,6 +48,7 @@ from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
 from shield import ShieldRandomMDP, ShieldCartpole
 from PACIntervalEstimator import PACIntervalEstimator
 from evaluate_cartpole import evaluate_policy
+from define_imdp import imdp_builder
 directory = os.path.dirname(os.path.expanduser(__file__))
 
 
@@ -104,7 +105,6 @@ class Experiment:
         :param iteration: iteration + 1 iterations are done, usage only for naming
         """
         print(self.fixed_params_exp_columns + self.variable_params_exp_columns + self.algorithms_columns + self.safety_columns)
-        print(self.results)
         results_df = pd.DataFrame(self.results,
                                   columns=self.fixed_params_exp_columns + self.variable_params_exp_columns + self.algorithms_columns + self.safety_columns)
         filename = self.filename_header + f"_up_to_iteration_{iteration + 1}.csv"
@@ -344,6 +344,7 @@ class Experiment:
                                               duipi.variance_v[self.initial_state])])
                 else:
                     self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+    
     def _run_spibb_shielded(self, key):
         """
         Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
@@ -358,145 +359,15 @@ class Experiment:
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
-            # spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
             
             method = spibb.NAME
-            method_perf = 0
-            hyperparam = N_wedge
-            run_time = t_1 - t_0
-            
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-            
-    def _run_spibb_experiment(self, key):
-        """
-        Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
-        :param key: shield_SPIBB.NAME or shield_Lower_SPIBB.NAME, depending on which algorithm is supposed to be run
-        """
-        # 1. Modified data
-        for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
-                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, shield_data=True, shield_action=False)
-            t_0 = time.time()
-            spibb.fit()
-            t_1 = time.time()
-            spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            method = spibb.NAME + "_Modified_Data"
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
             
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-        
-        # 2. Shield on Actions 
-        # shield Actions")
-        for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
-                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
-                                             shield_baseline = False, shield_data=False, shield_action=True)
-            t_0 = time.time()
-            spibb.fit()
-            t_1 = time.time()
-            spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            method = spibb.NAME + "_Shield_Actions"
-            method_perf = spibb_perf
-            hyperparam = N_wedge
-            run_time = t_1 - t_0
             
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-        
-        # 3. Shield on Actions + Modified Data
-        for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
-                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
-                                             shield_baseline = False, shield_data=True, shield_action=True)
-            t_0 = time.time()
-            spibb.fit()
-            t_1 = time.time()
-            spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            method = spibb.NAME + "_Shield_Actions+Modified_Data"
-            method_perf = spibb_perf
-            hyperparam = N_wedge
-            run_time = t_1 - t_0
-            
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-        
-        # 4. Shield on Baseline
-        for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
-                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
-                                             shield_baseline = True, shield_data=False, shield_action=False)
-            t_0 = time.time()
-            spibb.fit()
-            t_1 = time.time()
-            spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            method = spibb.NAME + "_Shield_Baseline"
-            method_perf = spibb_perf
-            hyperparam = N_wedge
-            run_time = t_1 - t_0
-            
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-        
-        # 5. Shield on Baseline + Modified Data
-        for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
-                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
-                                             shield_baseline = True, shield_data=True, shield_action=False)
-            t_0 = time.time()
-            spibb.fit()
-            t_1 = time.time()
-            spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            method = spibb.NAME + "_Shield_Baseline+Modified_Data"
-            method_perf = spibb_perf
-            hyperparam = N_wedge
-            run_time = t_1 - t_0
-            
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-        
-        # 6. Shield on Baseline + Shield on sactions
-        for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
-                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
-                                             shield_baseline = True, shield_data=False, shield_action=True)
-            t_0 = time.time()
-            spibb.fit()
-            t_1 = time.time()
-            spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            method = spibb.NAME + "_Shield_Baseline+Shield_Actions"
-            method_perf = spibb_perf
-            hyperparam = N_wedge
-            run_time = t_1 - t_0
-            
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-        
-        # 7. Shield on Baseline + Shield on actions + Modified Data
-        for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
-                                             speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
-                                             shield_baseline = True, shield_data=True, shield_action=True)
-            t_0 = time.time()
-            spibb.fit()
-            t_1 = time.time()
-            spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            method = spibb.NAME + "_Shield_Baseline+Shield_Actions+Modified_Data"
-            method_perf = spibb_perf
-            hyperparam = N_wedge
-            run_time = t_1 - t_0
-            
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
         
     
             
@@ -512,7 +383,7 @@ class Experiment:
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
-            spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 10)
+            spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method = spibb.NAME
             method_perf = spibb_perf
@@ -1025,15 +896,14 @@ class GymCartPoleExperiment(Experiment):
 
                 print("Estimating Intervals")            
                 # Get the intervals from the abstraction using the method from bahdings
-                
-                # self.structure = self.reduce_transition_matrix(self.P)   
-                # self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
-                # self.estimator.calculate_intervals()
-                # self.intervals = self.estimator.get_intervals()
+                self._count()
+                self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
+                self.intervals = self.estimator.get_intervals()
                 
                 print("Calculating Shield")  
-                # self.shielder = ShieldCartpole(self.structure, self.traps, [self.goal], self.intervals)
-                # self.shielder.calculateShield()
+                self.structure = self.build_transition_matrix()
+                self.shielder = ShieldCartpole(self.structure, [self.traps], [self.goal], self.intervals)
+                self.shielder.calculateShield()
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -1067,38 +937,43 @@ class GymCartPoleExperiment(Experiment):
         return trajectories, batch_traj
             
     
-
-    def reduce_transition_matrix(self, transition_matrix):
+    def _count(self):
         """
-        Reduces a transition matrix to only include possible end states for each state-action pair.
-
-        Args:
-        - transition_matrix (numpy.ndarray): A 3D numpy array of shape (num_states, num_actions, num_states) 
-        where each element represents the probability of transitioning from one state to another
-        given a certain action.
-
-        Returns:
-        - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
-        where each element contains the indices of possible end states.
+        Counts the state-action pairs and state-action-triplets and stores them.
         """
-
-        # Prepare the reduced matrix to hold the indices of possible states
-        reduced_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
-
-        for state in range(self.nb_states):
-            for action in range(self.nb_actions):
-                reduced_matrix[state, action] = []
-        
-        # Loop through each state and action to populate the reduced matrix
-        for (state,action,next_state) in transition_matrix.keys():
-            reduced_matrix[state][action].append(next_state)
+        if self.episodic:
+            batch_trajectory = [val for sublist in self.data for val in sublist]
+        else:
+            batch_trajectory = self.data.copy()
+        self.count_state_action_state = defaultdict(int)
+        self.count_state_action = defaultdict(int)
+        for [action, state, next_state, _] in batch_trajectory:
+            self.count_state_action_state[(int(state), action, int(next_state))] += 1
+            self.count_state_action[(int(state), action)] += 1
             
-        # for state in range(num_states):
-        #     for action in range(num_actions):
-        #         # Get indices of nonzero probabilities (possible end states)
-        #         possible_states = np.nonzero(transition_matrix[state, action])[0]
-        #         reduced_matrix[state, action] = np.array(possible_states)
-        return reduced_matrix
+    def build_transition_matrix(self):
+        """
+        Builds a reduced transition matrix that lists possible next states
+        for each (state, action) pair, based on the observed trajectories.
+
+        Returns
+        -------
+        np.ndarray
+            A 2D array of shape (num_states, num_actions), where each entry
+            is a list of possible next states for that (state, action).
+        """
+
+        # Prepare the reduced matrix with empty lists
+        transition_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                transition_matrix[s, a] = [self.traps]
+
+        # Fill matrix with next states from counts
+        for (state, action, next_state) in self.count_state_action_state.keys():
+            transition_matrix[state, action].append(next_state)
+
+        return transition_matrix
 
 
 import numpy as np

@@ -22,8 +22,8 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, noise_factor
 
     all_rewards = []
     for epoch in range(number_of_epochs):
-        if epoch % 10 == 0: 
-            print("Starting epoch {}".format(epoch), flush=True)
+        # if epoch % 10 == 0: 
+        #     print("Starting epoch {}".format(epoch), flush=True)
         
         env.reset()
         last_state = env.get_state()
@@ -51,11 +51,11 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, noise_factor
         #     np.mean(rewards), np.mean(all_nb_steps)), flush=True)
         # print("Epoch finished in {:.2f} seconds.\n".format(time.time() - start_time), flush=True)
 
-    all_rewards.sort()
-    print("Mean Average: {}.".format(np.mean(all_rewards)), flush=True)
-    if number_of_epochs > 10:
-        print("Average decile: {}.".format(np.mean(all_rewards[:int(number_of_epochs/10)])), flush=True)
-    if number_of_epochs > 100:
-        print("Average centile: {}".format(
-            np.mean(all_rewards[:int(number_of_epochs/100)])), flush=True)
+    # all_rewards.sort()
+    # print("Mean Average: {}.".format(np.mean(all_rewards)), flush=True)
+    # if number_of_epochs > 10:
+    #     print("Average decile: {}.".format(np.mean(all_rewards[:int(number_of_epochs/10)])), flush=True)
+    # if number_of_epochs > 100:
+    #     print("Average centile: {}".format(
+    #         np.mean(all_rewards[:int(number_of_epochs/100)])), flush=True)
     return np.mean(all_rewards)
