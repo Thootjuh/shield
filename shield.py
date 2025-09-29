@@ -64,8 +64,6 @@ class Shield:
                     transition.value
                     transitions[transition.column] = transition.value()
                 transition_probs[(state.id, action.id)] = transitions
-        print(type(probs))
-        print(transition_probs)
         return probs, transition_probs
     
     def calculateShieldInterval(self, prop, model):
