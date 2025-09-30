@@ -244,7 +244,7 @@ class ShieldCartpole(Shield):
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
         super().calculateShieldInterval(prop, self.model_builder.build_model())
         
-    def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
+    def get_safe_actions_from_shield(self, state, threshold=0.9999999999999999, buffer = 0.0):
         """
         calculate the actions allowed by the shield for a given state
         Args:
@@ -275,8 +275,8 @@ class ShieldCartpole(Shield):
             for action in range(len(self.shield[state])):
                 prob = self.shield[state][action]
                 state_action_prob_pairs.append([state, action, prob])
-        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
-        
+        state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        state_action_prob_pairs = [i for i in state_action_prob_pairs if i[2] < 1 ]
         for pair in state_action_prob_pairs:
             state = pair[0]
             action = pair[1]

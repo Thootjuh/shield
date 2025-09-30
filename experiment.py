@@ -900,10 +900,15 @@ class GymCartPoleExperiment(Experiment):
                 self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
                 self.intervals = self.estimator.get_intervals()
                 
+                
+                # self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                # self.estimator.calculate_intervals()
+                # self.intervals = self.estimator.get_intervals()
                 print("Calculating Shield")  
                 self.structure = self.build_transition_matrix()
                 self.shielder = ShieldCartpole(self.structure, [self.traps], [self.goal], self.intervals)
                 self.shielder.calculateShield()
+                # self.shielder.printShield()
                 print("Running Algorithms")
                 self._run_algorithms()
                 
