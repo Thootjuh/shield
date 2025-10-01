@@ -6,6 +6,7 @@ import pandas as pd
 from collections import defaultdict
 import os
 from pathlib import Path
+from functools import lru_cache
 
 from scipy.stats import beta as betaF
 
@@ -229,6 +230,10 @@ class imdp_builder:
 
         return P_low, P_upp
     
+    @lru_cache(maxsize=None)
+    def get_interval_table(self, N, beta=1e-6, kstep=1):
+        return self.create_table(N, beta, kstep, trials=0)
+
     def compute_transition_intervals(self, beta=1e-6, kstep=1, trials=0):
         """
         Computes transition probability intervals for each (s,a,s') triplet.
@@ -241,12 +246,12 @@ class imdp_builder:
 
         interval_dict = {}
 
-        for (state, action, next_state), N_sas in self.count_state_action_state.items():
-            N_sa = self.count_state_action[(state, action)]
+        for (s,a,s_next), N_sas in self.count_state_action_state.items():
+            N_sa = self.count_state_action[(s,a)]
             N_out = N_sa - N_sas
 
-            lb, ub = self.compute_interval_for_Nout(N_sa, N_out, beta=beta, kstep=kstep)
-            interval_dict[(state, action, next_state)] = (lb, ub)
+            P_low, P_upp = self.get_interval_table(N_sa, beta, kstep)
+            interval_dict[(s,a,s_next)] = (P_low[N_out], P_upp[N_out])
 
         self.intervals = interval_dict
     

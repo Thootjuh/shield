@@ -6,6 +6,7 @@ import random
 import partition as prt
 from collections import defaultdict
 
+
 class cartPole:
     def __init__(self):
         self.env = gym.make("CartPole-v0")
@@ -130,6 +131,46 @@ class cartPole:
         right_indices = np.where(mask)[0]
         return right_indices
     
+    def get_successor_states(self, state, action):
+        dim = 4
+        nrPerDim = self.partition['number']        # grid resolution per dimension
+        regionWidth = self.partition['width']
+        origin = self.partition['origin']
+        
+        
+        
+        # state: [x, xdot, theta, thetadot]
+        dt = 0.02
+
+        # Discrete-time A matrix (approximate small-angle linearization)
+        A = np.array([[1, dt, 0, 0],
+                    [0, 1,  dt*9.8*0.1/1.1, 0],
+                    [0, 0, 1, dt],
+                    [0, 0, dt*9.8*1.1/0.5, 1]])
+
+        # Input matrix B
+        B = np.array([[0],
+                    [dt/1.1],
+                    [0],
+                    [dt*1/0.5]])
+
+        K = np.array([10.0, 3.0, 200.0, 20.0])  # row vector 1x4
+        A_cl = A - B @ K.reshape(1, -1) 
+        U = (-10, 10)
+        U_prime = (-2.0, 2.0)
+        
+        def noise_sampler():
+            return np.random.normal(0, 0.01, size=dim)
+        
+        actions = np.array([
+            [0, 0, -0.01, 0],
+            [0, 0, 0.01, 0],
+        ])
+        
+        succ = prt.successors_of_state_action(state, action, self.partition, actions,
+                                  A_cl, B, K, U, U_prime, noise_sampler, N=1000)
+        
+        return succ.keys()
 class cartPolePolicy:
     def __init__(self, env, epsilon=0.1):
         self.nb_states = env.nb_states

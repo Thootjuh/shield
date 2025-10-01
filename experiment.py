@@ -49,6 +49,9 @@ from shield import ShieldRandomMDP, ShieldCartpole
 from PACIntervalEstimator import PACIntervalEstimator
 from evaluate_cartpole import evaluate_policy
 from define_imdp import imdp_builder
+
+
+
 directory = os.path.dirname(os.path.expanduser(__file__))
 
 
@@ -897,6 +900,7 @@ class GymCartPoleExperiment(Experiment):
                 print("Estimating Intervals")            
                 # Get the intervals from the abstraction using the method from bahdings
                 self._count()
+                # print("done counts")
                 self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
                 self.intervals = self.estimator.get_intervals()
                 
@@ -955,7 +959,9 @@ class GymCartPoleExperiment(Experiment):
         for [action, state, next_state, _] in batch_trajectory:
             self.count_state_action_state[(int(state), action, int(next_state))] += 1
             self.count_state_action[(int(state), action)] += 1
-            
+    
+
+   
     def build_transition_matrix(self):
         """
         Builds a reduced transition matrix that lists possible next states
@@ -972,11 +978,22 @@ class GymCartPoleExperiment(Experiment):
         transition_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
         for s in range(self.nb_states):
             for a in range(self.nb_actions):
-                transition_matrix[s, a] = [self.traps]
+                if s == self.traps:
+                    transition_matrix[s, a] = [self.traps]
+                else:
+                    transition_matrix[s, a] = list(self.env.get_successor_states(s,a)) + [self.traps]
+                # transition_matrix[s, a] = []
 
         # Fill matrix with next states from counts
         for (state, action, next_state) in self.count_state_action_state.keys():
-            transition_matrix[state, action].append(next_state)
+            if next_state not in transition_matrix[state, action]:
+                transition_matrix[state, action].append(next_state)
+
+        # for s in range(self.nb_states):
+        #     for a in range(self.nb_actions):
+        #         if len(transition_matrix[s, a]) == 0:
+        #             transition_matrix[s, a] = [self.traps]
+
 
         return transition_matrix
 

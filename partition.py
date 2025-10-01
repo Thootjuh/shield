@@ -126,6 +126,75 @@ def computeRegionCenters(points, partition):
     # Add the origin again to obtain the absolute center coordinates
     return np.round(centers + originShift, decimals=5)
 
+def successors_of_state_action(s_idx, a_idx, partition, actions, A_cl, B, K, U, U_prime, noise_sampler, N=1000):
+    """
+    Compute possible successor abstract states for a given (s, a) pair.
+
+    Parameters
+    ----------
+    s_idx : int
+        Index of the abstract state (region).
+    a_idx : int
+        Index of the abstract action.
+    partition : dict
+        Partition object returned by define_partition.
+    actions : np.ndarray
+        Array of abstract actions (shape: [n_actions, state_dim]).
+        Each action corresponds to a target point d_a in state space.
+    A_cl, B, K : np.ndarray
+        Closed-loop system matrices (discrete-time).
+    U : tuple
+        Continuous input set (min, max).
+    U_prime : tuple
+        Residual control bounds (min, max).
+    noise_sampler : callable
+        Function that returns a noise sample vector η (shape: [state_dim]).
+    N : int
+        Number of noise samples to draw for estimating successors.
+
+    Returns
+    -------
+    successors : dict
+        Dictionary mapping successor abstract state index s' → [lower_prob, upper_prob].
+    """
+
+    dim = partition['center'].shape[1]
+    d_a = actions[a_idx]
+
+    # Pick a representative x from the abstract state (e.g., its center)
+    x_center = partition['center'][s_idx]
+
+    # Solve for residual control u' at x_center: A_cl x + B u' ≈ d_a
+    u_prime = np.linalg.lstsq(B, d_a - A_cl @ x_center, rcond=None)[0]
+    u_actual = -K @ x_center + u_prime
+
+    # Check feasibility (optional: skip if infeasible)
+    if not (U_prime[0] <= u_prime <= U_prime[1] and U[0] <= u_actual <= U[1]):
+        return {}
+
+    # Now simulate noisy successors
+    counts = np.zeros(partition['nr_regions'])
+    for _ in range(N):
+        eta = noise_sampler()
+        x_next = d_a + eta
+        s_next = state2region(x_next, partition, partition['c_tuple'])
+        if s_next is not None:
+            counts[s_next] += 1
+
+    # Empirical probabilities
+    probs = counts / N
+
+    # Convert to confidence intervals (here Clopper–Pearson style)
+    successors = {}
+    alpha = 0.05
+    from statsmodels.stats.proportion import proportion_confint
+    for s_prime, count in enumerate(counts):
+        if count > 0:
+            low, upp = proportion_confint(count, N, alpha=alpha, method="beta")
+            successors[s_prime] = [low, upp]
+
+    return successors
+
 def state2region(state, partition, c_tuple):
 
     region_centers = computeRegionCenters(state, partition)
