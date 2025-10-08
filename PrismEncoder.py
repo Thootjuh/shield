@@ -164,6 +164,53 @@ def encodeWetChickenXY(transition_matrix, width, height):
     # Return the PRISM MDP as a string
     return "\n".join(prism_lines)
 
+def encodeCartPole(transition_matrix, intervals, initial_state):
+    actions = [
+        "push left",
+        "push right",
+    ]
+    
+    num_states, num_actions = transition_matrix.shape
+
+    # Initialize the PRISM MDP module 
+    prism_lines = ["mdp", "", "module CartPole"]
+    
+    # Add statespace
+    prism_lines.append(f"    s : [0..{num_states - 1}] init {initial_state};  // state")
+    
+    
+    # Add transitions
+    for state in range(num_states):
+        prism_lines.append(f"    // State {state}")
+        for action in range(num_actions):
+            # Extract possible next states
+            next_states = transition_matrix[state, action, :]
+            
+            # Remove invalid transitions (e.g., -1 to indicate no transition)
+            valid_next_states = [int(s) for s in next_states if s >= 0]
+            
+            if valid_next_states:
+                # Uniform probability for each next state
+                # uniform_prob = 1 / len(valid_next_states)
+                default_interval = (0.0, 1.0)
+                probabilities = [
+                    f"[{intervals.get((state, action, next_state), default_interval)[0], intervals.get((state, action, next_state), default_interval)[1]}]"
+                    for next_state in valid_next_states
+                ]
+                
+                # Create PRISM transition command
+                transitions = " + ".join(
+                    f"{prob}:(s'={next_state})" for prob, next_state in zip(probabilities, valid_next_states)
+                )
+                action_label = actions[action]
+                prism_lines.append(f"    [{action_label}] s={state} -> {transitions};")
+                
+    # End the module
+    prism_lines.append("endmodule")
+
+    # Return the PRISM MDP as a string
+    return "\n".join(prism_lines)
+
 def set_initial_state(prism_mdp, initial_state):
     """
     Modifies the initial state in a PRISM MDP module string.

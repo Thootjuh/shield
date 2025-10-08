@@ -43,14 +43,13 @@ from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
 from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
-
+from batch_rl_algorithms.spibb_dqn.spibb_dqn import spibb_dqn
 
 from shield import ShieldRandomMDP, ShieldCartpole
 from PACIntervalEstimator import PACIntervalEstimator
 from evaluate_cartpole import evaluate_policy
 from define_imdp import imdp_builder
-
-
+from PrismEncoder import encodeCartPole
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 
@@ -152,7 +151,6 @@ class Experiment:
             self.speed_up_dict = None
 
     def _set_env_params(self):
-
         pass
 
     def _run_one_iteration(self, params_env):
@@ -196,34 +194,14 @@ class Experiment:
         for key in self.algorithms_dict.keys():
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
                 self._run_spibb(key)
-            elif key in {ExactSoftSPIBB.NAME, ApproxSoftSPIBB.NAME, LowerApproxSoftSPIBB.NAME,
-                         AdvApproxSoftSPIBB.NAME}:
+            elif key in {ExactSoftSPIBB.NAME, ApproxSoftSPIBB.NAME, LowerApproxSoftSPIBB.NAME, AdvApproxSoftSPIBB.NAME}:
                 self._run_soft_spibb(key)
-            elif key in {DUIPI.NAME}:
-                self._run_duipi(key)
-            elif key in {shield_DUIPI.NAME}:
-                self._run_duipi_shielded(key)
-            elif key in {Basic_rl.NAME}:
-                self._run_basic_rl(key)
-            elif key in {RMin.NAME}:
-                self._run_r_min(key)
-            elif key in {Shield_RMin.NAME}:
-                self._run_r_min_shielded(key)
-            elif key in {RaMDP.NAME}:
-                self._run_ramdp(key)
-            elif key in {Shield_RaMDP.NAME}:
-                self._run_ramdp_shielded(key)
-            elif key in {MBIE.NAME}:
-                self._run_mbie(key)
-            elif key in {shield_MBIE.NAME}:
-                self._run_mbie_shielded(key)
+            elif key in {'SPIBB-DQN'}:
+                self._run_spibb_dqn(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
                 self._run_spibb_shielded(key)
-                # self._run_spibb_experiment(key)
-            elif key in {WorstCaseRMDP.NAME}:
-                self._run_rmdp(key)
-            elif key in {Shield_WorstCaseRMDP.NAME}:
-                self._run_rmdp_shielded(key)
+            elif key in {Basic_rl.NAME}:
+                self._run_basic_rl(key)
             else:
                 print("KEY NOT FOUND")
             
@@ -241,112 +219,6 @@ class Experiment:
         hyperparam = None
         run_time = t_1 - t_0
         self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-        
-    def _run_rmdp_shielded(self, key):
-        """
-        Runs rmdp for one data set.
-        """
-        rmdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                            episodic=self.episodic, shield=self.shielder, intervals=self.intervals, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
-        t_0 = time.time()
-        rmdp.fit()
-        t_1 = time.time()
-        basic_rl_perf = self._policy_evaluation_exact(rmdp.pi)
-        method = rmdp.NAME
-        method_perf = basic_rl_perf
-        hyperparam = None
-        run_time = t_1 - t_0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-    
-    def _run_rmdp(self, key):
-        """
-        Runs rmdp for one data set.
-        """
-        rmdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                            episodic=self.episodic, intervals=self.intervals, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
-        t_0 = time.time()
-        rmdp.fit()
-        t_1 = time.time()
-        basic_rl_perf = self._policy_evaluation_exact(rmdp.pi)
-        method = rmdp.NAME
-        method_perf = basic_rl_perf
-        hyperparam = None
-        run_time = t_1 - t_0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-        
-    def _run_duipi(self, key):
-        """
-        Runs DUIPI for one data set, with all hyper-parameters and in bayesian and frequentist mode.
-        :param key: DUIPI.NAME
-        """
-        for bayesian_notifier in self.algorithms_dict[key].keys():
-            bayesian = bayesian_notifier == 'bayesian'
-            if self.safety_deltas:
-                xis = [norm.ppf(1 - delta) for delta in self.safety_deltas]
-            else:
-                xis = self.algorithms_dict[key][bayesian_notifier]
-            for i, xi in enumerate(xis):
-                duipi = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                                 nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                                 xi=xi, episodic=self.episodic, bayesian=bayesian,
-                                                 speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
-                t_0 = time.time()
-                duipi.fit()
-                t_1 = time.time()
-                duipi_perf = self._policy_evaluation_exact(duipi.pi)
-                if bayesian:
-                    name_addition = '_bayesian'
-                else:
-                    name_addition = '_frequentist'
-                method = duipi.NAME + name_addition
-                method_perf = duipi_perf
-                hyperparam = xi
-                run_time = t_1 - t_0
-                if self.safety_deltas:
-                    self.results.append(
-                        self.to_append + [method, hyperparam, method_perf, run_time, self.safety_deltas[i],
-                                          duipi.v[self.initial_state] - xi * np.sqrt(
-                                              duipi.variance_v[self.initial_state])])
-                else:
-                    self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-                    
-    def _run_duipi_shielded(self, key):
-        """
-        Runs DUIPI for one data set, with all hyper-parameters and in bayesian and frequentist mode.
-        :param key: shield_DUIPI.NAME
-        """
-        for bayesian_notifier in self.algorithms_dict[key].keys():
-            bayesian = bayesian_notifier == 'bayesian'
-            if self.safety_deltas:
-                xis = [norm.ppf(1 - delta) for delta in self.safety_deltas]
-            else:
-                xis = self.algorithms_dict[key][bayesian_notifier]
-            for i, xi in enumerate(xis):
-                duipi = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                                 nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                                 xi=xi, episodic=self.episodic, shield=self.shielder, bayesian=bayesian,
-                                                 speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
-                t_0 = time.time()
-                duipi.fit()
-                t_1 = time.time()
-                duipi_perf = self._policy_evaluation_exact(duipi.pi)
-                if bayesian:
-                    name_addition = '_bayesian'
-                else:
-                    name_addition = '_frequentist'
-                method = duipi.NAME + name_addition
-                method_perf = duipi_perf
-                hyperparam = xi
-                run_time = t_1 - t_0
-                if self.safety_deltas:
-                    self.results.append(
-                        self.to_append + [method, hyperparam, method_perf, run_time, self.safety_deltas[i],
-                                          duipi.v[self.initial_state] - xi * np.sqrt(
-                                              duipi.variance_v[self.initial_state])])
-                else:
-                    self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
     
     def _run_spibb_shielded(self, key):
         """
@@ -370,10 +242,7 @@ class Experiment:
             run_time = t_1 - t_0
             
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-            
-        
-    
-            
+                  
     def _run_spibb(self, key):
         """
         Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
@@ -389,6 +258,19 @@ class Experiment:
             spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method = spibb.NAME
+            method_perf = spibb_perf
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+    
+    def _run_spibb_dqn(self, key):
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = spibb_dqn(baseline=self.pi_b, gamma=self.gamma, dataset=self.data_cont, env=self.env, minimum_count=N_wedge)
+            t_0 = time.time()
+            spibb.learn(passes_on_dataset = 25)
+            t_1 = time.time()
+            spibb_perf = spibb.evaluate_policy(1, 100)
+            method = 'spibb_dqn'
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
@@ -460,141 +342,7 @@ class Experiment:
         run_time = t_1 - t_0
         self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
         
-    def _run_r_min(self, key):
-        """
-        Runs R-MIN for one data set, with all hyper-parameters.
-        :param key: RMIN.NAME
-        """
-        for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            r_min = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
-                                             estimate_baseline=self.estimate_baseline)
-            t_0 = time.time()
-            r_min.fit()
-            t_1 = time.time()
-            r_min_perf = self._policy_evaluation_exact(r_min.pi)
-            method = r_min.NAME
-            method_perf = r_min_perf
-            hyperparam = N_wedge
-            run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-            
-    def _run_r_min_shielded(self, key):
-        """
-        Runs R-MIN for one data set, with all hyper-parameters.
-        :param key: RMIN.NAME
-        """
-        for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            r_min = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict,
-                                             estimate_baseline=self.estimate_baseline)
-            t_0 = time.time()
-            r_min.fit()
-            t_1 = time.time()
-            r_min_perf = self._policy_evaluation_exact(r_min.pi)
-            method = r_min.NAME
-            method_perf = r_min_perf
-            hyperparam = N_wedge
-            run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-
-    def _run_mbie(self, key):
-        """
-        Runs MBIE for one data set, with all hyper-parameters.
-        :param key: MBIE.NAME
-        """
-        if self.safety_deltas:
-            deltas = self.safety_deltas
-        else:
-            deltas = self.algorithms_dict[key]['deltas']
-        for delta in deltas:
-            mbie = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                            delta=delta, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
-                                            estimate_baseline=self.estimate_baseline)
-            t_0 = time.time()
-            mbie.fit()
-            t_1 = time.time()
-            mbie_perf = self._policy_evaluation_exact(mbie.pi)
-            method = mbie.NAME
-            method_perf = mbie_perf
-            hyperparam = delta
-            run_time = t_1 - t_0
-            if self.safety_deltas:
-                bound = mbie.get_v[self.initial_state]
-                self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, delta, bound])
-            else:
-                self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-                
-    def _run_mbie_shielded(self, key):
-        """
-        Runs MBIE for one data set, with all hyper-parameters.
-        :param key: MBIE.NAME
-        """
-        if self.safety_deltas:
-            deltas = self.safety_deltas
-        else:
-            deltas = self.algorithms_dict[key]['deltas']
-        for delta in deltas:
-            mbie = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                            delta=delta, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict,
-                                            estimate_baseline=self.estimate_baseline)
-            t_0 = time.time()
-            mbie.fit()
-            t_1 = time.time()
-            mbie_perf = self._policy_evaluation_exact(mbie.pi)
-            method = mbie.NAME
-            method_perf = mbie_perf
-            hyperparam = delta
-            run_time = t_1 - t_0
-            if self.safety_deltas:
-                bound = mbie.get_v[self.initial_state]
-                self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, delta, bound])
-            else:
-                self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-
-    def _run_ramdp(self, key):
-        """
-        Runs RaMDP for one data set, with all hyper-parameters.
-        :param key: RaMDP.NAME
-        """
-        for kappa in self.algorithms_dict[key]['hyperparam']:
-            ramdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             kappa=kappa, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
-                                             estimate_baseline=self.estimate_baseline)
-            t_0 = time.time()
-            ramdp.fit()
-            t_1 = time.time()
-            ramdp_perf = self._policy_evaluation_exact(ramdp.pi)
-            method = ramdp.NAME
-            method_perf = ramdp_perf
-            hyperparam = kappa
-            run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
-            
-    def _run_ramdp_shielded(self, key):
-        """
-        Runs RaMDP for one data set, with all hyper-parameters.
-        :param key: RaMDP.NAME
-        """
-        for kappa in self.algorithms_dict[key]['hyperparam']:
-            ramdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
-                                             kappa=kappa, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict,
-                                             estimate_baseline=self.estimate_baseline)
-            t_0 = time.time()
-            ramdp.fit()
-            t_1 = time.time()
-            ramdp_perf = self._policy_evaluation_exact(ramdp.pi)
-            method = ramdp.NAME
-            method_perf = ramdp_perf
-            hyperparam = kappa
-            run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+    
 
     def _policy_evaluation_exact(self, pi):
         """
@@ -853,7 +601,7 @@ class GymCartPoleExperiment(Experiment):
         # print("calcing rand perf")
         # pi_rand_perf = self._policy_evaluation_exact(pi_rand)
         # print(f"pi_rand_perf = {pi_rand_perf}")
-        pi_rand_perf = 0
+
         # self.fixed_params_exp_list.append(pi_rand_perf)
 
         # pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
@@ -862,19 +610,22 @@ class GymCartPoleExperiment(Experiment):
         # pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
         # print(f"pi_star_perf = {pi_star_perf}")
         # self.fixed_params_exp_list.append(pi_star_perf)
-        pi_star_perf = 0
+
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         
         # pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         # print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         # print(f"pi_baseline_perf = {pi_base_perf}")
-        pi_base_perf = 0
+        self.pi_b = cartPolePolicy(self.env, epsilon=self.epsilons_baseline[0]).pi
+        pi_base_perf = evaluate_policy(self.env, self.pi_b, 1, 100)
+        print(pi_base_perf)
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
         self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
 
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
-        
+        print("estimating transitions")
+        self.estimate_transitions()
         
     def _run_one_iteration(self):
         for epsilon_baseline in self.epsilons_baseline:
@@ -894,9 +645,9 @@ class GymCartPoleExperiment(Experiment):
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
                 # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
-                self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                self.data, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
-
+                
                 print("Estimating Intervals")            
                 # Get the intervals from the abstraction using the method from bahdings
                 self._count()
@@ -910,9 +661,9 @@ class GymCartPoleExperiment(Experiment):
                 # self.intervals = self.estimator.get_intervals()
                 print("Calculating Shield")  
                 self.structure = self.build_transition_matrix()
-                self.shielder = ShieldCartpole(self.structure, [self.traps], [self.goal], self.intervals)
+                self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
+                self.shielder.printShield()
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -926,24 +677,27 @@ class GymCartPoleExperiment(Experiment):
         :return: data batch as a list of sublists of the form [state, action, next_state, reward]
         """
         trajectories = []
-        
+        trajectories_cont = []
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
             env.reset()
-            state = env.get_init_state()
+            state, region = env.get_init_state()
             is_done = False
             while nb_steps < max_steps and not is_done:
                 # print("AAAAA")
-                action_choice = np.random.choice(pi.shape[1], p=pi[state])
+                action_choice = np.random.choice(pi.shape[1], p=pi[region])
                 state, next_state, reward = env.step(action_choice)
+                region = env.state2region(state)
+                next_region= env.state2region(next_state)
                 is_done = env.is_done()                    
-                trajectorY.append([action_choice, state, next_state, reward])
-                state = next_state
+                trajectorY.append([action_choice, region, next_region, reward])
+                trajectories_cont.append([state, action_choice, next_state, reward, is_done])
+                region = next_region
                 nb_steps += 1
             trajectories.append(trajectorY)
         batch_traj = [val for sublist in trajectories for val in sublist]
-        return trajectories, batch_traj
+        return trajectories, batch_traj, trajectories_cont
             
     
     def _count(self):
@@ -961,7 +715,19 @@ class GymCartPoleExperiment(Experiment):
             self.count_state_action[(int(state), action)] += 1
     
 
-   
+    def estimate_transitions(self):
+        count = 0
+        # Prepare the reduced matrix with empty lists
+        transition_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                if s == self.traps:
+                    transition_matrix[s, a] = [self.traps]
+                else:
+                    print(s, " = ", self.env.get_successor_states(s,a))
+                    transition_matrix[s, a] = list(self.env.get_successor_states(s,a))
+        self.transition_matrix = transition_matrix
+        
     def build_transition_matrix(self):
         """
         Builds a reduced transition matrix that lists possible next states
@@ -973,20 +739,15 @@ class GymCartPoleExperiment(Experiment):
             A 2D array of shape (num_states, num_actions), where each entry
             is a list of possible next states for that (state, action).
         """
-
+        count = 0
         # Prepare the reduced matrix with empty lists
-        transition_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
-        for s in range(self.nb_states):
-            for a in range(self.nb_actions):
-                if s == self.traps:
-                    transition_matrix[s, a] = [self.traps]
-                else:
-                    transition_matrix[s, a] = list(self.env.get_successor_states(s,a)) + [self.traps]
-                # transition_matrix[s, a] = []
+        transition_matrix = self.transition_matrix.copy()
+
 
         # Fill matrix with next states from counts
         for (state, action, next_state) in self.count_state_action_state.keys():
             if next_state not in transition_matrix[state, action]:
+                # print("fuck")
                 transition_matrix[state, action].append(next_state)
 
         # for s in range(self.nb_states):
@@ -994,7 +755,12 @@ class GymCartPoleExperiment(Experiment):
         #         if len(transition_matrix[s, a]) == 0:
         #             transition_matrix[s, a] = [self.traps]
 
-
+        # for i in range(len(transition_matrix)):
+        #     for j in range(len(transition_matrix[i])):
+        #         if len(transition_matrix[i][j]) > 1:
+        #             count+=1
+        # print(transition_matrix)
+        # print(count)
         return transition_matrix
 
 
@@ -1060,7 +826,7 @@ def policy_evaluation_exact_dense(pi, r, p, gamma):
     Return:
       v: 1D array with updated state values
     """
-    # Rewards according to policy: Hadamard product and row-wise sum
+    # Rewards according to policy: Hadamard product and row-wise sum 
     r_pi = np.einsum('ij,ij->i', pi, r)
 
     # Policy-weighted transitions:
@@ -1073,7 +839,7 @@ def policy_evaluation_exact_dense(pi, r, p, gamma):
     return v, r + gamma * np.einsum('i, jki->jk', v, p)
 
 # Translate the names from the algorithms to the class.
-algorithm_name_dict = {SPIBB.NAME: SPIBB, Lower_SPIBB.NAME: Lower_SPIBB,
+algorithm_name_dict = {SPIBB.NAME: SPIBB, Lower_SPIBB.NAME: Lower_SPIBB, 'SPIBB-DQN': spibb_dqn,
                        ApproxSoftSPIBB.NAME: ApproxSoftSPIBB, ExactSoftSPIBB.NAME: ExactSoftSPIBB,
                        AdvApproxSoftSPIBB.NAME: AdvApproxSoftSPIBB, LowerApproxSoftSPIBB.NAME: LowerApproxSoftSPIBB,
                        DUIPI.NAME: DUIPI, shield_DUIPI.NAME: shield_DUIPI, Basic_rl.NAME: Basic_rl, 

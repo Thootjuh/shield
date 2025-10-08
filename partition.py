@@ -126,6 +126,57 @@ def computeRegionCenters(points, partition):
     # Add the origin again to obtain the absolute center coordinates
     return np.round(centers + originShift, decimals=5)
 
+def successors_of_state_action_abstraction(
+    s_idx, a_idx, partition, A_cl, B, K, U, U_prime_values, noise_sampler, N=1000
+):
+    """
+    Compute possible successor abstract states for a given (s, a) pair
+    using the abstraction method from Badings et al. (2024), but with
+    physically meaningful d_a derived from linearized CartPole dynamics.
+    """
+    x_center = partition['center'][s_idx]
+    # u_prime = np.array([U_prime_values[a_idx]])  # residual control for this abstract action
+    u_prime = np.linalg.lstsq(B, d_a - A_cl @ x_center, rcond=None)[0]
+    d_a = A_cl @ x_center + B @ u_prime  # nominal next state (paper-style)
+
+    # Now simulate noise to estimate transition probabilities
+    counts = np.zeros(partition['nr_regions'])
+    for _ in range(N):
+        eta = noise_sampler()
+        x_next = d_a.flatten() + eta
+        s_next = state2region(x_next, partition, partition['c_tuple'])
+        if s_next is not None:
+            counts[s_next] += 1
+
+    N_eff = counts.sum()
+    if N_eff == 0:
+        return {}
+
+    successors = {}
+    for s_prime, count in enumerate(counts):
+        if count > 0:
+            low, upp = proportion_confint(count, N_eff, alpha=0.05, method="beta")
+            successors[s_prime] = [low, upp]
+
+    return successors
+
+def successor_states(s_idx, a_idx, partition, A_cl, B, U_prime_values, noise_sampler, N=1000):
+    x_center = partition['center'][s_idx]
+    u_prime = np.array([U_prime_values[a_idx]])
+    d_a = A_cl @ x_center + B @ u_prime
+    counts = np.zeros(partition['nr_regions']+1)
+    
+    for i in range(N):
+        eta = noise_sampler[i]
+        x_next = d_a + eta
+        s_next = state2region(x_next, partition, partition['c_tuple'])
+        if s_next is not None:
+            counts[s_next] += 1
+        else:
+            counts[-1] += 1
+    successors = [i for i, count in enumerate(counts) if count > 0]
+    return successors
+
 def successors_of_state_action(s_idx, a_idx, partition, actions, A_cl, B, K, U, U_prime, noise_sampler, N=1000):
     """
     Compute possible successor abstract states for a given (s, a) pair.
@@ -169,14 +220,14 @@ def successors_of_state_action(s_idx, a_idx, partition, actions, A_cl, B, K, U, 
     u_actual = -K @ x_center + u_prime
 
     # Check feasibility (optional: skip if infeasible)
-    if not (U_prime[0] <= u_prime <= U_prime[1] and U[0] <= u_actual <= U[1]):
-        return {}
+    # if not (U_prime[0] <= u_prime <= U_prime[1] and U[0] <= u_actual <= U[1]):
+    #     return {}
 
     # Now simulate noisy successors
     counts = np.zeros(partition['nr_regions'])
     for _ in range(N):
         eta = noise_sampler()
-        x_next = d_a + eta
+        x_next = A_cl @ x_center + B @ u_prime + eta
         s_next = state2region(x_next, partition, partition['c_tuple'])
         if s_next is not None:
             counts[s_next] += 1

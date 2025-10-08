@@ -82,8 +82,8 @@ class Shield:
             for action in range(len(self.structure[state])):
                 if state in self.traps:
                     self.shield[state][action] = 1
-                elif state in self.goal:
-                    self.shield[state][action] = 0
+                # elif state in self.goal:
+                #     self.shield[state][action] = 0
                 else:
                     try:
                         trans = transition_probabilities[(state, action)]
@@ -234,7 +234,8 @@ class ShieldCartpole(Shield):
         calculate the probability of violating the safety specification for the Random MDPs environment
         """
         # How likely are we to step into a trap
-        prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        # prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        prop = "Pmax=? [!\"goal\"U\"trap\"]"
         # prop = "Pmin=? [  F<4 \"trap\" ]"
         # prop1 = "Pmax=? [  F \"trap\" ]"
         
@@ -243,8 +244,9 @@ class ShieldCartpole(Shield):
         # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
         super().calculateShieldInterval(prop, self.model_builder.build_model())
+        self.shield = 1-self.shield
         
-    def get_safe_actions_from_shield(self, state, threshold=0.99999, buffer = 0.0):
+    def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.05):
         """
         calculate the actions allowed by the shield for a given state
         Args:
@@ -276,7 +278,7 @@ class ShieldCartpole(Shield):
                 prob = self.shield[state][action]
                 state_action_prob_pairs.append([state, action, prob])
         state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
-        state_action_prob_pairs = [i for i in state_action_prob_pairs if i[2] < 1 ]
+        state_action_prob_pairs = [i for i in state_action_prob_pairs if i[2] < 0.95 and i[2]> 0]
         for pair in state_action_prob_pairs:
             state = pair[0]
             action = pair[1]
