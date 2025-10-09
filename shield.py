@@ -1,11 +1,7 @@
 import stormpy
-import PrismEncoder
-import tempfile
-import os
 import time
 import numpy as np
 from IntervalMDPBuilder import IntervalMDPBuilderPacman, IntervalMDPBuilderRandomMDP, IntervalMDPBuilderAirplane, IntervalMDPBuilderSlipperyGridworld, IntervalMDPBuilderWetChicken, IntervalMDPBuilderPrism, IntervalMDPBuilderTaxi, IntervalMDPBuilderFrozenLake
-import pycarl
  
 class Shield:
     def __init__(self, transition_matrix, traps, goal, intervals):
