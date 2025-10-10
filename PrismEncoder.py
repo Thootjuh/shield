@@ -166,8 +166,8 @@ def encodeWetChickenXY(transition_matrix, width, height):
 
 def encodeCartPole(transition_matrix, intervals, initial_state):
     actions = [
-        "push left",
-        "push right",
+        "left",
+        "right",
     ]
     
     num_states, num_actions = transition_matrix.shape
@@ -176,7 +176,7 @@ def encodeCartPole(transition_matrix, intervals, initial_state):
     prism_lines = ["mdp", "", "module CartPole"]
     
     # Add statespace
-    prism_lines.append(f"    s : [0..{num_states - 1}] init {initial_state};  // state")
+    prism_lines.append(f"    s : [0..{num_states - 1}];  // state")
     
     
     # Add transitions
@@ -184,7 +184,7 @@ def encodeCartPole(transition_matrix, intervals, initial_state):
         prism_lines.append(f"    // State {state}")
         for action in range(num_actions):
             # Extract possible next states
-            next_states = transition_matrix[state, action, :]
+            next_states = transition_matrix[state, action]
             
             # Remove invalid transitions (e.g., -1 to indicate no transition)
             valid_next_states = [int(s) for s in next_states if s >= 0]
@@ -192,9 +192,13 @@ def encodeCartPole(transition_matrix, intervals, initial_state):
             if valid_next_states:
                 # Uniform probability for each next state
                 # uniform_prob = 1 / len(valid_next_states)
-                default_interval = (0.0, 1.0)
+                if len(valid_next_states) == 1:
+                    default_interval = (1.0, 1.0)
+                else:
+                    default_interval = (4.999999999999449e-05, 0.9999999)
                 probabilities = [
-                    f"[{intervals.get((state, action, next_state), default_interval)[0], intervals.get((state, action, next_state), default_interval)[1]}]"
+                    f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
+                    f" {intervals.get((state, action, next_state), default_interval)[1]}]"
                     for next_state in valid_next_states
                 ]
                 
@@ -207,7 +211,8 @@ def encodeCartPole(transition_matrix, intervals, initial_state):
                 
     # End the module
     prism_lines.append("endmodule")
-
+    prism_lines.append("init s<10000 endinit")
+    prism_lines.append('label "trap" = s=10000;')
     # Return the PRISM MDP as a string
     return "\n".join(prism_lines)
 

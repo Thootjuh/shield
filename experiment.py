@@ -661,9 +661,10 @@ class GymCartPoleExperiment(Experiment):
                 # self.intervals = self.estimator.get_intervals()
                 print("Calculating Shield")  
                 self.structure = self.build_transition_matrix()
-                self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals)
+
+                self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
-                self.shielder.printShield()
+                # self.shielder.printShield()
                 print("Running Algorithms")
                 self._run_algorithms()
                 
