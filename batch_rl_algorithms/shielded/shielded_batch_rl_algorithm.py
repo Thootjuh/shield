@@ -102,6 +102,7 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         Returns:
             policy (np.ndarray): the policy with all unsafe actions removed
         """
+        print("shielding Baseline")
         for i, state in enumerate(policy):
             allowed_actions = self.shield.get_safe_actions_from_shield(i)
             temp = np.zeros(len(state))

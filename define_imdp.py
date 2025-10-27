@@ -257,7 +257,7 @@ class imdp_builder:
     
     def get_intervals(self):
         """
-        Returns all computed PAC intervals for (state, action, next_state) triplets.
+        Returns all computed intervals for (state, action, next_state) triplets.
 
         Returns
         -------
@@ -268,7 +268,7 @@ class imdp_builder:
     
     def get_specific_interval(self, state, action, next_state):
         """
-        Retrieves the specific PAC interval for a given (state, action, next_state) triplet.
+        Retrieves the specific interval for a given (state, action, next_state) triplet.
 
         Parameters
         ----------

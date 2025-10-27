@@ -53,6 +53,7 @@ class AI:
         self.epsilon_soft = epsilon_soft
         
         self.data = self.format_dataset(dataset)
+        self.print_count_stats(self.data, self.minimum_count)
 
     def _build_network(self):
         if self.network_size == 'small':
@@ -298,6 +299,15 @@ class AI:
 
         return counts
     
+    def print_count_stats(data, minimum_count):
+        c = data['c']
+        known_fraction = np.mean(c >= minimum_count)
+        print(f"[Diagnostics] Known fraction: {known_fraction*100:.1f}% "
+            f"({(c >= minimum_count).sum()} / {c.size})")
+        
+        
+
+            
     def format_dataset(self, dataset, param = 0.2):
         # dataset = [state, action_choice, next_state, reward, is_done]
         print("Computing counts. The dataset contains {} transitions.".format(len(dataset)), flush=True)
@@ -323,8 +333,8 @@ class AI:
                 data['r'][i] = dataset[i][3]
                 data['t'][i] = dataset[i][4]
                 data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
-                for j in range(len(dataset)-1):
-                    s = self.similarite(dataset[i+1][0], dataset[j][0], param)
+                for j in range(len(dataset) - 1):
+                    s = self.similarite(dataset[i][0], dataset[j][0], param)
                     data['c'][i, dataset[j][1]] += s
         else: # For larger datasets (>10000), we instead use knn
             for i in range(len(dataset) - 1):

@@ -190,7 +190,7 @@ class Experiment:
         """
         if self.speed_up:
             self._compute_speed_up_dict()
-        # self._run_shielded_baseline()
+        self._run_shielded_baseline()
         for key in self.algorithms_dict.keys():
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
                 self._run_spibb(key)
@@ -213,7 +213,8 @@ class Experiment:
         t_0 = time.time()
         pi_b_s.fit()
         t_1 = time.time()
-        basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
+        basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 100)
+        # basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
         method = pi_b_s.NAME
         method_perf = basic_rl_perf
         hyperparam = None

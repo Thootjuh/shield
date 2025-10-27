@@ -12,7 +12,7 @@ class spibb_dqn:
         self.last_episode_steps = 0
         self.score_agent = 0
         self.env = env
-        self.ai = AI(baseline, env, dataset, state_shape=[4], nb_actions=2, gamma=gamma, minibatch_size=64, minimum_count=minimum_count)
+        self.ai = AI(baseline, env, dataset, state_shape=[4], nb_actions=2, gamma=gamma, minibatch_size=32, minimum_count=minimum_count)
         self.folder_name = folder_name
         self.max_start_nullops = max_start_nullops
         self.episode_max_len = episode_max_len
@@ -48,7 +48,7 @@ class spibb_dqn:
 
         print('>>>>> Training ran in {} seconds.'.format(time.time() - begin), flush=True)
     
-    
+            
     def evaluate_policy(self, number_of_steps, number_of_epochs):
         """ Evaluate the baseline number_of_epochs times for number_of_steps steps.
 
