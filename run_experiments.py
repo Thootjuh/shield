@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import RandomMDPsExperiment, GymCartPoleExperiment
+from experiment import RandomMDPsExperiment, GymCartPoleExperiment, GymCrashingMountainCar
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
@@ -38,6 +38,9 @@ nb_iterations = int(sys.argv[5])
 def run_experiment(seed):
     if environment == 'cartpole':
         experiment = GymCartPoleExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+                                          machine_specific_experiment_directory=machine_specific_experiment_directory)
+    elif environment == 'mountaincar':
+        experiment = GymCrashingMountainCar(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
     elif environment == 'random_mdps':
         experiment = RandomMDPsExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,

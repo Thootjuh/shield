@@ -15,6 +15,7 @@ class cartPole:
         observation, _ = self.env.reset()
         self.init = observation
         self.state = observation
+        self.state_shape = [4]
         self.terminated = False
         self.goal = [0.0, 0.0, 0.0, 0.0]
         self.partition_states()
@@ -96,6 +97,9 @@ class cartPole:
     def get_nb_actions(self):
         return 2
     
+    def get_state_shape(self):
+        return self.state_shape
+    
     def get_state(self):
         return self.state
     
@@ -148,61 +152,19 @@ class cartPole:
         B = np.array([[0], [dt / 1.1], [0], [dt * 1 / 0.5]])
         K = np.array([10.0, 3.0, 200.0, 20.0])
         A_cl = A - B @ K.reshape(1, -1)
-        # U = (-10.0, 10.0)
-        
-        # actions = np.array([
-        #     [0, 0, -0.08, 0],
-        #     [0, 0, 0.08, 0],
-        # ])
+
         U_prime_values = [-2.0, 2.0]
         
         def noise_sampler():
             return np.random.normal(0, [0.01, 0.01, 0.01, 0.02], size=4)
         N = 1000
         samples = []
+        
         for _ in range(N):
             samples.append(noise_sampler())
-        succ = prt.successor_states(state, action, self.partition, A_cl, B, U_prime_values, samples, 1000)
+        succ = prt.successor_states(state, action, A_cl, B, U_prime_values, samples, self, 1000)
         return succ
-        # dim = 4
-        # nrPerDim = self.partition['number']        # grid resolution per dimension
-        # regionWidth = self.partition['width']
-        # origin = self.partition['origin']
-        
-        
-        
-        # # state: [x, xdot, theta, thetadot]
-        # dt = 0.02
 
-        # # Discrete-time A matrix (approximate small-angle linearization)
-        # A = np.array([[1, dt, 0, 0],
-        #             [0, 1,  dt*9.8*0.1/1.1, 0],
-        #             [0, 0, 1, dt],
-        #             [0, 0, dt*9.8*1.1/0.5, 1]])
-
-        # # Input matrix B
-        # B = np.array([[0],
-        #             [dt/1.1],
-        #             [0],
-        #             [dt*1/0.5]])
-
-        # K = np.array([10.0, 3.0, 200.0, 20.0])  # row vector 1x4
-        # A_cl = A - B @ K.reshape(1, -1) 
-        # U = (-10, 10)
-        # U_prime = (-2.0, 2.0)
-        
-        # def noise_sampler():
-        #     return np.random.normal(0, 0.01, size=dim)
-        
-        # actions = np.array([
-        #     [0, 0, -0.01, 0],
-        #     [0, 0, 0.01, 0],
-        # ])
-        
-        # succ = prt.successors_of_state_action(state, action, self.partition, actions,
-        #                           A_cl, B, K, U, U_prime, noise_sampler, N=1000)
-        
-        # return succ.keys()
 class cartPolePolicy:
     def __init__(self, env, epsilon=0.1):
         self.nb_states = env.nb_states

@@ -299,7 +299,7 @@ class AI:
 
         return counts
     
-    def print_count_stats(data, minimum_count):
+    def print_count_stats(self, data, minimum_count):
         c = data['c']
         known_fraction = np.mean(c >= minimum_count)
         print(f"[Diagnostics] Known fraction: {known_fraction*100:.1f}% "

@@ -25,6 +25,7 @@ from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 from environments.read_env_from_prism import prism_env
 from environments.gym_environment import gymTaxi, gymIce
 from environments.gym_cartpole_env import cartPole, cartPolePolicy
+from environments.gym_crashing_mountain_car import crashingMountainCar, crashingMountainCarPolicy
 
 from batch_rl_algorithms.basic_rl import Basic_rl
 from batch_rl_algorithms.pi_star import PiStar
@@ -45,11 +46,11 @@ from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
 from batch_rl_algorithms.spibb_dqn.spibb_dqn import spibb_dqn
 
-from shield import ShieldRandomMDP, ShieldCartpole
+from shield import ShieldRandomMDP, ShieldCartpole, ShieldCrashingMountainCar
 from PACIntervalEstimator import PACIntervalEstimator
 from evaluate_cartpole import evaluate_policy
 from define_imdp import imdp_builder
-from PrismEncoder import encodeCartPole
+
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 
@@ -585,9 +586,11 @@ class GymCartPoleExperiment(Experiment):
         print("get values")
         self.nb_states = self.env.get_nb_states()
         self.nb_actions = self.env.get_nb_actions()
+        
 
         self.traps = self.env.get_traps()
         self.goal = self.env.get_goal_state()
+
         self.initial_state = self.env.get_init_state()
         
         # self.P = self.env.get_transition_function()
@@ -728,6 +731,207 @@ class GymCartPoleExperiment(Experiment):
                 else:
                     print(s, " = ", self.env.get_successor_states(s,a))
                     transition_matrix[s, a] = list(self.env.get_successor_states(s,a))
+        self.transition_matrix = transition_matrix
+        
+    def build_transition_matrix(self):
+        """
+        Builds a reduced transition matrix that lists possible next states
+        for each (state, action) pair, based on the observed trajectories.
+
+        Returns
+        -------
+        np.ndarray
+            A 2D array of shape (num_states, num_actions), where each entry
+            is a list of possible next states for that (state, action).
+        """
+        count = 0
+        # Prepare the reduced matrix with empty lists
+        transition_matrix = self.transition_matrix.copy()
+
+
+        # Fill matrix with next states from counts
+        for (state, action, next_state) in self.count_state_action_state.keys():
+            if next_state not in transition_matrix[state, action]:
+                # print("fuck")
+                transition_matrix[state, action].append(next_state)
+
+        # for s in range(self.nb_states):
+        #     for a in range(self.nb_actions):
+        #         if len(transition_matrix[s, a]) == 0:
+        #             transition_matrix[s, a] = [self.traps]
+
+        # for i in range(len(transition_matrix)):
+        #     for j in range(len(transition_matrix[i])):
+        #         if len(transition_matrix[i][j]) > 1:
+        #             count+=1
+        # print(transition_matrix)
+        # print(count)
+        return transition_matrix
+    
+    
+class GymCrashingMountainCar(Experiment):
+    fixed_params_exp_columns = ['seed', 'gamma']
+    def _set_env_params(self):
+        """
+        Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
+        """
+        self.episodic = True
+        self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
+        
+        print("start env")
+        self.env = crashingMountainCar()
+        print("get values")
+        self.nb_states = self.env.get_nb_states()
+        self.state_shape = [2]
+        self.nb_actions = self.env.get_nb_actions()
+
+        self.traps = self.env.get_traps()
+        self.goal = self.env.get_goal_state()
+        print("goal: ", self.goal)
+        print("trap: ", self.traps)
+        self.initial_state = self.env.get_init_state()
+        print("close_to_the_edge", self.env.state2region([0.4, 0.2]))
+        # self.P = self.env.get_transition_function()
+        self.R_state_state = self.env.get_reward_function()
+
+        # print("calcing r_sa")
+        # self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
+        
+        self.fixed_params_exp_list = [self.seed, self.gamma]
+
+        # pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
+        # print("calcing rand perf")
+        # pi_rand_perf = self._policy_evaluation_exact(pi_rand)
+        # print(f"pi_rand_perf = {pi_rand_perf}")
+
+        # self.fixed_params_exp_list.append(pi_rand_perf)
+
+        # pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+        #                  data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        # pi_star.fit()
+        # pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        # print(f"pi_star_perf = {pi_star_perf}")
+        # self.fixed_params_exp_list.append(pi_star_perf)
+
+
+        self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
+        
+        # pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
+        # print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
+        # print(f"pi_baseline_perf = {pi_base_perf}")
+        self.pi_b = crashingMountainCarPolicy(self.env, epsilon=self.epsilons_baseline[0]).pi
+        pi_base_perf = evaluate_policy(self.env, self.pi_b, 1, 100)
+        print(pi_base_perf)
+        self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
+        self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
+
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        print("estimating transitions")
+        self.estimate_transitions()
+        
+    def _run_one_iteration(self):
+        for epsilon_baseline in self.epsilons_baseline:
+            print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
+                  f' {self.epsilons_baseline}')
+            
+            print("creating Baseline Policy")
+            self.pi_b = crashingMountainCarPolicy(self.env, epsilon=epsilon_baseline).pi
+            # self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+            #                                                             self._policy_evaluation_exact(self.pi_b)]
+            self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+                                                                        0]
+            for nb_trajectories in self.nb_trajectories_list:
+                print(
+                    f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
+                    f'{self.nb_trajectories_list}')
+                # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
+                print("Generating Trajectories")
+                # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
+                self.data, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
+                
+                print("Estimating Intervals")            
+                # Get the intervals from the abstraction using the method from bahdings
+                self._count()
+                # print("done counts")
+                self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
+                self.intervals = self.estimator.get_intervals()
+                
+                
+                # self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                # self.estimator.calculate_intervals()
+                # self.intervals = self.estimator.get_intervals()
+                print("Calculating Shield")  
+                self.structure = self.build_transition_matrix()
+                
+                # MOUNTAINCAR
+                self.shielder = ShieldCrashingMountainCar(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                self.shielder.printShield()
+                print("Running Algorithms")
+                self._run_algorithms()
+                
+
+    def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
+        """
+        Generates a data batch for an episodic MDP.
+        :param nb_steps: number of steps in the data batch
+        :param env: environment to be used to generate the batch on
+        :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
+        :return: data batch as a list of sublists of the form [state, action, next_state, reward]
+        """
+        trajectories = []
+        trajectories_cont = []
+        for _ in np.arange(nb_trajectories):
+            nb_steps = 0
+            trajectorY = []
+            env.reset()
+            state, region = env.get_init_state()
+            is_done = False
+            while nb_steps < max_steps and not is_done:
+                # print("AAAAA")
+                action_choice = np.random.choice(pi.shape[1], p=pi[region])
+                state, next_state, reward = env.step(action_choice)
+                region = env.state2region(state)
+                next_region= env.state2region(next_state)
+                is_done = env.is_done()                    
+                trajectorY.append([action_choice, region, next_region, reward])
+                trajectories_cont.append([state, action_choice, next_state, reward, is_done])
+                region = next_region
+                nb_steps += 1
+            trajectories.append(trajectorY)
+        batch_traj = [val for sublist in trajectories for val in sublist]
+        return trajectories, batch_traj, trajectories_cont
+            
+    
+    def _count(self):
+        """
+        Counts the state-action pairs and state-action-triplets and stores them.
+        """
+        if self.episodic:
+            batch_trajectory = [val for sublist in self.data for val in sublist]
+        else:
+            batch_trajectory = self.data.copy()
+        self.count_state_action_state = defaultdict(int)
+        self.count_state_action = defaultdict(int)
+        for [action, state, next_state, _] in batch_trajectory:
+            self.count_state_action_state[(int(state), action, int(next_state))] += 1
+            self.count_state_action[(int(state), action)] += 1
+    
+
+    def estimate_transitions(self):
+        count = 0
+        # Prepare the reduced matrix with empty lists
+        transition_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                if s == self.traps:
+                    transition_matrix[s, a] = [self.traps]
+                elif s == self.goal:
+                    transition_matrix[s, a] = [self.goal]
+                else:
+                    transition_matrix[s, a] = list(self.env.get_successor_states(s,a))
+                print(s, " = ", transition_matrix[s, a])
         self.transition_matrix = transition_matrix
         
     def build_transition_matrix(self):
