@@ -6,7 +6,10 @@ import environments
 import random
 import partition as prt
 from collections import defaultdict
-
+# Note: none of the algorithms ever crash
+# Note: Algorithms barely ever reach the goal
+# Note: The shield has a value of 0.0 or 1.0 (or close to it) for all* states
+# Note: Maybe try to expand the environment: Add more crash option
 class crashingMountainCar:
     def __init__(self):
         # create environment
@@ -26,17 +29,17 @@ class crashingMountainCar:
     def partition_states(self):
         # Non-terminal region definitions
         # State: [position, velocity]
-            nrPerDim = [15, 12]
+            nrPerDim = [15, 14]
 
             # Define region widths based on known limits of MountainCar
-            # position ∈ [-1.2, 0.6], velocity ∈ [-0.07, 0.07]
+            # position ∈ [-1.0, 0.5], velocity ∈ [-0.07, 0.07]
             regionWidth = [
                 (0.5 - (-1.0)) / nrPerDim[0],  # position width
-                (0.06 - (-0.06)) / nrPerDim[1] # velocity width
+                (0.07 - (-0.07)) / nrPerDim[1] # velocity width
             ]
 
             # Choose origin at the center of the space
-            origin = [0.0, 0.0]
+            origin = [-0.25, 0.0]
 
             # Build the partition (using your partition helper)
             partition = prt.define_partition(
@@ -56,6 +59,7 @@ class crashingMountainCar:
             # Store and record total number of discrete regions (including terminals)
             self.partition = partition
             self.nb_states = len(partition["center"]) + 2
+            # print(self.nb_states, ": NB STATES")
             
     def state2region(self, state):
         # Check terminal and goal condition
@@ -64,26 +68,36 @@ class crashingMountainCar:
         if position > 0.5:
             return self.partition["goal_idx"]
         
-        if position < -1.0 or abs(velocity) > 0.06:
+        if position < -1.0 or abs(velocity) > 0.07:
+            # print("died")
+            # print(position)
+            # print(velocity)
             return self.partition["crash_idx"]
 
         # Clip unbounded dimensions
         state = state.copy()
         state[0] = np.clip(state[0], -1.0, 0.5)   # position bounds
-        state[1] = np.clip(state[1], -0.06, 0.06) # velocity bounds
+        state[1] = np.clip(state[1], -0.07, 0.07) # velocity bounds
 
         # Map to region
         idx = prt.state2region(state, self.partition, self.partition["c_tuple"])
         if idx is None:
+            # print("It actually goes wrong here tihi")
             return self.partition["crash_idx"]
         return idx[0]
     
     def step(self, action):
+
         old_state = self.state
+
         # old_region = self.state2region(old_state)
         next_state, reward, terminated, truncated, info = self.env.step(action)
         self.terminated = terminated or truncated
         self.state = next_state
+        # print("taking step, reached :", next_state)
+        # if self.state2region(next_state) == self.partition["crash_idx"]:
+            # print("kill yourself IRL")
+            # print(next_state)
         # next_region = self.state2region(next_state)
 
         return old_state, next_state, reward

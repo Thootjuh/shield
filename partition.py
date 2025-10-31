@@ -71,6 +71,7 @@ def define_partition(dim, nrPerDim, regionWidth, origin):
         partition['idx'][tuple(idx)] = i
         partition['idx_inv'][i] = tuple(idx)
     
+    print("CENTERS:", partition["center"])
     return partition
 
 def computeRegionCenters(points, partition):

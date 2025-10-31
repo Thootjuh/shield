@@ -449,8 +449,8 @@ class ShieldCrashingMountainCar(Shield):
         calculate the probability of violating the safety specification for the Random MDPs environment
         """
         # How likely are we to step into a trap
-        # prop = "Pmax=? [  F<4 \"trap\" ]"
-        prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        prop = "Pmax=? [  F<4 \"trap\" ]"
+        # prop = "Pmax=? [!\"trap\" U \"goal\"]"
         
         # Is it possible to reach the goal
         # prop2 = "Pmax=? [F \"goal\" & !F<4 \"trap\"]"
@@ -458,7 +458,7 @@ class ShieldCrashingMountainCar(Shield):
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
         # super().calculateShieldInterval(prop, self.model_builder.build_model())
         super().calculateShieldPrism(self.prism_text, prop)
-        self.shield = self.shield
+        self.shield = 1-self.shield
         
     def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         """

@@ -323,34 +323,34 @@ class AI:
         data['c'] = np.zeros((len(dataset) - 1, self.nb_actions), dtype='float32')
         data['p'] = np.zeros((len(dataset) - 1, self.nb_actions), dtype='float32')
         
-        if len(dataset) < 10000:
-            for i in range(len(dataset) - 1):
-                if i % 1000 == 999:
-                    print('{} samples processed'.format(i))
-                data['s'][i] = dataset[i][0]
-                data['a'][i] = dataset[i][1]
-                data['s2'][i] = dataset[i][2]
-                data['r'][i] = dataset[i][3]
-                data['t'][i] = dataset[i][4]
-                data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
-                for j in range(len(dataset) - 1):
-                    s = self.similarite(dataset[i][0], dataset[j][0], param)
-                    data['c'][i, dataset[j][1]] += s
-        else: # For larger datasets (>10000), we instead use knn
-            for i in range(len(dataset) - 1):
-                data['s'][i] = dataset[i][0]
-                data['a'][i] = dataset[i][1]
-                data['s2'][i] = dataset[i][2]
-                data['r'][i] = dataset[i][3]
-                data['t'][i] = dataset[i][4]
-                data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
-            print("computing counts")
-            data['c'] = self.compute_counts(
-                states=data['s'],
-                actions=data['a'],
-                nb_actions=self.nb_actions,
-                param=param
-            )
+        # if len(dataset) < 10000:
+        #     for i in range(len(dataset) - 1):
+        #         if i % 1000 == 999:
+        #             print('{} samples processed'.format(i))
+        #         data['s'][i] = dataset[i][0]
+        #         data['a'][i] = dataset[i][1]
+        #         data['s2'][i] = dataset[i][2]
+        #         data['r'][i] = dataset[i][3]
+        #         data['t'][i] = dataset[i][4]
+        #         data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
+        #         for j in range(len(dataset) - 1):
+        #             s = self.similarite(dataset[i][0], dataset[j][0], param)
+        #             data['c'][i, dataset[j][1]] += s
+        # else: # For larger datasets (>10000), we instead use knn
+        for i in range(len(dataset) - 1):
+            data['s'][i] = dataset[i][0]
+            data['a'][i] = dataset[i][1]
+            data['s2'][i] = dataset[i][2]
+            data['r'][i] = dataset[i][3]
+            data['t'][i] = dataset[i][4]
+            data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
+        print("computing counts")
+        data['c'] = self.compute_counts(
+            states=data['s'],
+            actions=data['a'],
+            nb_actions=self.nb_actions,
+            param=param
+        )
         return data
     
     @staticmethod

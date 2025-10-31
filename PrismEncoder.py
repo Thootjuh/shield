@@ -265,9 +265,9 @@ def encodeCrashingMountainCar(transition_matrix, intervals, initial_state):
                 
     # End the module
     prism_lines.append("endmodule")
-    prism_lines.append(f"init s<180 endinit")
-    prism_lines.append(f'label "goal" = s=181;')
-    prism_lines.append(f'label "trap" = s=182;')
+    prism_lines.append(f"init s<210 endinit")
+    prism_lines.append(f'label "goal" = s=210;')
+    prism_lines.append(f'label "trap" = s=211;')
 
     # Return the PRISM MDP as a string
     return "\n".join(prism_lines)
