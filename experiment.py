@@ -867,7 +867,7 @@ class GymCrashingMountainCar(Experiment):
                 # MOUNTAINCAR
                 self.shielder = ShieldCrashingMountainCar(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
-                self.shielder.printShield()
+                # self.shielder.printShield()
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -886,6 +886,7 @@ class GymCrashingMountainCar(Experiment):
             nb_steps = 0
             trajectorY = []
             env.reset()
+            env.set_random_state()
             state, region = env.get_init_state()
             is_done = False
             while nb_steps < max_steps and not is_done:
@@ -899,6 +900,7 @@ class GymCrashingMountainCar(Experiment):
                 trajectories_cont.append([state, action_choice, next_state, reward, is_done])
                 region = next_region
                 nb_steps += 1
+                # print(f"from state {state}, we reached new state {next_state} using action {action_choice} and got a reward of {reward}")
             trajectories.append(trajectorY)
         batch_traj = [val for sublist in trajectories for val in sublist]
         return trajectories, batch_traj, trajectories_cont

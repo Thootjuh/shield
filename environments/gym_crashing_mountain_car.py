@@ -21,6 +21,23 @@ class crashingMountainCar:
         self.terminated = False
         # self.goal = [0.0, 0.0, 0.0, 0.0]
         self.partition_states()
+    
+    def set_random_state(self):
+        pos_low, pos_high = -1.0, 0.5
+        vel_low, vel_high = -0.07, 0.07
+        # pos_low, pos_high = 0.45, 0.49
+        # vel_low, vel_high = 0.65, 0.069
+        position = np.random.uniform(pos_low, pos_high)
+        velocity = np.random.uniform(vel_low, vel_high)  
+        
+        if position <= pos_low and velocity < 0:
+            velocity = 0
+        if position >= pos_high and velocity > 0:
+            velocity = 0
+        
+        self.env.set_state(np.array([position, velocity], dtype=np.float32))
+        # self.env.state = 
+        self.state = np.array([position, velocity], dtype=np.float32)
         
     def reset(self):
         observation, _  = self.env.reset()
