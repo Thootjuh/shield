@@ -64,8 +64,6 @@ class Shield:
                     transition.value
                     transitions[transition.column] = transition.value()
                 transition_probs[(state.id, action.id)] = transitions
-        print(type(probs))
-        print(transition_probs)
         return probs, transition_probs
     
     def calculateShieldInterval(self, prop, model):
@@ -298,7 +296,6 @@ class ShieldWetChicken(Shield):
         if len(safe_actions) == 0:
             min_value = np.min(probs)
             safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
-        print(safe_actions)
         return safe_actions
     
 class ShieldAirplane(Shield):
