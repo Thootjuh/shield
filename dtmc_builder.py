@@ -76,3 +76,18 @@ class dtmcBuilderRandomMDPs(dtmc_builder):
         
         return state_labeling
     
+class dtmcBuilderFrozenLake(dtmc_builder):
+    def set_state_labels(self):
+        state_labeling = stormpy.storage.StateLabeling(self.n_states)
+        labels = {"goal", "hole", "init"}
+        for label in labels:
+            state_labeling.add_label(label)
+        for state in range(self.n_states):
+            if state in self.traps:
+                state_labeling.add_label_to_state("hole", state)
+            if state in self.goal:
+                state_labeling.add_label_to_state("goal", state)
+        state_labeling.add_label_to_state("init", 0)
+        
+        return state_labeling    
+    

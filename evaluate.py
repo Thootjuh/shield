@@ -1,7 +1,7 @@
 import stormpy
 import numpy as np
 from collections import defaultdict
-from dtmc_builder import dtmcBuilderWetChicken, dtmcBuilderRandomMDPs
+from dtmc_builder import dtmcBuilderWetChicken, dtmcBuilderRandomMDPs, dtmcBuilderFrozenLake
 
 class evaluator:
     def __init__(self, P, pi, prop, n_states, n_actions, init, goal, traps, env_name):
@@ -49,7 +49,8 @@ class evaluator:
             self.model = dtmcBuilderWetChicken(self.transition_dynamics, self.policy, self.n_states, self.n_actions, self.init, self.goal, self.traps).build_model()
         if self.env_name == "random_mdps":
             self.model = dtmcBuilderRandomMDPs(self.transition_dynamics, self.policy, self.n_states, self.n_actions, self.init, self.goal, self.traps).build_model()
-    
+        if self.env_name == "frozen_lake":
+            self.model = dtmcBuilderFrozenLake(self.transition_dynamics, self.policy, self.n_states, self.n_actions, self.init, self.goal, self.traps).build_model()
     def invoke_storm(self):
         # invoke storm to check the probability of satisfying the prob from the start state
         # properties = stormpy.parse_properties(self.prop, self.model)

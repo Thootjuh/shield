@@ -1270,7 +1270,7 @@ class WetChickenExperiment(Experiment):
                     self.goal = self.find_closest_states(list(range(len(self.structure))), self.length)
                     self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
                     self.intervals = self.estimator.get_intervals()
-                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals)
+                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop)
                     self.shielder.calculateShield()
                     self._run_algorithms()
                 
@@ -1406,7 +1406,6 @@ class RandomMDPsExperiment(Experiment):
                                                      baseline_target_perf_ratio=baseline_target_perf_ratio)
             self.R_state_state = self.garnet.compute_reward()
             self.P = self.garnet.transition_function
-            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", self.P.shape)
 
             self.traps = self.garnet.get_traps()
             self.easter_egg = None
@@ -1430,7 +1429,7 @@ class RandomMDPsExperiment(Experiment):
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 self.goal = [self.garnet.final_state]
-                self.shielder = ShieldRandomMDP(self.structure, self.traps, self.goal, self.intervals)
+                self.shielder = ShieldRandomMDP(self.structure, self.traps, self.goal, self.intervals, self.prop)
                 self.shielder.calculateShield()
                 self._run_algorithms()
 
@@ -1911,7 +1910,7 @@ class GymFrozenLakeExperiment(Experiment):
         self.nb_actions = self.env.get_nb_actions()
         self.traps = self.env.get_traps()
         print("traps are: ", self.traps)
-        self.goal = self.env.get_goal_state()
+        self.goal = [self.env.get_goal_state()]
         self.initial_state = self.env.get_init_state()
         
         self.P = self.env.get_transition_function()
@@ -1940,7 +1939,6 @@ class GymFrozenLakeExperiment(Experiment):
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
-        print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         print(f"pi_baseline_perf = {pi_base_perf}")
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
         if self.baseline_method == 'heuristic':
@@ -1950,7 +1948,8 @@ class GymFrozenLakeExperiment(Experiment):
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
-
+        self.env_name = self.experiment_config['META']['env_name']
+        self.prop = "Pmax=? [!\"hole\"U\"goal\"]"
         
     def _run_one_iteration(self):
         for epsilon_baseline in self.epsilons_baseline:
@@ -1977,7 +1976,7 @@ class GymFrozenLakeExperiment(Experiment):
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 print("Calculating Shield")  
-                self.shielder = ShieldFrozenLake(self.structure, self.traps, [self.goal], self.intervals)
+                self.shielder = ShieldFrozenLake(self.structure, self.traps, self.goal, self.intervals, self.prop)
                 self.shielder.calculateShield()
                 print("Running Algorithms")
                 self._run_algorithms()

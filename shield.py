@@ -8,7 +8,7 @@ from IntervalMDPBuilder import IntervalMDPBuilderPacman, IntervalMDPBuilderRando
 import pycarl
  
 class Shield:
-    def __init__(self, transition_matrix, traps, goal, intervals):
+    def __init__(self, transition_matrix, traps, goal, intervals, prop=None):
         """
         args:
         transition_matrix (np.ndarray): 
@@ -32,6 +32,7 @@ class Shield:
         self.num_states= len(self.structure)
         self.num_actions = len(self.structure[0])
         self.shield = np.full((self.num_states, self.num_actions), -1, dtype=np.float64)
+        self.prop = prop
     
     def get_probs(self, model, prop):
         """
@@ -155,7 +156,8 @@ class ShieldRandomMDP(Shield):
         calculate the probability of violating the safety specification for the Random MDPs environment
         """
         # How likely are we to step into a trap
-        prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        # prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        prop = self.prop
         # prop = "Pmin=? [  F<4 \"trap\" ]"
         # prop1 = "Pmax=? [  F \"trap\" ]"
         
@@ -271,7 +273,8 @@ class ShieldWetChicken(Shield):
         calculate the probability of violating the safety specification for the Wet Chicken environment
         """
         # How likely are we to step into a trap
-        prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
+        # prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
+        prop = self.prop
         # prop = "Pmin=? [  F\"waterfall\"]"
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
         super().calculateShieldInterval(prop, self.model_builder.build_model())
@@ -737,7 +740,8 @@ class ShieldFrozenLake(Shield):
         calculate the probability of violating the safety specification for the Frozen Lake environment
         """
         # How likely are we to step into a trap
-        prop = "Pmax=? [!\"hole\"U\"goal\"]"
+        # prop = "Pmax=? [!\"hole\"U\"goal\"]"
+        prop = self.prop
         
         # self.printShield()
         # self.shield[:] = 0
@@ -781,6 +785,7 @@ class ShieldFrozenLake(Shield):
         col = int(state % self.grid_size)
         row = int(state // self.grid_size)
         return col, row
+    
     def printShield(self):
         """
         print the probabilities associated with each state-action pair
