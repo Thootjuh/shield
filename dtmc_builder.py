@@ -91,3 +91,17 @@ class dtmcBuilderFrozenLake(dtmc_builder):
         
         return state_labeling    
     
+class dtmcBuilderPacMan(dtmc_builder):
+    def set_state_labels(self):
+        state_labeling = stormpy.storage.StateLabeling(self.n_states)
+        labels = {"goal", "eaten", "maze"}
+        for label in labels:
+            state_labeling.add_label(label)
+        for state in range(self.n_states):
+            if state in self.traps:
+                state_labeling.add_label_to_state("eaten", state)
+            elif state in self.goal:
+                state_labeling.add_label_to_state("goal", state)
+            else:
+                state_labeling.add_label_to_state("maze", state)
+        return state_labeling

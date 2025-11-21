@@ -233,4 +233,4 @@ class gymIce:
         #     pi_sched[next_state][choice] = 1
         
         pi = (1-epsilon) * pi_b + epsilon * pi_r
-        return pi_r
+        return pi

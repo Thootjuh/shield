@@ -211,7 +211,7 @@ class ShieldRandomMDP(Shield):
 class ShieldWetChicken(Shield):
     # Calculate the shield for the wet chicken environment
 
-    def __init__(self, transition_matrix, width, length, goals, intervals):
+    def __init__(self, transition_matrix, width, length, goals, intervals, prop):
         """
         args:
         transition_matrix (np.ndarray): 
@@ -234,7 +234,7 @@ class ShieldWetChicken(Shield):
         self.width = width
         self.length = length
         self.model_builder = IntervalMDPBuilderWetChicken(transition_matrix, intervals, [], [])
-        super().__init__(transition_matrix, [], [], intervals)
+        super().__init__(transition_matrix, [], [], intervals, prop)
     
     def printShield(self):
         """
@@ -514,7 +514,7 @@ class ShieldSlipperyGridworld(Shield):
     
 class ShieldSimplifiedPacman(Shield):
     # Calculate the shield for the Simplified Pacman environment
-    def __init__(self, transition_matrix, traps, goal, intervals, width, height):
+    def __init__(self, transition_matrix, traps, goal, intervals, width, height, prop):
         """
         args:
             transition_matrix (np.ndarray): 
@@ -534,7 +534,7 @@ class ShieldSimplifiedPacman(Shield):
         """
         self.width = width
         self.height = height
-        self.model_builder = IntervalMDPBuilderPacman(transition_matrix, intervals, goal, traps)
+        self.model_builder = IntervalMDPBuilderPacman(transition_matrix, intervals, goal, traps, prop)
         super().__init__(transition_matrix, traps, goal, intervals)
         
 
@@ -543,7 +543,8 @@ class ShieldSimplifiedPacman(Shield):
         calculate the probability of violating the safety specification for the Simplified Pacman environment
         """
         # How likely are we to step into a trap
-        prop = "Pmax=? [!\"eaten\"U\"goal\"]"
+        # prop = "Pmax=? [!\"eaten\"U\"goal\"]"
+        prop = self.prop
         
         super().calculateShieldInterval(prop, self.model_builder.build_model())
     
@@ -717,7 +718,7 @@ class ShieldTaxi(Shield):
 
 class ShieldFrozenLake(Shield):
     # Calculate the shield for the Frozen Lake environment
-    def __init__(self, transition_matrix, traps, goal, intervals):
+    def __init__(self, transition_matrix, traps, goal, intervals, prop):
         """
         args:
             transition_matrix (np.ndarray): 
@@ -732,7 +733,7 @@ class ShieldFrozenLake(Shield):
                 the range of possible transition probabilities due to uncertainty.
         """
         self.model_builder = IntervalMDPBuilderFrozenLake(transition_matrix, intervals, goal, traps)
-        super().__init__(transition_matrix, traps, goal, intervals)
+        super().__init__(transition_matrix, traps, goal, intervals, prop)
         self.grid_size = np.sqrt(self.num_states)
         
     def calculateShield(self):

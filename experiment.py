@@ -828,6 +828,8 @@ class SimplifiedPacmanExperiment(Experiment):
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
 
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        self.env_name = self.experiment_config['META']['env_name']
+        self.prop = "Pmax=? [!\"eaten\"U\"goal\"]"
         
     def generate_batch(self, trajectories, nb_trajectories, env, pi, max_steps=2500):
         """
@@ -887,7 +889,7 @@ class SimplifiedPacmanExperiment(Experiment):
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 print("Calculating Shield")  
-                self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height)
+                self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height, self.prop)
                 self.shielder.calculateShield()
                 print("Running Algorithms")
                 self._run_algorithms()
@@ -1996,7 +1998,7 @@ class GymFrozenLakeExperiment(Experiment):
             nb_steps = 0
             trajectorY = []
             env.reset()
-            state = self.initial_state
+            state = self.env.state
             is_done = False
             while nb_steps < max_steps and not is_done:
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
