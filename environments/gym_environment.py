@@ -173,9 +173,12 @@ class gymIce:
         return old_state, next_state, reward
     
     def is_done(self):
+        #     else:
+        #         print("Fell :(, self.state = )", self.state)
         return self.terminated
     
     def initial_calculations(self):
+        # print("goal: ", self.env.env.env.desc[0][0])
         P = self.env.env.env.P
         self.reward_model = {}
         self.transition_model = {}
@@ -199,6 +202,7 @@ class gymIce:
         return self.reward_model
    
     def get_transition_function(self):
+        # print(self.transition_model)
         return self.transition_model
    
     def get_nb_states(self):
@@ -233,4 +237,5 @@ class gymIce:
         #     pi_sched[next_state][choice] = 1
         
         pi = (1-epsilon) * pi_b + epsilon * pi_r
-        return pi
+        # print(pi_b)        
+        return pi_r

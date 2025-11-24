@@ -211,7 +211,7 @@ class ShieldRandomMDP(Shield):
 class ShieldWetChicken(Shield):
     # Calculate the shield for the wet chicken environment
 
-    def __init__(self, transition_matrix, width, length, goals, intervals, prop):
+    def __init__(self, transition_matrix, width, length, goals, intervals, prop, theta):
         """
         args:
         transition_matrix (np.ndarray): 
@@ -234,7 +234,9 @@ class ShieldWetChicken(Shield):
         self.width = width
         self.length = length
         self.model_builder = IntervalMDPBuilderWetChicken(transition_matrix, intervals, [], [])
+        self.theta = theta
         super().__init__(transition_matrix, [], [], intervals, prop)
+        
     
     def printShield(self):
         """
@@ -290,6 +292,7 @@ class ShieldWetChicken(Shield):
         Returns:
             safe_actions (list[int]): list containing the actions deemed to be 'safe' by the shield
         """
+        threshold = self.theta
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):

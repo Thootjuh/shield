@@ -1241,10 +1241,10 @@ class WetChickenExperiment(Experiment):
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.lengths_trajectory = ast.literal_eval(self.experiment_config['BASELINE']['lengths_trajectory'])
         if self.baseline_method == 'heuristic':
-            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
+            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'threshold', 'pi_b_perf', 'length_trajectory']
         else:
             self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
-            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
+            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'threshold', 'pi_b_perf',
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         self.prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
@@ -1255,26 +1255,27 @@ class WetChickenExperiment(Experiment):
         Runs one iteration on the Wet Chicken benchmark, so iterates through different baseline and data set parameters
         and then starts the computation for each algorithm.
         """
-
-        for epsilon_baseline in self.epsilons_baseline:
-            print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
-                  f' {self.epsilons_baseline}')
-            if self.baseline_method == 'heuristic':
-                self.pi_b = WetChickenBaselinePolicy(env=self.env, gamma=self.gamma, method=self.baseline_method,
-                                                     epsilon=epsilon_baseline).pi
-                self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
-                                                                         self._policy_evaluation_exact(self.pi_b)]
-                for length_trajectory in self.lengths_trajectory:
-                    print(f'Starting with length_trajectory {length_trajectory} out of {self.lengths_trajectory}.')
-                    self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
-                    self.to_append = self.to_append_run_one_iteration + [length_trajectory]
-                    self.structure = self.reduce_transition_matrix(self.P)
-                    self.goal = self.find_closest_states(list(range(len(self.structure))), self.length)
-                    self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
-                    self.intervals = self.estimator.get_intervals()
-                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop)
-                    self.shielder.calculateShield()
-                    self._run_algorithms()
+        shield_thresholds = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+        for theta in shield_thresholds:
+            for epsilon_baseline in self.epsilons_baseline:
+                print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
+                    f' {self.epsilons_baseline}')
+                if self.baseline_method == 'heuristic':
+                    self.pi_b = WetChickenBaselinePolicy(env=self.env, gamma=self.gamma, method=self.baseline_method,
+                                                        epsilon=epsilon_baseline).pi
+                    self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline, theta,
+                                                                            self._policy_evaluation_exact(self.pi_b)]
+                    for length_trajectory in self.lengths_trajectory:
+                        print(f'Starting with length_trajectory {length_trajectory} out of {self.lengths_trajectory}.')
+                        self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
+                        self.to_append = self.to_append_run_one_iteration + [length_trajectory]
+                        self.structure = self.reduce_transition_matrix(self.P)
+                        self.goal = self.find_closest_states(list(range(len(self.structure))), self.length)
+                        self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
+                        self.intervals = self.estimator.get_intervals()
+                        self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, theta)
+                        self.shielder.calculateShield()
+                        self._run_algorithms()
                 
 
     def generate_batch(self, nb_steps, env, pi):
@@ -1935,12 +1936,16 @@ class GymFrozenLakeExperiment(Experiment):
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        with open("optimal.txt", "w") as file:
+            for item in pi_star.pi:
+                file.write(f"{item}\n")
         print(f"pi_star_perf = {pi_star_perf}")
         self.fixed_params_exp_list.append(pi_star_perf)
 
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
+        print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         print(f"pi_baseline_perf = {pi_base_perf}")
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
         if self.baseline_method == 'heuristic':
@@ -1950,8 +1955,8 @@ class GymFrozenLakeExperiment(Experiment):
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
-        self.env_name = self.experiment_config['META']['env_name']
         self.prop = "Pmax=? [!\"hole\"U\"goal\"]"
+        self.env_name = self.experiment_config['META']['env_name']
         
     def _run_one_iteration(self):
         for epsilon_baseline in self.epsilons_baseline:
@@ -1960,8 +1965,10 @@ class GymFrozenLakeExperiment(Experiment):
             
             print("creating Baseline Policy")
             self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
+            # print("a")
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]
+            # print("b")
             
             for nb_trajectories in self.nb_trajectories_list:
                 print(
@@ -1972,14 +1979,18 @@ class GymFrozenLakeExperiment(Experiment):
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
+                # print("----------------------------------------------------------------")    
                 print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
+                # # print(intervals)
                 print("Calculating Shield")  
                 self.shielder = ShieldFrozenLake(self.structure, self.traps, self.goal, self.intervals, self.prop)
                 self.shielder.calculateShield()
+                # self.shielder.printShield()
+                # print("----------------------------------------------------------------")
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -1998,9 +2009,10 @@ class GymFrozenLakeExperiment(Experiment):
             nb_steps = 0
             trajectorY = []
             env.reset()
-            state = self.env.state
+            state = self.initial_state
             is_done = False
             while nb_steps < max_steps and not is_done:
+                # print(is_done)
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
                 is_done = env.is_done()                    
@@ -2009,6 +2021,10 @@ class GymFrozenLakeExperiment(Experiment):
                 nb_steps += 1
             trajectories.append(trajectorY)
         batch_traj = [val for sublist in trajectories for val in sublist]
+        # temppp = np.array(trajectories)
+        # print(temppp)
+        # print(trajectories)
+        # print(trajectories)
         return trajectories, batch_traj
             
     
