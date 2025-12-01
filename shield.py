@@ -131,7 +131,7 @@ class Shield:
 
 class ShieldRandomMDP(Shield):
     # Calculate the shield for the Random MDPs environment
-    def __init__(self, transition_matrix, traps, goal, intervals):
+    def __init__(self, transition_matrix, traps, goal, intervals, prop):
         """
         args:
         transition_matrix (np.ndarray): 
@@ -149,7 +149,7 @@ class ShieldRandomMDP(Shield):
             the range of possible transition probabilities due to uncertainty.
         """
         self.model_builder = IntervalMDPBuilderRandomMDP(transition_matrix, intervals, goal, traps)
-        super().__init__(transition_matrix, traps, goal, intervals)
+        super().__init__(transition_matrix, traps, goal, intervals, prop)
         
     def calculateShield(self):
         """

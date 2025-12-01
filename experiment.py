@@ -1356,9 +1356,8 @@ class WetChickenExperiment(Experiment):
 class RandomMDPsExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'nb_states', 'nb_actions', 'nb_next_state_transition']
-    variable_params_exp_columns = ['iteration', 'softmax_target_perf_ratio',
-                                   'baseline_target_perf_ratio', 'baseline_perf', 'pi_rand_perf', 'pi_star_perf',
-                                   'nb_trajectories']
+    variable_params_exp_columns = ['iteration', 'softmax_target_perf_ratio',  'baseline_target_perf_ratio',
+                                   'threshold', 'baseline_perf', 'pi_rand_perf', 'pi_star_perf','nb_trajectories']
 
     def _set_env_params(self):
         """
@@ -1396,45 +1395,47 @@ class RandomMDPsExperiment(Experiment):
         import SPIBBmaster.garnets as garnets
         self.garnet = garnets.Garnets(self.nb_states, self.nb_actions, self.nb_next_state_transition,
                                 env_type=self.env_type, self_transitions=self.self_transitions, nb_traps=5, gamma=self.gamma)
-        for baseline_target_perf_ratio in self.baseline_target_perf_ratios:
-            print(f'Process with seed {self.seed} starting with baseline_target_perf_ratio {baseline_target_perf_ratio}'
-                  f' out of {self.baseline_target_perf_ratios}')
+        shield_thresholds = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+        for theta in shield_thresholds:
+            for baseline_target_perf_ratio in self.baseline_target_perf_ratios:
+                print(f'Process with seed {self.seed} starting with baseline_target_perf_ratio {baseline_target_perf_ratio}'
+                    f' out of {self.baseline_target_perf_ratios}')
 
-            softmax_target_perf_ratio = (baseline_target_perf_ratio + 1) / 2
-            self.to_append_run_one_iteration = self.to_append_run + [softmax_target_perf_ratio,
-                                                                     baseline_target_perf_ratio]
-            self.pi_b, self._q_pi_b, self.pi_star_perf, self.pi_b_perf, self.pi_rand_perf = \
-                self.garnet.generate_baseline_policy(self.gamma,
-                                                     softmax_target_perf_ratio=softmax_target_perf_ratio,
-                                                     baseline_target_perf_ratio=baseline_target_perf_ratio)
-            self.R_state_state = self.garnet.compute_reward()
-            self.P = self.garnet.transition_function
+                softmax_target_perf_ratio = (baseline_target_perf_ratio + 1) / 2
+                self.to_append_run_one_iteration = self.to_append_run + [softmax_target_perf_ratio,
+                                                                        baseline_target_perf_ratio]
+                self.pi_b, self._q_pi_b, self.pi_star_perf, self.pi_b_perf, self.pi_rand_perf = \
+                    self.garnet.generate_baseline_policy(self.gamma,
+                                                        softmax_target_perf_ratio=softmax_target_perf_ratio,
+                                                        baseline_target_perf_ratio=baseline_target_perf_ratio)
+                self.R_state_state = self.garnet.compute_reward()
+                self.P = self.garnet.transition_function
 
-            self.traps = self.garnet.get_traps()
-            self.easter_egg = None
+                self.traps = self.garnet.get_traps()
+                self.easter_egg = None
 
-            self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
-            self.to_append_run_one_iteration += [self.pi_b_perf, self.pi_rand_perf, self.pi_star_perf]
+                self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
+                self.to_append_run_one_iteration += [theta, self.pi_b_perf, self.pi_rand_perf, self.pi_star_perf]
 
 
-            for nb_trajectories in self.nb_trajectories_list:
-                print(
-                    f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
-                    f'{self.nb_trajectories_list}')
-                # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
-                self.data, batch_traj = self.generate_batch(nb_trajectories, self.garnet, self.pi_b,
-                                                            easter_egg=self.easter_egg)
-                self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
+                for nb_trajectories in self.nb_trajectories_list:
+                    print(
+                        f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
+                        f'{self.nb_trajectories_list}')
+                    # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
+                    self.data, batch_traj = self.generate_batch(nb_trajectories, self.garnet, self.pi_b,
+                                                                easter_egg=self.easter_egg)
+                    self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # Generate the shield: First, we compute the PAC estimate IMDP, then we compute the shield
-                self.structure = self.reduce_transition_matrix(self.P)
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
-                self.estimator.calculate_intervals()
-                self.intervals = self.estimator.get_intervals()
-                self.goal = [self.garnet.final_state]
-                self.shielder = ShieldRandomMDP(self.structure, self.traps, self.goal, self.intervals, self.prop)
-                self.shielder.calculateShield()
-                self._run_algorithms()
+                    # Generate the shield: First, we compute the PAC estimate IMDP, then we compute the shield
+                    self.structure = self.reduce_transition_matrix(self.P)
+                    self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                    self.estimator.calculate_intervals()
+                    self.intervals = self.estimator.get_intervals()
+                    self.goal = [self.garnet.final_state]
+                    self.shielder = ShieldRandomMDP(self.structure, self.traps, self.goal, self.intervals, self.prop)
+                    self.shielder.calculateShield()
+                    self._run_algorithms()
 
 
     def _set_traps(self, n, reward):
