@@ -1395,7 +1395,8 @@ class RandomMDPsExperiment(Experiment):
         import SPIBBmaster.garnets as garnets
         self.garnet = garnets.Garnets(self.nb_states, self.nb_actions, self.nb_next_state_transition,
                                 env_type=self.env_type, self_transitions=self.self_transitions, nb_traps=5, gamma=self.gamma)
-        shield_thresholds = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+        # shield_thresholds = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+        shield_thresholds = [0.2]
         for theta in shield_thresholds:
             for baseline_target_perf_ratio in self.baseline_target_perf_ratios:
                 print(f'Process with seed {self.seed} starting with baseline_target_perf_ratio {baseline_target_perf_ratio}'
