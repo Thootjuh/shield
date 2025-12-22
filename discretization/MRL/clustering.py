@@ -33,7 +33,7 @@ from itertools import groupby
 from operator import itemgetter
 import sys
 
-from testing import (
+from .testing import (
     training_value_error,
     training_accuracy,
     predict_cluster,
@@ -775,7 +775,7 @@ def splitter(
             # and also if maximum incoherence is lower than calculated threshold
             if verbose:
                 print("train error: ", train_error)
-            if train_error < (min_error - precision_thresh):
+            if train_error < (min_error + precision_thresh):
                 # if max_inc < threshold:
                 min_error = train_error
                 best_df = df_new.copy()

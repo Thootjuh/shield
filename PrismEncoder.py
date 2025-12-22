@@ -164,7 +164,7 @@ def encodeWetChickenXY(transition_matrix, width, height):
     # Return the PRISM MDP as a string
     return "\n".join(prism_lines)
 
-def encodeCartPole(transition_matrix, intervals, initial_state):
+def encodeCartPole(transition_matrix, intervals, trap):
     actions = [
         "left",
         "right",
@@ -189,30 +189,47 @@ def encodeCartPole(transition_matrix, intervals, initial_state):
             # Remove invalid transitions (e.g., -1 to indicate no transition)
             valid_next_states = [int(s) for s in next_states if s >= 0]
             
-            if valid_next_states:
-                # Uniform probability for each next state
-                # uniform_prob = 1 / len(valid_next_states)
-                if len(valid_next_states) == 1:
-                    default_interval = (1.0, 1.0)
-                else:
-                    default_interval = (4.999999999999449e-05, 0.9999999)
+            # if len(valid_next_states):
+            #     # Uniform probability for each next state
+            #     # uniform_prob = 1 / len(valid_next_states)
+            if len(valid_next_states) == 1:
+                # print(valid_next_states, " ", len(valid_next_states), " 1")
+                default_interval = (1.0, 1.0)
+                probabilities = [
+                    f"[{default_interval[0]}," 
+                    f" {default_interval[1]}]"
+                    for next_state in valid_next_states
+                ]               
+            elif len(valid_next_states) > 1:
+                # print(valid_next_states, " ", len(valid_next_states), " >1")
+                default_interval = (4.999999999999449e-05, 0.9999999)
                 probabilities = [
                     f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
                     f" {intervals.get((state, action, next_state), default_interval)[1]}]"
                     for next_state in valid_next_states
                 ]
-                
-                # Create PRISM transition command
-                transitions = " + ".join(
-                    f"{prob}:(s'={next_state})" for prob, next_state in zip(probabilities, valid_next_states)
-                )
-                action_label = actions[action]
-                prism_lines.append(f"    [{action_label}] s={state} -> {transitions};")
+            else:
+                # If there is no transition, loop 
+                default_interval = (1.0, 1.0)
+                probabilities = [
+                    f"[{default_interval[0]}," 
+                    f" {default_interval[1]}]"
+                    for next_state in [state]
+                ]  
+                valid_next_states = [state]
+            # Create PRISM transition command
+            transitions = " + ".join(
+                f"{prob}:(s'={next_state})" for prob, next_state in zip(probabilities, valid_next_states)
+            )
+            action_label = actions[action]
+            prism_lines.append(f"    [{action_label}] s={state} -> {transitions};")
+        
                 
     # End the module
+    
     prism_lines.append("endmodule")
-    prism_lines.append("init s<10000 endinit")
-    prism_lines.append('label "trap" = s=10000;')
+    prism_lines.append(f"init s<={num_states} endinit")
+    prism_lines.append(f'label "trap" = s={trap[0]};')
     # Return the PRISM MDP as a string
     return "\n".join(prism_lines)
 

@@ -1,6 +1,6 @@
-from model import MDP_model
-from testing import predict_cluster, training_value_error, get_MDP, next_clusters
-from clustering import fit_CV, initializeClusters, splitter
+from .model import MDP_model
+from .testing import predict_cluster, training_value_error, get_MDP, next_clusters
+from .clustering import fit_CV, initializeClusters, splitter
 from sklearn.metrics import accuracy_score
 import pandas as pd
 

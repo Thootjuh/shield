@@ -64,7 +64,7 @@ class PACIntervalEstimator:
         state_action_next_state_counts = defaultdict(int)
 
         for trajectory in self.trajectories:
-            for a, s, ns, _ in trajectory:
+            for a, s, ns, *rest in trajectory:
                 state_action_counts[(s, a)] += 1
                 state_action_next_state_counts[(s, a, ns)] += 1
         

@@ -168,6 +168,15 @@ class Shield:
             f"> {results_file}"
         )
         
+        # cmd = (
+        #     f"{prism_executable} -javamaxmem {java_mem}g "
+        #     f"{model_file} {prop_file} "
+        #     f"-exporttrans {trans_file} "
+        #     # f"| awk '/Results \\(including zeros\\) for filter true:/ {{flag=1; next}} "
+        #     # f"flag && /^Range of values/ {{exit}} flag {{print}}' "
+        #     # f"> {results_file}"
+        # )
+        
         # print(repr(model_file))
         # print(repr(prop_file))
         # print(repr(trans_file))
@@ -358,7 +367,7 @@ class ShieldCartpole(Shield):
             the range of possible transition probabilities due to uncertainty.
         """
         # self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps) 
-        self.prism_text = encodeCartPole(transition_matrix, intervals, init)
+        self.prism_text = encodeCartPole(transition_matrix, intervals, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         
     def calculateShield(self):

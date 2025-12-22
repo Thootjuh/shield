@@ -49,9 +49,11 @@ from batch_rl_algorithms.spibb_dqn.spibb_dqn import spibb_dqn
 from shield import ShieldRandomMDP, ShieldCartpole, ShieldCrashingMountainCar
 from PACIntervalEstimator import PACIntervalEstimator
 from evaluate_cartpole import evaluate_policy
-from define_imdp import imdp_builder
+from discretization.grid.define_imdp import imdp_builder
 
-
+from discretization.MRL.helper_functions import trajToDF, state2region
+from discretization.MRL.model import MDP_model
+from discretization.MRL.testing import predict_cluster
 directory = os.path.dirname(os.path.expanduser(__file__))
 
 
@@ -197,8 +199,8 @@ class Experiment:
                 self._run_spibb(key)
             elif key in {ExactSoftSPIBB.NAME, ApproxSoftSPIBB.NAME, LowerApproxSoftSPIBB.NAME, AdvApproxSoftSPIBB.NAME}:
                 self._run_soft_spibb(key)
-            elif key in {'SPIBB-DQN'}:
-                self._run_spibb_dqn(key)
+            # elif key in {'SPIBB-DQN'}:
+            #     self._run_spibb_dqn(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
                 self._run_spibb_shielded(key)
             elif key in {Basic_rl.NAME}:
@@ -214,9 +216,13 @@ class Experiment:
         t_0 = time.time()
         pi_b_s.fit()
         t_1 = time.time()
-        basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 100)
+        if self.discretization_method=='mrl':
+            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+        elif self.discretization_method=='grid':
+            spibb_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 100, self.discretization_method)
+        
         # basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
-        method = pi_b_s.NAME
+        method = pi_b_s.NAME + "_" + self.discretization_method
         method_perf = basic_rl_perf
         hyperparam = None
         run_time = t_1 - t_0
@@ -236,9 +242,13 @@ class Experiment:
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
-            spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
+            if self.discretization_method=='mrl':
+                # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+            elif self.discretization_method=='grid':
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
             
-            method = spibb.NAME
+            method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
@@ -257,9 +267,13 @@ class Experiment:
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
-            spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
+            if self.discretization_method=='mrl':
+                # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+            elif self.discretization_method=='grid':
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            method = spibb.NAME
+            method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
@@ -544,33 +558,7 @@ class RandomMDPsExperiment(Experiment):
         batch_traj = [val for sublist in trajectories for val in sublist]
         return trajectories, batch_traj
     
-    def reduce_transition_matrix(self, transition_matrix):
-        """
-        Reduces a transition matrix to only include possible end states for each state-action pair.
 
-        Args:
-        - transition_matrix (numpy.ndarray): A 3D numpy array of shape (num_states, num_actions, num_states) 
-        where each element represents the probability of transitioning from one state to another
-        given a certain action.
-
-        Returns:
-        - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
-        where each element contains the indices of possible end states.
-        """
-        num_states = self.nb_states
-        num_actions = self.nb_actions
-        max_transitions = self.nb_next_state_transition
-        # Prepare the reduced matrix to hold the indices of possible states
-        reduced_matrix = np.zeros((num_states, num_actions, max_transitions), dtype=int)
-        
-        # Loop through each state and action to populate the reduced matrix
-        for state in range(num_states):
-            for action in range(num_actions):
-                # Get indices of nonzero probabilities (possible end states)
-                possible_states = np.nonzero(transition_matrix[state, action])[0]
-                reduced_matrix[state, action, :len(possible_states)] = possible_states
-        
-        return reduced_matrix  
 
 class GymCartPoleExperiment(Experiment):
     fixed_params_exp_columns = ['seed', 'gamma']
@@ -622,8 +610,8 @@ class GymCartPoleExperiment(Experiment):
         # print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         # print(f"pi_baseline_perf = {pi_base_perf}")
         self.pi_b = cartPolePolicy(self.env, epsilon=self.epsilons_baseline[0]).pi
-        pi_base_perf = evaluate_policy(self.env, self.pi_b, 1, 100)
-        print(pi_base_perf)
+        # pi_base_perf = evaluate_policy(self.env, self.pi_b, 1, 100)
+        # print(pi_base_perf)
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
         self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
 
@@ -649,30 +637,96 @@ class GymCartPoleExperiment(Experiment):
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
                 # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
-                self.data, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
                 
+                self.data_df = trajToDF(self.data_cont, 4)
+                print(self.data_df.head())
+                print("getting abstraction")
+                # Get the intervals from the abstraction using the method from badings
+                # self._count()
+                # # print("done counts")
+                # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
+                # self.intervals = self.estimator.get_intervals()
+                
+                # ------------------------ MRL --------------------------
+                self.discretization_method = 'mrl'
+                self.dimensions = 4
+                # Get discretization
+                m = MDP_model()
+                m.fit(
+                    self.data_df,
+                    pfeatures=4,
+                    h = -1,
+                    gamma = self.gamma,
+                    max_k = 100,
+                    distance_threshold=0.5,
+                    th = 0,
+                    eta = 25,
+                    precision_thresh = 1e-14,
+                    classification = 'DecisionTreeClassifier',
+                    split_classifier_params = {'random_state':0, 'max_depth':8},
+                    clustering = 'Agglomerative',
+                    n_clusters = None,
+                    random_state = 0,
+                    plot=False,
+                    verbose=False
+                )
+                print("Trained the model!!")
+                self.predictor = predict_cluster(m.df_trained, 4)
+
+                # Get transition function:
+                m.create_PR(0.2, 0.8, -1, 0.7, "max")
+                P_temp = m.P.copy()
+                P_temp = P_temp.transpose(1, 0, 2)
+                self.structure = self.reduce_transition_matrix(P_temp)
+                d_data = self.discretize_data(self.data_cont, self.predictor)
+                self.structure = self.add_trans_from_data(self.structure, d_data)
+
+                # Calculate Shield                
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()                
+                
+                print("Calculating Shield")  
+                traps = m.R_df[m.R_df == 0.0].index.tolist()
+                self.shielder = ShieldCartpole(self.structure, traps, self.goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
+                
+                # Run the algoirhtm
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
+                self.nb_states = len(self.structure)
+                self.data = d_data
+                # In this environment, the reward is always 1 for every step, so we create a matrix of shape (nb_states, nb_states) filled with ones
+                self.R_state_state = np.ones((self.nb_states, self.nb_states))
+                print(self.nb_states)
+                print("Running Algorithms")
+                self._run_algorithms()
+                
+                # ----------------------------- GRID ---------------------------------
+                self.discretization_method = 'mrl'
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
+                self.nb_states = self.env.get_nb_states()
+                self.data = data_grid
+                self.R_state_state = self.env.get_reward_function()
+                
                 print("Estimating Intervals")            
-                # Get the intervals from the abstraction using the method from bahdings
                 self._count()
-                # print("done counts")
                 self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
                 self.intervals = self.estimator.get_intervals()
                 
                 
-                # self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
-                # self.estimator.calculate_intervals()
-                # self.intervals = self.estimator.get_intervals()
                 print("Calculating Shield")  
                 self.structure = self.build_transition_matrix()
-
                 self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
                 print("Running Algorithms")
                 self._run_algorithms()
+                # ----------------------------- SPIBB-DQN ----------------------------------
+                # self._run_spibb_dqn('SPIBB-DQN')
                 
-
     def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
         """
         Generates a data batch for an episodic MDP.
@@ -686,6 +740,7 @@ class GymCartPoleExperiment(Experiment):
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
+            trajectorY_cont = []
             env.reset()
             state, region = env.get_init_state()
             is_done = False
@@ -693,13 +748,17 @@ class GymCartPoleExperiment(Experiment):
                 # print("AAAAA")
                 action_choice = np.random.choice(pi.shape[1], p=pi[region])
                 state, next_state, reward = env.step(action_choice)
+                # print(state)
+                # print(type(state))
                 region = env.state2region(state)
-                next_region= env.state2region(next_state)
+                next_region = env.state2region(next_state)
                 is_done = env.is_done()                    
                 trajectorY.append([action_choice, region, next_region, reward])
-                trajectories_cont.append([state, action_choice, next_state, reward, is_done])
+                crashed = env.check_crashed()
+                trajectorY_cont.append([state, action_choice, next_state, reward, is_done, crashed])
                 region = next_region
                 nb_steps += 1
+            trajectories_cont.append(trajectorY_cont)
             trajectories.append(trajectorY)
         batch_traj = [val for sublist in trajectories for val in sublist]
         return trajectories, batch_traj, trajectories_cont
@@ -733,6 +792,65 @@ class GymCartPoleExperiment(Experiment):
                     transition_matrix[s, a] = list(self.env.get_successor_states(s,a))
         self.transition_matrix = transition_matrix
         
+    def discretize_data(self, data, predictor):
+        data_disc = []
+        for trajectory in data:
+            traj = []
+            for transition in trajectory:
+                s = transition[0]
+                a = transition[1]
+                ns = transition[2]
+                r = transition[3]
+                terminated = transition[4]
+                died = transition[5]
+                s_d = state2region(predictor, s, 4)
+                ns_d = state2region(predictor, ns, 4)
+                traj.append([a, s_d, ns_d, r])
+            data_disc.append(traj)
+        return data_disc
+                             
+                
+    def add_trans_from_data(self,structure, data):
+        # num_states = len(structure)
+        # num_actions = len(structure[0])
+        for trajectory in data:
+            for transition in trajectory:
+                s=transition[1]
+                a=transition[0]
+                ns=transition[2]
+                poss_next = structure[s,a]
+                if not ns in poss_next:
+                    poss_next = np.append(poss_next, [ns])
+                    structure[s][a] = poss_next
+        return structure  
+    
+    def reduce_transition_matrix(self, transition_matrix):
+        """
+        Reduces a transition matrix to only include possible end states for each state-action pair.
+
+        Args:
+        - transition_matrix (numpy.ndarray): A 3D numpy array of shape (num_states, num_actions, num_states) 
+        where each element represents the probability of transitioning from one state to another
+        given a certain action.
+
+        Returns:
+        - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
+        where each element contains the indices of possible end states.
+        """
+        num_states = len(transition_matrix)
+        num_actions = len(transition_matrix[0])
+        # Prepare the reduced matrix to hold the indices of possible states
+        reduced_matrix = np.empty((num_states, num_actions), dtype=object)
+        
+        # Loop through each state and action to populate the reduced matrix
+        for state in range(num_states):
+            for action in range(num_actions):
+                # Get indices of nonzero probabilities (possible end states)
+                possible_states = np.nonzero(transition_matrix[state, action])[0]
+                reduced_matrix[state, action] = np.array(possible_states)
+        
+        return reduced_matrix
+       
     def build_transition_matrix(self):
         """
         Builds a reduced transition matrix that lists possible next states
@@ -752,7 +870,6 @@ class GymCartPoleExperiment(Experiment):
         # Fill matrix with next states from counts
         for (state, action, next_state) in self.count_state_action_state.keys():
             if next_state not in transition_matrix[state, action]:
-                # print("fuck")
                 transition_matrix[state, action].append(next_state)
 
         # for s in range(self.nb_states):

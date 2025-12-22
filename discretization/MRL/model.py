@@ -5,8 +5,8 @@
 import pandas as pd
 import numpy as np
 
-from clustering import fit_CV, initializeClusters, splitter
-from testing import (
+from .clustering import fit_CV, initializeClusters, splitter
+from .testing import (
     predict_cluster,
     training_value_error,
     get_MDP,
@@ -17,7 +17,7 @@ from testing import (
     get_MDP_stochastic,
     next_cluster_predictability,
 )
-from mdp_utils import SolveMDP
+from .mdp_utils import SolveMDP
 from sklearn.metrics import accuracy_score
 from scipy.stats import binom
 
@@ -370,16 +370,17 @@ class MDP_model:
             self.df_trained = df_new
             self.opt_k = self.training_error["Clusters"].max()
 
+        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa")
         self.create_model(stochastic=stochastic)
 
     def create_model(self, stochastic):
         """
         After MRL is trained. Creates the underlying MDP model by fitting a decision tree 
         to predict clusters, then calculating the empirical transition functions."""
+        print("print: head = ", self.df_trained.head())
         self.m = predict_cluster(self.df_trained, self.pfeatures)
         pred = self.m.predict(self.df_trained.iloc[:, 2 : 2 + self.pfeatures])
         self.clus_pred_accuracy = accuracy_score(pred, self.df_trained["CLUSTER"])
-
         if not stochastic:
             # store P_df and R_df values
             P_df, R_df = get_MDP(self.df_trained)
@@ -396,7 +397,9 @@ class MDP_model:
 
             # nc_predictability is used for robustness
             self.nc_predictability = next_cluster_predictability(self.df_trained,)
-
+        # print(R_df)
+        # print(type(R_df))
+        # print(P_df)
     # predict() takes a list of features and a time horizon, and returns
     # the predicted value after all actions are taken in order
     def predict(

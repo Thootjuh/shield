@@ -2,14 +2,17 @@
 # Modified from: https://github.com/rems75/SPIBB-DQN
 import numpy as np
 import time
+from discretization.MRL.helper_functions import state2region
 
-
+def infer_action_mrl(state, predictor, policy, dimensions):
+    region = state2region(predictor, state, dimensions)
+    return np.argmax(policy[region])
 
 def infer_action(state, env, policy):
     region = env.state2region(state)
     return np.argmax(policy[region])
 
-def evaluate_policy(env, policy, number_of_steps, number_of_epochs, noise_factor=1.0):
+def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method, noise_factor=1.0, predictor=None, dimensions=0):
     """ Evaluate the baseline number_of_epochs times for number_of_steps steps.
 
     Args:
@@ -31,7 +34,10 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, noise_factor
         rewards, all_nb_steps, current_reward, nb_steps, total_nb_steps = [], [], 0, 0, 0
         while total_nb_steps < number_of_steps:
             if not term:
-                action = infer_action(last_state, env, policy)
+                if disc_method == 'mrl':
+                    action = infer_action_mrl(last_state, predictor, policy, dimensions)
+                elif disc_method == 'grid':
+                    action = infer_action(last_state, env, policy)
                 _, _, reward = env.step(action)
                 term = env.is_done()
                 last_state = env.get_state()

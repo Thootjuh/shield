@@ -152,6 +152,7 @@ class BatchRLAlgorithm:
         self.count_state_action_state = defaultdict(int)
         self.count_state_action = defaultdict(int)
         for [action, state, next_state, _] in batch_trajectory:
+            
             self.count_state_action_state[(int(state), action, int(next_state))] += 1
             self.count_state_action[(int(state), action)] += 1
 
@@ -184,11 +185,12 @@ class BatchRLAlgorithm:
             result[(i, j)] += p_val * r_val
 
         # Convert result to dense NumPy array
-
         self.R_state_action = np.zeros((self.nb_states, self.nb_actions))
 
         for (i, j), val in result.items():
+            # print(f"i = {i}, j = {j}")
             self.R_state_action[i, j] = val
+            
 
         return self.R_state_action
     

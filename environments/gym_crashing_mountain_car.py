@@ -4,7 +4,7 @@ import IPython.display as ipd
 import numpy as np
 import environments
 import random
-import partition as prt
+import discretization.grid.partition as prt
 from collections import defaultdict
 # Note: none of the algorithms ever crash
 # Note: Algorithms barely ever reach the goal

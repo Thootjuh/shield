@@ -3,7 +3,7 @@ import IPython.display as ipd
 import numpy as np
 import environments
 import random
-import partition as prt
+import discretization.grid.partition as prt
 from collections import defaultdict
 
 
@@ -72,6 +72,7 @@ class cartPole:
         # old_region = self.state2region(old_state)
         next_state, reward, terminated, truncated, info = self.env.step(action)
         self.terminated = terminated or truncated
+        self.crashed = terminated
         self.state = next_state
         # next_region = self.state2region(next_state)
 
@@ -80,12 +81,15 @@ class cartPole:
     def is_done(self):
         return self.terminated
     
+    def check_crashed(self):
+        return self.crashed
+    
     def get_reward_function(self):
         reward_function = defaultdict(float)
         for state in range(self.nb_states):
             for next_state in range(self.nb_states):
-                if next_state != self.partition["terminal_idx"]:
-                    reward_function[(state, next_state)] = 1
+                # if next_state != self.partition["terminal_idx"]:
+                reward_function[(state, next_state)] = 1
             # reward_function[(state, self.partition["terminal_idx"])] = 0
         # R[:, nb_states-1] = FALL_REWARD
         # reward_function = {key: value for key, value in reward_function.items() if value != 0.0}
@@ -190,5 +194,23 @@ class cartPolePolicy:
                 pi[state][1] = 0.5
                 
         self.pi = (1 - self.epsilon) * pi + self.epsilon * self.pi
+    
+    def compute_baseline_size(self, states):
+        pi = np.zeros((states, self.nb_actions))
+        # left_states = self.env.regions_left_of_origin()
+        # right_states = self.env.regions_right_of_origin()
+        
+        for state in range(len(pi)):
+            # if state in left_states:
+            #     pi[state][1] = 1.0
+            # elif state in right_states:
+            #     pi[state][0] = 1.0
+            # else:
+            pi[state][0] = 0.5
+            pi[state][1] = 0.5
+                
+        # pi_b = (1 - self.epsilon) * pi + self.epsilon * self.pi
+        return pi
+        
                 
      
