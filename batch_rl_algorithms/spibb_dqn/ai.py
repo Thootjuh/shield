@@ -338,6 +338,7 @@ class AI:
         #             data['c'][i, dataset[j][1]] += s
         # else: # For larger datasets (>10000), we instead use knn
         for i in range(len(dataset) - 1):
+            print("THIS IS WHAT THIS SHIT LOOKED LIKE: ", dataset[i][0])
             data['s'][i] = dataset[i][0]
             data['a'][i] = dataset[i][1]
             data['s2'][i] = dataset[i][2]

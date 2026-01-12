@@ -775,7 +775,8 @@ def splitter(
             # and also if maximum incoherence is lower than calculated threshold
             if verbose:
                 print("train error: ", train_error)
-            if train_error < (min_error + precision_thresh):
+            if train_error < (min_error + precision_thresh): # BRING THIS BACK ONCE ITS FIXED
+            # if True:
                 # if max_inc < threshold:
                 min_error = train_error
                 best_df = df_new.copy()
@@ -840,6 +841,7 @@ def splitter(
         ax2.set_ylabel("Value error")
         ax2.set_title("Value error by number of clusters")
         ax2.legend()
+        plt.savefig("clusters.png")
         plt.show()
 
     df_train_error = pd.DataFrame(

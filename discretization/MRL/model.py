@@ -370,14 +370,13 @@ class MDP_model:
             self.df_trained = df_new
             self.opt_k = self.training_error["Clusters"].max()
 
-        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa")
         self.create_model(stochastic=stochastic)
 
     def create_model(self, stochastic):
         """
         After MRL is trained. Creates the underlying MDP model by fitting a decision tree 
         to predict clusters, then calculating the empirical transition functions."""
-        print("print: head = ", self.df_trained.head())
+        # print("print: head = ", self.df_trained.head())
         self.m = predict_cluster(self.df_trained, self.pfeatures)
         pred = self.m.predict(self.df_trained.iloc[:, 2 : 2 + self.pfeatures])
         self.clus_pred_accuracy = accuracy_score(pred, self.df_trained["CLUSTER"])
@@ -564,11 +563,12 @@ class MDP_model:
 
         # append high negative reward for incorrect / impure transitions
         R = []
-
+        
         T_max = self.df_trained["TIME"].max()
         r_max = abs(self.df_trained["RISK"]).max()
         self.t_max = T_max
         self.r_max = r_max
+        # print("R_df == ", self.R_df)
         for i in range(a):
             if prob == "max":
                 # take T-max * max(abs(reward)) * 2
@@ -578,6 +578,8 @@ class MDP_model:
         R = np.array(R)
         self.P = P
         self.R = R
+        # print("P = ", P)
+        # print("R = ", R)
 
     def solve_helper(self, gamma, epsilon, p, prob):
         # solve the MDP, with an extra threshold to guarantee value iteration

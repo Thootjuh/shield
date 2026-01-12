@@ -219,7 +219,7 @@ class Experiment:
         if self.discretization_method=='mrl':
             basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
         elif self.discretization_method=='grid':
-            spibb_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 100, self.discretization_method)
+            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 100, self.discretization_method)
         
         # basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
         method = pi_b_s.NAME + "_" + self.discretization_method
@@ -641,7 +641,10 @@ class GymCartPoleExperiment(Experiment):
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
                 
                 self.data_df = trajToDF(self.data_cont, 4)
-                print(self.data_df.head())
+                # print(self.data_cont)
+                # with pd.option_context('display.max_rows', None,
+                #        'display.max_columns', None):
+                #     print(self.data_df)
                 print("getting abstraction")
                 # Get the intervals from the abstraction using the method from badings
                 # self._count()
@@ -660,12 +663,12 @@ class GymCartPoleExperiment(Experiment):
                     h = -1,
                     gamma = self.gamma,
                     max_k = 100,
-                    distance_threshold=0.5,
+                    distance_threshold=0.2,
                     th = 0,
-                    eta = 25,
-                    precision_thresh = 1e-14,
+                    eta = 50,
+                    precision_thresh = 0.3, #1e-14
                     classification = 'DecisionTreeClassifier',
-                    split_classifier_params = {'random_state':0, 'max_depth':8},
+                    split_classifier_params = {'random_state':0, 'max_depth':10},
                     clustering = 'Agglomerative',
                     n_clusters = None,
                     random_state = 0,
@@ -676,21 +679,25 @@ class GymCartPoleExperiment(Experiment):
                 self.predictor = predict_cluster(m.df_trained, 4)
 
                 # Get transition function:
-                m.create_PR(0.2, 0.8, -1, 0.7, "max")
+                m.create_PR(0.2, 0.8, -1, 0.2, "max")
                 P_temp = m.P.copy()
                 P_temp = P_temp.transpose(1, 0, 2)
                 self.structure = self.reduce_transition_matrix(P_temp)
                 d_data = self.discretize_data(self.data_cont, self.predictor)
+                # print(d_data)
                 self.structure = self.add_trans_from_data(self.structure, d_data)
-
+                # print(self.structure)
+                print("NB_states = ", len(self.structure))
                 # Calculate Shield                
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()                
                 
-                print("Calculating Shield")  
+                print("Calculating Shield") 
+                print(m.R_df) 
                 traps = m.R_df[m.R_df == 0.0].index.tolist()
-                self.shielder = ShieldCartpole(self.structure, traps, self.goal, self.intervals, self.initial_state)
+                goal_mrl = [i for i in range(len(self.structure)) if i not in traps]
+                self.shielder = ShieldCartpole(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
                 
@@ -705,7 +712,7 @@ class GymCartPoleExperiment(Experiment):
                 self._run_algorithms()
                 
                 # ----------------------------- GRID ---------------------------------
-                self.discretization_method = 'mrl'
+                self.discretization_method = 'grid'
                 self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
                 self.nb_states = self.env.get_nb_states()
                 self.data = data_grid

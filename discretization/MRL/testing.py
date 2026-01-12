@@ -247,7 +247,7 @@ def add_sink(P_df_noend, cs, R_df):
 
 
 def training_value_error(
-    df_new,  # Outpul of algorithm
+    df_new,  # Output of algorithm
     gamma=1,  # discount factor
     relative=False,  # Output Raw error or RMSE ie ((\hat{v}-v)/v)^2
     h=5,  # Length of forecast. The error is computed on v_h = \sum_{t=h}^H v_t

@@ -36,11 +36,18 @@ def trajToDF(trajectories, num_features):
             transition_count+=1
             risk = r
             if died == True:
-                risk = 0
-                
-            rows.append([trajectory_count, transition_count]
+                rows.append([trajectory_count, transition_count]
                         + [val for val in s] +
                         [a, risk])
+                transition_count+=1
+                risk = 0
+                rows.append([trajectory_count, transition_count]
+                        + [val for val in n_s] +
+                        [a, risk])
+            else:
+                rows.append([trajectory_count, transition_count]
+                            + [val for val in s] +
+                            [a, risk])
         trajectory_count+=1
             
     data_df = pd.DataFrame(rows, columns=columns)
