@@ -3,7 +3,7 @@ import pandas as pd
 # Function that transforms the dataset into the right format
 # Trajectories to Dataframe
 
-def trajToDF(trajectories, num_features):
+def trajToDF(trajectories, num_features, add_end_reward=False):
     '''
     Docstring for trajToDF
     

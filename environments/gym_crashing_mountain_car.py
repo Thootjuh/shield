@@ -110,6 +110,7 @@ class crashingMountainCar:
         # old_region = self.state2region(old_state)
         next_state, reward, terminated, truncated, info = self.env.step(action)
         self.terminated = terminated or truncated
+        self.crashed = terminated
         self.state = next_state
         # print("taking step, reached :", next_state)
         # if self.state2region(next_state) == self.partition["crash_idx"]:
@@ -118,7 +119,8 @@ class crashingMountainCar:
         # next_region = self.state2region(next_state)
 
         return old_state, next_state, reward
-    
+    def check_crashed(self):
+        return self.crashed
     def is_done(self):
         return self.terminated
     
