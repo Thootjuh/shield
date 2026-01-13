@@ -4,11 +4,12 @@ from collections import defaultdict
 from dtmc_builder import dtmcBuilderWetChicken, dtmcBuilderRandomMDPs, dtmcBuilderFrozenLake, dtmcBuilderPacMan
 
 class evaluator:
-    def __init__(self, P, pi, prop, n_states, n_actions, init, goal, traps, env_name):
+    def __init__(self, P, pi, reach_avoid_prop, avoid_prop, n_states, n_actions, init, goal, traps, env_name):
         self.init = init
         self.n_states = n_states
         self.n_actions = n_actions
-        self.prop = prop
+        self.reach_avoid_prop = reach_avoid_prop
+        self.avoid_prop = avoid_prop
         if isinstance(P, dict):
             self.transition_dynamics = P
         else:
@@ -62,15 +63,21 @@ class evaluator:
         else:
             # Read from prism?
             pass
-    def invoke_storm(self):
+        
+    def invoke_storm(self, prop):
         # invoke storm to check the probability of satisfying the prob from the start state
         # properties = stormpy.parse_properties(self.prop, self.model)
         
-        properties = stormpy.parse_properties(self.prop)
+        properties = stormpy.parse_properties(prop)
         result = stormpy.model_checking(self.model, properties[0])
         return result
 
-    def find_success_prob(self):
+    def find_reach_avoid_prob(self):
         # Use the DTMC to find the probability of succeeding
-        result = self.invoke_storm()
+        result = self.invoke_storm(self.reach_avoid_prop)
         return result.get_values()[self.init]
+    
+    def find_avoid_prob(self):
+        # Use the DTMC to find the probability of avoiding bad states
+        result = self.invoke_storm(self.avoid_prop)
+        return 1-result.get_values()[self.init]

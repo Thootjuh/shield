@@ -34,19 +34,24 @@ def read_data_from_directory(directory_path):
 
 def extract_data(data):
     # Extract relevant columns
-    relevant_data_new = data[['method', 'length_trajectory', 'method_succ_rate', 'run_time']]
+    relevant_data_new = data[['method', 'length_trajectory', 'method_succ_rate', 'method_avoid_rate', 'run_time']]
 
     # Group by method and calculate the average performance for each length_trajectory
     return relevant_data_new
 
 def plot_data(data, filename):
     grouped_data = data.groupby(['method', 'length_trajectory'])
-    data = grouped_data.method_succ_rate.mean().reset_index()
+    data_succ_rate = grouped_data.method_succ_rate.mean().reset_index()
+    data_avoid_rate = grouped_data.method_avoid_rate.mean().reset_index()
     # Plot average performance against length_trajectory for each method
     plt.figure(figsize=(12, 8))
-    for method in data['method'].unique():
-        method_data = data[data['method'] == method]
-        plt.plot(method_data['length_trajectory'], method_data['method_succ_rate'], label=method)
+    for method in data_succ_rate['method'].unique():
+        method_data = data_succ_rate[data_succ_rate['method'] == method]
+        label = method+"_reach_avoid_rate"
+        plt.plot(method_data['length_trajectory'], method_data['method_succ_rate'], label=label)
+        method_data = data_avoid_rate[data_avoid_rate['method'] == method]
+        label = method+"_avoid_rate"
+        plt.plot(method_data['length_trajectory'], method_data['method_avoid_rate'], label=label)
 
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')

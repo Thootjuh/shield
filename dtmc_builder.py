@@ -18,7 +18,7 @@ class dtmc_builder:
             self.transitions_reshaped[(s, a)].append((next_s, p)) 
             
     def build_model(self):
-                # Use the known system dynamics and generated policy to construct a DTMC 
+        # Use the known system dynamics and generated policy to construct a DTMC 
         dtmc_builder = stormpy.SparseMatrixBuilder(
             rows=self.n_states,
             columns=self.n_states,

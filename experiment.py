@@ -59,7 +59,7 @@ class Experiment:
     fixed_params_exp_list = None
     fixed_params_exp_columns = None
     variable_params_exp_columns = None
-    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'method_succ_rate', 'run_time']
+    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'method_succ_rate', 'method_avoid_rate', 'run_time']
 
     def __init__(self, experiment_config, seed, nb_iterations, machine_specific_experiment_directory):
         """
@@ -233,11 +233,14 @@ class Experiment:
         pi_b_s.fit()
         t_1 = time.time()
         basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
+        basic_rl_succ_rate, basic_rl_avoid_rate = self.policy_evaluation_success_rate(pi_b_s.pi)
         method = pi_b_s.NAME
         method_perf = basic_rl_perf
+        method_succ_rate = basic_rl_succ_rate
+        method_avoid_rate = basic_rl_avoid_rate
         hyperparam = None
         run_time = t_1 - t_0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time])
         
     def _run_rmdp_shielded(self, key):
         """
@@ -293,7 +296,7 @@ class Experiment:
                 duipi.fit()
                 t_1 = time.time()
                 duipi_perf = self._policy_evaluation_exact(duipi.pi)
-                duipi_succ_rate = self.policy_evaluation_success_rate(duipi.pi)
+                duipi_succ_rate, duipi_avoid_rate = self.policy_evaluation_success_rate(duipi.pi)
                 if bayesian:
                     name_addition = '_bayesian'
                 else:
@@ -301,11 +304,12 @@ class Experiment:
                 method = duipi.NAME + name_addition
                 method_perf = duipi_perf
                 method_succ_rate = duipi_succ_rate
+                method_avoid_rate = duipi_avoid_rate
                 hyperparam = xi
                 run_time = t_1 - t_0
                 if self.safety_deltas:
                     self.results.append(
-                        self.to_append + [method, hyperparam, method_perf, method_succ_rate, run_time, self.safety_deltas[i],
+                        self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time, self.safety_deltas[i],
                                           duipi.v[self.initial_state] - xi * np.sqrt(
                                               duipi.variance_v[self.initial_state])])
                 else:
@@ -331,7 +335,7 @@ class Experiment:
                 duipi.fit()
                 t_1 = time.time()
                 duipi_perf = self._policy_evaluation_exact(duipi.pi)
-                duipi_succ_rate = self.policy_evaluation_success_rate(duipi.pi)
+                duipi_succ_rate, duipi_avoid_rate = self.policy_evaluation_success_rate(duipi.pi)
                 if bayesian:
                     name_addition = '_bayesian'
                 else:
@@ -339,11 +343,12 @@ class Experiment:
                 method = duipi.NAME + name_addition
                 method_perf = duipi_perf
                 method_succ_rate = duipi_succ_rate
+                method_avoid_rate = duipi_avoid_rate
                 hyperparam = xi
                 run_time = t_1 - t_0
                 if self.safety_deltas:
                     self.results.append(
-                        self.to_append + [method, hyperparam, method_perf, method_succ_rate, run_time, self.safety_deltas[i],
+                        self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time, self.safety_deltas[i],
                                           duipi.v[self.initial_state] - xi * np.sqrt(
                                               duipi.variance_v[self.initial_state])])
                 else:
@@ -362,14 +367,15 @@ class Experiment:
             spibb.fit()
             t_1 = time.time()
             spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            spibb_succ_rate = self.policy_evaluation_success_rate(spibb.pi)
+            spibb_succ_rate, spibb_avoid_rate = self.policy_evaluation_success_rate(spibb.pi)
             method = spibb.NAME
             method_perf = spibb_perf
             method_succ_rate = spibb_succ_rate
+            method_avoid_rate = spibb_avoid_rate
             hyperparam = N_wedge
             run_time = t_1 - t_0
             
-            self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, run_time])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time])
             
     def _run_spibb_experiment(self, key):
         """
@@ -517,13 +523,14 @@ class Experiment:
             spibb.fit()
             t_1 = time.time()
             spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            spibb_succ_rate = self.policy_evaluation_success_rate(spibb.pi)
+            spibb_succ_rate, spibb_avoid_rate = self.policy_evaluation_success_rate(spibb.pi)
             method = spibb.NAME
             method_perf = spibb_perf
             method_succ_rate = spibb_succ_rate
+            method_avoid_rate = spibb_avoid_rate
             hyperparam = N_wedge
             run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, run_time])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time])
             
     def _run_soft_spibb(self, key):
         """
@@ -735,10 +742,11 @@ class Experiment:
         return policy_evaluation_exact(pi, self.R_state_action, self.P, self.gamma)[0][self.initial_state]
     
     def policy_evaluation_success_rate(self, pi):
-        evals = evaluator(self.P, pi, self.prop, self.nb_states, self.nb_actions, self.initial_state, self.goal,self.traps, self.env_name)
+        evals = evaluator(self.P, pi, self.prop, self.avoid_prop, self.nb_states, self.nb_actions, self.initial_state, self.goal,self.traps, self.env_name)
         evals.construct_DTMC()
-        prob = evals.find_success_prob()
-        return prob
+        RA_prob = evals.find_reach_avoid_prob()
+        A_prob = evals.find_avoid_prob()
+        return RA_prob, A_prob
     
     def compute_r_state_action(self, P, R):
         if isinstance(P, dict):
@@ -1958,6 +1966,7 @@ class GymFrozenLakeExperiment(Experiment):
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         self.prop = "Pmax=? [!\"hole\"U\"goal\"]"
+        self.avoid_prop = "Pmax=? [F \"hole\"]"
         self.env_name = self.experiment_config['META']['env_name']
         
     def _run_one_iteration(self):
