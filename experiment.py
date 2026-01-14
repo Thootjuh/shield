@@ -25,7 +25,9 @@ from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 from environments.read_env_from_prism import prism_env
 from environments.gym_environment import gymTaxi, gymIce
 from environments.gym_cartpole_env import cartPole, cartPolePolicy
+from environments.gym_maze.gym_maze_env import maze, mazePolicy
 from environments.gym_crashing_mountain_car import crashingMountainCar, crashingMountainCarPolicy
+
 
 from batch_rl_algorithms.basic_rl import Basic_rl
 from batch_rl_algorithms.pi_star import PiStar
@@ -608,7 +610,7 @@ class GymCartPoleExperiment(Experiment):
         # self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         
         self.fixed_params_exp_list = [self.seed, self.gamma]
-
+        self.dimensions = 4
         # pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         # print("calcing rand perf")
         # pi_rand_perf = self._policy_evaluation_exact(pi_rand)
@@ -660,7 +662,8 @@ class GymCartPoleExperiment(Experiment):
                 data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
                 
-                self.data_df = trajToDF(self.data_cont, 4, True)
+                self.data_df = trajToDF(self.data_cont, self.dimensions, True)
+                # self.data_df = pd.read_csv("data_set.csv")
                 # print(self.data_cont)
                 # with pd.option_context('display.max_rows', None,
                 #        'display.max_columns', None):
@@ -674,30 +677,30 @@ class GymCartPoleExperiment(Experiment):
                 
                 # ------------------------ MRL --------------------------
                 self.discretization_method = 'mrl'
-                self.dimensions = 4
+                
                 # Get discretization
                 m = MDP_model()
                 m.fit(
                     self.data_df,
-                    pfeatures=4,
+                    pfeatures=self.dimensions,
                     h = -1,
-                    gamma = self.gamma,
+                    gamma = 1,
                     max_k = 100,
-                    distance_threshold=0.2,
-                    th = 0,
-                    eta = 50,
-                    precision_thresh = 0.3, #1e-14
+                    distance_threshold=0.5,
+                    th = 5,
+                    eta = 25,
+                    precision_thresh = 1e-14, #1e-14
                     classification = 'DecisionTreeClassifier',
                     split_classifier_params = {'random_state':0, 'max_depth':10},
                     clustering = 'Agglomerative',
                     n_clusters = None,
                     random_state = 0,
-                    plot=False,
+                    plot=True,
                     verbose=False
                 )
                 print("Trained the model!!")
-                self.predictor = predict_cluster(m.df_trained, 4)
-
+                self.predictor = predict_cluster(m.df_trained, self.dimensions)
+                
                 # Get transition function:
                 m.create_PR(0.2, 0.8, -1, 0.2, "max")
                 P_temp = m.P.copy()
@@ -912,6 +915,339 @@ class GymCartPoleExperiment(Experiment):
         # print(count)
         return transition_matrix
     
+
+class GymMazeExperiment(Experiment):
+    fixed_params_exp_columns = ['seed', 'gamma']
+    def _set_env_params(self):
+        """
+        Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
+        """
+        self.episodic = True
+        self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
+        
+        print("start env")
+        self.env = maze()
+        print("get values")
+        self.nb_states = self.env.get_nb_states()
+        self.nb_actions = self.env.get_nb_actions()
+        
+
+        self.traps = self.env.get_traps()
+        self.goal = self.env.get_goal_state()
+
+        self.initial_state = self.env.get_init_state()
+        
+        # self.P = self.env.get_transition_function()
+        self.R_state_state = self.env.get_reward_function()
+
+        # print("calcing r_sa")
+        # self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
+        
+        self.fixed_params_exp_list = [self.seed, self.gamma]
+
+        # pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
+        # print("calcing rand perf")
+        # pi_rand_perf = self._policy_evaluation_exact(pi_rand)
+        # print(f"pi_rand_perf = {pi_rand_perf}")
+
+        # self.fixed_params_exp_list.append(pi_rand_perf)
+
+        # pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+        #                  data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+        # pi_star.fit()
+        # pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        # print(f"pi_star_perf = {pi_star_perf}")
+        # self.fixed_params_exp_list.append(pi_star_perf)
+
+
+        self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
+        
+        # pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
+        # print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
+        # print(f"pi_baseline_perf = {pi_base_perf}")
+        self.pi_b = mazePolicy(self.env, epsilon=self.epsilons_baseline[0]).pi
+        # pi_base_perf = evaluate_policy(self.env, self.pi_b, 1, 100)
+        # print(pi_base_perf)
+        self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
+        self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
+
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        print("estimating transitions")
+        # self.estimate_transitions()
+        
+    def _run_one_iteration(self):
+        for epsilon_baseline in self.epsilons_baseline:
+            print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
+                  f' {self.epsilons_baseline}')
+            
+            print("creating Baseline Policy")
+            self.pi_b = mazePolicy(self.env, epsilon=epsilon_baseline).pi
+            # self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+            #                                                             self._policy_evaluation_exact(self.pi_b)]
+            self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+                                                                        0]
+            for nb_trajectories in self.nb_trajectories_list:
+                print(
+                    f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
+                    f'{self.nb_trajectories_list}')
+                # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
+                print("Generating Trajectories")
+                # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
+                data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
+                
+                self.data_df = trajToDF(self.data_cont, 4, True)
+                # print(self.data_cont)
+                # with pd.option_context('display.max_rows', None,
+                #        'display.max_columns', None):
+                #     print(self.data_df)
+                print("getting abstraction")
+                # Get the intervals from the abstraction using the method from badings
+                # self._count()
+                # # print("done counts")
+                # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
+                # self.intervals = self.estimator.get_intervals()
+                
+                # ------------------------ MRL --------------------------
+                self.discretization_method = 'mrl'
+                self.dimensions = 4
+                # Get discretization
+                m = MDP_model()
+                m.fit(
+                    self.data_df,
+                    pfeatures=4,
+                    h = -1,
+                    gamma = 1,
+                    max_k = 100,
+                    distance_threshold=0.5,
+                    th = 5,
+                    eta = 25,
+                    precision_thresh = 0.1, #1e-14
+                    classification = 'DecisionTreeClassifier',
+                    split_classifier_params = {'random_state':0, 'max_depth':10},
+                    clustering = 'Agglomerative',
+                    n_clusters = None,
+                    random_state = 0,
+                    plot=True,
+                    verbose=False
+                )
+                print("Trained the model!!")
+                self.predictor = predict_cluster(m.df_trained, 4)
+
+                # Get transition function:
+                m.create_PR(0.2, 0.8, -1, 0.2, "max")
+                P_temp = m.P.copy()
+                P_temp = P_temp.transpose(1, 0, 2)
+                self.structure = self.reduce_transition_matrix(P_temp)
+                d_data = self.discretize_data(self.data_cont, self.predictor)
+                # print(d_data)
+                self.structure = self.add_trans_from_data(self.structure, d_data)
+                # print(self.structure)
+                print("NB_states = ", len(self.structure))
+                # Calculate Shield                
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()                
+                
+                print("Calculating Shield") 
+                # print(m.R_df) 
+                # traps = m.R_df[m.R_df == 0.0].index.tolist()
+                # goal_mrl = [i for i in range(len(self.structure)) if i not in traps]
+                # self.shielder = ShieldCartpole(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
+                # self.shielder.calculateShield()
+                # self.shielder.printShield()
+                
+                # Run the algoirhtm
+                self.pi_b = mazePolicy(self.env, epsilon=epsilon_baseline).pi
+                self.nb_states = len(self.structure)
+                self.data = d_data
+                # In this environment, the reward is always 1 for every step, so we create a matrix of shape (nb_states, nb_states) filled with ones
+                self.R_state_state = np.ones((self.nb_states, self.nb_states))
+                print(self.nb_states)
+                print("Running Algorithms")
+                self._run_algorithms()
+                
+                # ----------------------------- GRID ---------------------------------
+                # self.discretization_method = 'grid'
+                # self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
+                # self.nb_states = self.env.get_nb_states()
+                # self.data = data_grid
+                # self.R_state_state = self.env.get_reward_function()
+                
+                # print("Estimating Intervals")            
+                # self._count()
+                # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
+                # self.intervals = self.estimator.get_intervals()
+                
+                
+                # print("Calculating Shield")  
+                # self.structure = self.build_transition_matrix()
+                # self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
+                # self.shielder.calculateShield()
+                # # self.shielder.printShield()
+                # print("Running Algorithms")
+                # self._run_algorithms()
+                # ----------------------------- SPIBB-DQN ----------------------------------
+                # self._run_spibb_dqn('SPIBB-DQN')
+                
+    def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
+        """
+        Generates a data batch for an episodic MDP.
+        :param nb_steps: number of steps in the data batch
+        :param env: environment to be used to generate the batch on
+        :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
+        :return: data batch as a list of sublists of the form [state, action, next_state, reward]
+        """
+        trajectories = []
+        trajectories_cont = []
+        for _ in np.arange(nb_trajectories):
+            nb_steps = 0
+            trajectorY = []
+            trajectorY_cont = []
+            env.reset()
+            state, region = env.get_init_state()
+            is_done = False
+            while nb_steps < max_steps and not is_done:
+                # print("AAAAA")
+                action_choice = np.random.choice(pi.shape[1], p=pi[region])
+                state, next_state, reward = env.step(action_choice)
+                # print(state)
+                # print(type(state))
+                region = env.state2region(state)
+                next_region = env.state2region(next_state)
+                is_done = env.is_done()                    
+                trajectorY.append([action_choice, region, next_region, reward])
+                crashed = env.check_crashed()
+                trajectorY_cont.append([state, action_choice, next_state, reward, is_done, crashed])
+                region = next_region
+                nb_steps += 1
+            trajectories_cont.append(trajectorY_cont)
+            trajectories.append(trajectorY)
+        batch_traj = [val for sublist in trajectories for val in sublist]
+        return trajectories, batch_traj, trajectories_cont
+            
+    
+    def _count(self):
+        """
+        Counts the state-action pairs and state-action-triplets and stores them.
+        """
+        if self.episodic:
+            batch_trajectory = [val for sublist in self.data for val in sublist]
+        else:
+            batch_trajectory = self.data.copy()
+        self.count_state_action_state = defaultdict(int)
+        self.count_state_action = defaultdict(int)
+        for [action, state, next_state, _] in batch_trajectory:
+            self.count_state_action_state[(int(state), action, int(next_state))] += 1
+            self.count_state_action[(int(state), action)] += 1
+    
+
+    def estimate_transitions(self):
+        count = 0
+        # Prepare the reduced matrix with empty lists
+        transition_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                if s == self.traps:
+                    transition_matrix[s, a] = [self.traps]
+                else:
+                    print(s, " = ", self.env.get_successor_states(s,a))
+                    transition_matrix[s, a] = list(self.env.get_successor_states(s,a))
+        self.transition_matrix = transition_matrix
+        
+    def discretize_data(self, data, predictor):
+        data_disc = []
+        for trajectory in data:
+            traj = []
+            for transition in trajectory:
+                s = transition[0]
+                a = transition[1]
+                ns = transition[2]
+                r = transition[3]
+                terminated = transition[4]
+                died = transition[5]
+                s_d = state2region(predictor, s, 4)
+                ns_d = state2region(predictor, ns, 4)
+                traj.append([a, s_d, ns_d, r])
+            data_disc.append(traj)
+        return data_disc
+                             
+                
+    def add_trans_from_data(self,structure, data):
+        # num_states = len(structure)
+        # num_actions = len(structure[0])
+        for trajectory in data:
+            for transition in trajectory:
+                s=transition[1]
+                a=transition[0]
+                ns=transition[2]
+                poss_next = structure[s,a]
+                if not ns in poss_next:
+                    poss_next = np.append(poss_next, [ns])
+                    structure[s][a] = poss_next
+        return structure  
+    
+    def reduce_transition_matrix(self, transition_matrix):
+        """
+        Reduces a transition matrix to only include possible end states for each state-action pair.
+
+        Args:
+        - transition_matrix (numpy.ndarray): A 3D numpy array of shape (num_states, num_actions, num_states) 
+        where each element represents the probability of transitioning from one state to another
+        given a certain action.
+
+        Returns:
+        - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
+        where each element contains the indices of possible end states.
+        """
+        num_states = len(transition_matrix)
+        num_actions = len(transition_matrix[0])
+        # Prepare the reduced matrix to hold the indices of possible states
+        reduced_matrix = np.empty((num_states, num_actions), dtype=object)
+        
+        # Loop through each state and action to populate the reduced matrix
+        for state in range(num_states):
+            for action in range(num_actions):
+                # Get indices of nonzero probabilities (possible end states)
+                possible_states = np.nonzero(transition_matrix[state, action])[0]
+                reduced_matrix[state, action] = np.array(possible_states)
+        
+        return reduced_matrix
+       
+    def build_transition_matrix(self):
+        """
+        Builds a reduced transition matrix that lists possible next states
+        for each (state, action) pair, based on the observed trajectories.
+
+        Returns
+        -------
+        np.ndarray
+            A 2D array of shape (num_states, num_actions), where each entry
+            is a list of possible next states for that (state, action).
+        """
+        count = 0
+        # Prepare the reduced matrix with empty lists
+        transition_matrix = self.transition_matrix.copy()
+
+
+        # Fill matrix with next states from counts
+        for (state, action, next_state) in self.count_state_action_state.keys():
+            if next_state not in transition_matrix[state, action]:
+                transition_matrix[state, action].append(next_state)
+
+        # for s in range(self.nb_states):
+        #     for a in range(self.nb_actions):
+        #         if len(transition_matrix[s, a]) == 0:
+        #             transition_matrix[s, a] = [self.traps]
+
+        # for i in range(len(transition_matrix)):
+        #     for j in range(len(transition_matrix[i])):
+        #         if len(transition_matrix[i][j]) > 1:
+        #             count+=1
+        # print(transition_matrix)
+        # print(count)
+        return transition_matrix
+
     
 class GymCrashingMountainCar(Experiment):
     fixed_params_exp_columns = ['seed', 'gamma']
@@ -1047,6 +1383,7 @@ class GymCrashingMountainCar(Experiment):
                 self.shielder.printShield()
                 
                 # Run the algoirhtm
+                # Obviously fucking fix this shit
                 self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
                 self.nb_states = len(self.structure)
                 self.data = d_data

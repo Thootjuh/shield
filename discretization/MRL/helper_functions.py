@@ -40,10 +40,9 @@ def trajToDF(trajectories, num_features, add_end_reward=False):
                         + [val for val in s] +
                         [a, risk])
                 transition_count+=1
-                risk = 0
                 rows.append([trajectory_count, transition_count]
                         + [val for val in n_s] +
-                        [a, risk])
+                        [a, 0])
             else:
                 rows.append([trajectory_count, transition_count]
                             + [val for val in s] +
@@ -51,6 +50,7 @@ def trajToDF(trajectories, num_features, add_end_reward=False):
         trajectory_count+=1
             
     data_df = pd.DataFrame(rows, columns=columns)
+    
     return data_df
 
 def state2region(predictor, state, num_features):
