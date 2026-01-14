@@ -21,9 +21,11 @@ shielded.txt
 *.pdf
 *.nm
 *.html
+*.csv
 # Ignore everything in the results folder
 results/
 data/
 gifs/
 stormvogel/
 shield/
+build/
