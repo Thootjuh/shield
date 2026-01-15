@@ -238,9 +238,9 @@ class Experiment:
         pi_b_s.fit()
         t_1 = time.time()
         if self.discretization_method=='mrl':
-            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
         elif self.discretization_method=='grid':
-            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 100, self.discretization_method)
+            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 500, self.discretization_method)
         
         # basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
         method = pi_b_s.NAME + "_" + self.discretization_method
@@ -265,9 +265,9 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
             elif self.discretization_method=='grid':
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 500, self.discretization_method)
             
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
@@ -290,9 +290,9 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
             elif self.discretization_method=='grid':
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 500, self.discretization_method)
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
@@ -1326,16 +1326,16 @@ class GymCrashingMountainCar(Experiment):
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
-                # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
+                # generate data on the real mountain car environment. Translate this data to the partitioning in generate_batch
                 self.data, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
-                print(self.data_cont)
+                # print(self.data_cont)
                 
                 # ------------------------ MRL --------------------------
                 self.discretization_method = 'mrl'
                 self.dimensions = 2
                 self.data_df = trajToDF(self.data_cont, self.dimensions)
-                print("data ", self.data_df)
+                # print("data ", self.data_df)
                 # Get discretization
                 m = MDP_model()
                 m.fit(
@@ -1347,9 +1347,9 @@ class GymCrashingMountainCar(Experiment):
                     distance_threshold=0.2,
                     th = 0,
                     eta = 50,
-                    precision_thresh = 0.3, #1e-14
+                    precision_thresh = 1e-14,
                     classification = 'DecisionTreeClassifier',
-                    split_classifier_params = {'random_state':0, 'max_depth':10},
+                    split_classifier_params = {'random_state':0, 'max_depth':3},
                     clustering = 'Agglomerative',
                     n_clusters = None,
                     random_state = 0,
@@ -1376,15 +1376,14 @@ class GymCrashingMountainCar(Experiment):
                 
                 print("Calculating Shield") 
                 print(m.R_df) 
-                traps = m.R_df[m.R_df == 0.0].index.tolist()
-                goal_mrl = [i for i in range(len(self.structure)) if i not in traps]
-                self.shielder = ShieldCartpole(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
+                traps = m.R_df[m.R_df == -250.0].index.tolist()
+                goal_mrl = m.R_df[m.R_df == 100.0].index.tolist()
+                self.shielder = ShieldCrashingMountainCar(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
                 self.shielder.printShield()
                 
                 # Run the algoirhtm
-                # Obviously fucking fix this shit
-                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
+                self.pi_b = crashingMountainCarPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
                 self.nb_states = len(self.structure)
                 self.data = d_data
                 # In this environment, the reward is always 1 for every step, so we create a matrix of shape (nb_states, nb_states) filled with ones
@@ -1465,11 +1464,15 @@ class GymCrashingMountainCar(Experiment):
             trajectorY = []
             trajectorY_cont = []
             env.reset()
-            state, region = env.get_init_state()
+            env.set_random_state()
+            state = env.get_state()
+            region = env.state2region(state)
             is_done = False
             while nb_steps < max_steps and not is_done:
                 # print("AAAAA")
                 action_choice = np.random.choice(pi.shape[1], p=pi[region])
+                # if state[1] <0.59:
+                    # action_choice = 2
                 state, next_state, reward = env.step(action_choice)
                 # print(state)
                 # print(type(state))
@@ -1538,8 +1541,8 @@ class GymCrashingMountainCar(Experiment):
                 r = transition[3]
                 terminated = transition[4]
                 died = transition[5]
-                s_d = state2region(predictor, s, 4)
-                ns_d = state2region(predictor, ns, 4)
+                s_d = state2region(predictor, s, 2)
+                ns_d = state2region(predictor, ns, 2)
                 traj.append([a, s_d, ns_d, r])
             data_disc.append(traj)
         return data_disc

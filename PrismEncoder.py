@@ -234,7 +234,7 @@ def encodeCartPole(transition_matrix, intervals, trap):
     return "\n".join(prism_lines)
 
 
-def encodeCrashingMountainCar(transition_matrix, intervals, initial_state):
+def encodeCrashingMountainCar(transition_matrix, intervals, initial_state, trap, goal):
     actions = [
         "left",
         "stay",
@@ -250,7 +250,6 @@ def encodeCrashingMountainCar(transition_matrix, intervals, initial_state):
     prism_lines.append(f"    s : [0..{num_states - 1}];  // state")
     
     
-    # Add transitions
     for state in range(num_states):
         prism_lines.append(f"    // State {state}")
         for action in range(num_actions):
@@ -260,31 +259,46 @@ def encodeCrashingMountainCar(transition_matrix, intervals, initial_state):
             # Remove invalid transitions (e.g., -1 to indicate no transition)
             valid_next_states = [int(s) for s in next_states if s >= 0]
             
-            if valid_next_states:
-                # Uniform probability for each next state
-                # uniform_prob = 1 / len(valid_next_states)
-                if len(valid_next_states) == 1:
-                    default_interval = (1.0, 1.0)
-                else:
-                    default_interval = (4.999999999999449e-05, 0.9999999)
+            # if len(valid_next_states):
+            #     # Uniform probability for each next state
+            #     # uniform_prob = 1 / len(valid_next_states)
+            if len(valid_next_states) == 1:
+                # print(valid_next_states, " ", len(valid_next_states), " 1")
+                default_interval = (1.0, 1.0)
+                probabilities = [
+                    f"[{default_interval[0]}," 
+                    f" {default_interval[1]}]"
+                    for next_state in valid_next_states
+                ]               
+            elif len(valid_next_states) > 1:
+                # print(valid_next_states, " ", len(valid_next_states), " >1")
+                default_interval = (4.999999999999449e-05, 0.9999999)
                 probabilities = [
                     f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
                     f" {intervals.get((state, action, next_state), default_interval)[1]}]"
                     for next_state in valid_next_states
                 ]
-                
-                # Create PRISM transition command
-                transitions = " + ".join(
-                    f"{prob}:(s'={next_state})" for prob, next_state in zip(probabilities, valid_next_states)
-                )
-                action_label = actions[action]
-                prism_lines.append(f"    [{action_label}] s={state} -> {transitions};")
+            else:
+                # If there is no transition, loop 
+                default_interval = (1.0, 1.0)
+                probabilities = [
+                    f"[{default_interval[0]}," 
+                    f" {default_interval[1]}]"
+                    for next_state in [state]
+                ]  
+                valid_next_states = [state]
+            # Create PRISM transition command
+            transitions = " + ".join(
+                f"{prob}:(s'={next_state})" for prob, next_state in zip(probabilities, valid_next_states)
+            )
+            action_label = actions[action]
+            prism_lines.append(f"    [{action_label}] s={state} -> {transitions};")
                 
     # End the module
     prism_lines.append("endmodule")
-    prism_lines.append(f"init s<210 endinit")
-    prism_lines.append(f'label "goal" = s=210;')
-    prism_lines.append(f'label "trap" = s=211;')
+    prism_lines.append(f"init s<={num_states} endinit")
+    prism_lines.append(f'label "trap" = s={trap[0]};')
+    prism_lines.append(f'label "goal" = s={goal[0]};')
 
     # Return the PRISM MDP as a string
     return "\n".join(prism_lines)

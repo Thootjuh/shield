@@ -6,6 +6,9 @@ import environments
 import random
 import discretization.grid.partition as prt
 from collections import defaultdict
+
+CRASH_BOUND = -1.0
+MOTOR_FAILURE = 0.65
 # Note: none of the algorithms ever crash
 # Note: Algorithms barely ever reach the goal
 # Note: The shield has a value of 0.0 or 1.0 (or close to it) for all* states
@@ -13,7 +16,7 @@ from collections import defaultdict
 class crashingMountainCar:
     def __init__(self):
         # create environment
-        self.env = MountainCarCrashWrapper(gym.make("MountainCar-v0"))
+        self.env = MountainCarCrashWrapper(gym.make("MountainCar-v0"), CRASH_BOUND, MOTOR_FAILURE)
         observation, _ = self.env.reset()
         self.state_shape = [2]
         self.init = observation
@@ -23,10 +26,10 @@ class crashingMountainCar:
         self.partition_states()
     
     def set_random_state(self):
-        pos_low, pos_high = -1.0, 0.5
-        vel_low, vel_high = -0.07, 0.07
+        pos_low, pos_high = -0.9, 0.5
+        vel_low, vel_high = -0.05, 0.05
         # pos_low, pos_high = 0.45, 0.49
-        # vel_low, vel_high = 0.65, 0.069
+        # vel_low, vel_high = 0.055, 0.059
         position = np.random.uniform(pos_low, pos_high)
         velocity = np.random.uniform(vel_low, vel_high)  
         
@@ -38,6 +41,7 @@ class crashingMountainCar:
         self.env.set_state(np.array([position, velocity], dtype=np.float32))
         # self.env.state = 
         self.state = np.array([position, velocity], dtype=np.float32)
+        # print(self.state)
         
     def reset(self):
         observation, _  = self.env.reset()
@@ -51,8 +55,8 @@ class crashingMountainCar:
             # Define region widths based on known limits of MountainCar
             # position ∈ [-1.0, 0.5], velocity ∈ [-0.07, 0.07]
             regionWidth = [
-                (0.5 - (-1.0)) / nrPerDim[0],  # position width
-                (0.07 - (-0.07)) / nrPerDim[1] # velocity width
+                (0.5 - (CRASH_BOUND)) / nrPerDim[0],  # position width
+                (MOTOR_FAILURE - (-1*MOTOR_FAILURE)) / nrPerDim[1] # velocity width
             ]
 
             # Choose origin at the center of the space
@@ -85,7 +89,7 @@ class crashingMountainCar:
         if position > 0.5:
             return self.partition["goal_idx"]
         
-        if position < -1.0 or abs(velocity) > 0.07:
+        if position < -CRASH_BOUND or abs(velocity) > MOTOR_FAILURE:
             # print("died")
             # print(position)
             # print(velocity)
@@ -94,7 +98,7 @@ class crashingMountainCar:
         # Clip unbounded dimensions
         state = state.copy()
         state[0] = np.clip(state[0], -1.0, 0.5)   # position bounds
-        state[1] = np.clip(state[1], -0.07, 0.07) # velocity bounds
+        state[1] = np.clip(state[1], -1*MOTOR_FAILURE, MOTOR_FAILURE) # velocity bounds
 
         # Map to region
         idx = prt.state2region(state, self.partition, self.partition["c_tuple"])
@@ -112,6 +116,11 @@ class crashingMountainCar:
         self.terminated = terminated or truncated
         self.crashed = terminated
         self.state = next_state
+        
+        if self.terminated and (reward == -250.0 or reward == 100):
+            print("finished the episode without truncation")
+        if self.terminated:
+            print("done:", reward)
         # print("taking step, reached :", next_state)
         # if self.state2region(next_state) == self.partition["crash_idx"]:
             # print("kill yourself IRL")
@@ -119,9 +128,11 @@ class crashingMountainCar:
         # next_region = self.state2region(next_state)
 
         return old_state, next_state, reward
+    
     def check_crashed(self):
         return self.crashed
     def is_done(self):
+        
         return self.terminated
     
     
@@ -205,16 +216,28 @@ class crashingMountainCarPolicy:
                 vel_high = self.env.partition["upp"][state, 1]
                 vel_center = (vel_low + vel_high) / 2.0
                 
-                # break if we go to fast to the right or left
-                if vel_center >= 0.05: 
-                    pi[state][0] = 0.5
-                    pi[state][1] = 0.5    
-                elif vel_center <= -0.05: 
-                    pi[state][1] = 0.5
-                    pi[state][2] = 0.5
-                else:
-                    # Else accelerate to the right towards the goal
+                if vel_center < 0.055: 
                     pi[state][2] = 1.0
+                else: 
+                    pi[state][0] = 0.5
+                    pi[state][1] = 0.5
+                    
                 
-        # self.pi = (1 - self.epsilon) * pi + self.epsilon * self.pi
+        self.pi = (1 - self.epsilon) * pi + self.epsilon * self.pi
         # self.pi = s
+    def compute_baseline_size(self, states):
+        pi = np.zeros((states, self.nb_actions))
+        # left_states = self.env.regions_left_of_origin()
+        # right_states = self.env.regions_right_of_origin()
+        
+        for state in range(len(pi)):
+            # if state in left_states:
+            #     pi[state][1] = 1.0
+            # elif state in right_states:
+            #     pi[state][0] = 1.0
+            # else:
+            pi[state][0] = 0.5
+            pi[state][1] = 0.5
+                
+        # pi_b = (1 - self.epsilon) * pi + self.epsilon * self.pi
+        return pi

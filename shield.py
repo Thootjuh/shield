@@ -377,7 +377,7 @@ class ShieldCartpole(Shield):
         # How likely are we to step into a trap
         # prop = "Pmax=? [!\"trap\" U \"goal\"]"
         # prop = "Pmax=? [!\"goal\"U\"trap\"]"
-        prop = "Pmaxmin=? [  G<=5 !\"trap\" ]"
+        prop = "Pmaxmin=? [  G<=25 !\"trap\" ]"
         # prop1 = "Pmax=? [  F \"trap\" ]"
         
         # Is it possible to reach the goal
@@ -388,7 +388,7 @@ class ShieldCartpole(Shield):
         super().calculateShieldPrism(self.prism_text, prop)
         self.shield = self.shield
         
-    def get_safe_actions_from_shield(self, state, threshold=0.05, buffer = 0.05):
+    def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.1):
         """
         calculate the actions allowed by the shield for a given state
         Args:
@@ -406,8 +406,13 @@ class ShieldCartpole(Shield):
                 safe_actions.append(i)
 
         if len(safe_actions) == 0:
-            min_value = np.min(probs)
-            safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
+            if probs[0] >= 1 and probs[1] < 1:
+                safe_actions.append(1)
+            if probs[1] >= 1 and probs[0] < 1:
+                safe_actions.append(0)
+            else:
+                min_value = np.min(probs)
+                safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
         return safe_actions
     
     def printShield(self):
@@ -450,7 +455,7 @@ class ShieldCrashingMountainCar(Shield):
             the range of possible transition probabilities due to uncertainty.
         """
         # self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps) 
-        self.prism_text = encodeCrashingMountainCar(transition_matrix, intervals, init)
+        self.prism_text = encodeCrashingMountainCar(transition_matrix, intervals, init, traps, goal)
         super().__init__(transition_matrix, traps, goal, intervals)
         
     def calculateShield(self):

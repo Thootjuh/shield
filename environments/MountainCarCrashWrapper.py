@@ -3,12 +3,12 @@ from gymnasium import Wrapper
 import numpy as np
 
 class MountainCarCrashWrapper(Wrapper):
-    def __init__(self, env, crash_penalty=-250.0):
+    def __init__(self, env, crash_bound, max_speed, crash_penalty=-250.0):
         super().__init__(env)
         self.crash_penalty = crash_penalty
         self.success_reward = 100
-        self.crash_bound = -1.0
-        self.max_speed = 0.1
+        self.crash_bound = crash_bound
+        self.max_speed = max_speed
     
     def set_state(self, state):
         """Set the internal state of the MountainCar environment."""
@@ -24,10 +24,10 @@ class MountainCarCrashWrapper(Wrapper):
             info["crash"] = False 
             print("reached Finish")
         else:
-            crashed = (position <= self.crash_bound) or abs(velocity) > (0.07)
+            crashed = (position <= self.crash_bound) or (abs(velocity) > self.max_speed)
             if crashed:
                 terminated = True
-                reward = self.crash_penalty  # big penalty for crash
+                reward = self.crash_penalty 
                 info["crash"] = True
             else:
                 info["crash"] = False

@@ -782,7 +782,7 @@ def splitter(
                 opt_k = nc + 1
                 if verbose:
                     print("new opt_k", opt_k)
-
+            
             # code for storing optimal clustering even if incorrect incoherence
             # threshold is chosen and nothing passes threshold; to prevent
             # training interruption
@@ -793,6 +793,7 @@ def splitter(
 
             cont = True
             nc += 1
+            best_df = df_new.copy() # Remove this later
             if verbose:
                 print(f"Model saved in {time.time()-st}")
         if not cont:
