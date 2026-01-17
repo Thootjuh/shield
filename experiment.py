@@ -214,7 +214,7 @@ class Experiment:
         """
         if self.speed_up:
             self._compute_speed_up_dict()
-        self._run_shielded_baseline()
+        # self._run_shielded_baseline()
         for key in self.algorithms_dict.keys():
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
                 self._run_spibb(key)
@@ -265,9 +265,9 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
             elif self.discretization_method=='grid':
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 500, self.discretization_method)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
             
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
@@ -290,9 +290,9 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
             elif self.discretization_method=='grid':
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 500, self.discretization_method)
+                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
@@ -663,6 +663,7 @@ class GymCartPoleExperiment(Experiment):
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
                 
                 self.data_df = trajToDF(self.data_cont, self.dimensions, True)
+                print(len(self.data_df.index))
                 # self.data_df = pd.read_csv("data_set.csv")
                 # print(self.data_cont)
                 # with pd.option_context('display.max_rows', None,
@@ -689,7 +690,7 @@ class GymCartPoleExperiment(Experiment):
                     distance_threshold=0.5,
                     th = 5,
                     eta = 25,
-                    precision_thresh = 1e-14, #1e-14
+                    precision_thresh = 0.1, #1e-14
                     classification = 'DecisionTreeClassifier',
                     split_classifier_params = {'random_state':0, 'max_depth':10},
                     clustering = 'Agglomerative',
@@ -722,7 +723,7 @@ class GymCartPoleExperiment(Experiment):
                 goal_mrl = [i for i in range(len(self.structure)) if i not in traps]
                 self.shielder = ShieldCartpole(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
-                self.shielder.printShield()
+                # self.shielder.printShield()
                 
                 # Run the algoirhtm
                 self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
@@ -736,7 +737,7 @@ class GymCartPoleExperiment(Experiment):
                 
                 # ----------------------------- GRID ---------------------------------
                 # self.discretization_method = 'grid'
-                # self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
                 # self.nb_states = self.env.get_nb_states()
                 # self.data = data_grid
                 # self.R_state_state = self.env.get_reward_function()
@@ -1020,8 +1021,8 @@ class GymMazeExperiment(Experiment):
                     gamma = 1,
                     max_k = 100,
                     distance_threshold=0.5,
-                    th = 5,
-                    eta = 25,
+                    th = 10,
+                    eta = 50,
                     precision_thresh = 0.1, #1e-14
                     classification = 'DecisionTreeClassifier',
                     split_classifier_params = {'random_state':0, 'max_depth':10},

@@ -377,7 +377,7 @@ class ShieldCartpole(Shield):
         # How likely are we to step into a trap
         # prop = "Pmax=? [!\"trap\" U \"goal\"]"
         # prop = "Pmax=? [!\"goal\"U\"trap\"]"
-        prop = "Pmaxmin=? [  G<=25 !\"trap\" ]"
+        prop = "Pmaxmin=? [  G<=10 !\"trap\" ]"
         # prop1 = "Pmax=? [  F \"trap\" ]"
         
         # Is it possible to reach the goal
@@ -388,7 +388,7 @@ class ShieldCartpole(Shield):
         super().calculateShieldPrism(self.prism_text, prop)
         self.shield = self.shield
         
-    def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.1):
+    def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.05):
         """
         calculate the actions allowed by the shield for a given state
         Args:

@@ -43,8 +43,6 @@ from .testing import (
     next_clusters,
 )
 
-# suppressing warnings from here because sklearn forces warnings
-# https://stackoverflow.com/questions/32612180/eliminating-warnings-from-scikit-learn
 def warn(*args, **kwargs):
     pass
 
@@ -775,14 +773,14 @@ def splitter(
             # and also if maximum incoherence is lower than calculated threshold
             if verbose:
                 print("train error: ", train_error)
-            if train_error < (min_error - precision_thresh):
+            if train_error < (min_error + precision_thresh):
                 # if max_inc < threshold:
                 min_error = train_error
                 best_df = df_new.copy()
                 opt_k = nc + 1
                 if verbose:
                     print("new opt_k", opt_k)
-            
+
             # code for storing optimal clustering even if incorrect incoherence
             # threshold is chosen and nothing passes threshold; to prevent
             # training interruption
@@ -790,10 +788,9 @@ def splitter(
                 backup_min_error = train_error
                 backup_df = df_new.copy()
                 backup_opt_k = nc + 1
-
+            # best_df = df_new.copy() # Remove later
             cont = True
             nc += 1
-            best_df = df_new.copy() # Remove this later
             if verbose:
                 print(f"Model saved in {time.time()-st}")
         if not cont:
@@ -819,29 +816,28 @@ def splitter(
             if testing:
                 ax1.plot(its, testing_acc, label="Testing Accuracy")
             if n > 0:
-                ax1.axvline(x=n, linestyle="--", color="r")
+                ax1.axvline(
+                    x=n, linestyle="--", color="r"
+                )  # Plotting vertical line at #cluster =n
             ax1.set_ylim(0, 1)
             ax1.set_xlabel("# of Clusters")
             ax1.set_ylabel("R2 or Accuracy %")
             ax1.set_title("R2 and Accuracy During Splitting")
             ax1.legend()
-
-            fig1.savefig("clusters_accuracy.png", dpi=300, bbox_inches="tight")
-
+        ## Plotting value error E((v_est - v_true)^2)
         fig2, ax2 = plt.subplots()
         ax2.plot(its, training_error, label="Training Error")
         if testing and not stochastic:
             ax2.plot(its, testing_error, label="Testing Error")
         if n > 0:
-            ax2.axvline(x=n, linestyle="--", color="r")
+            ax2.axvline(
+                x=n, linestyle="--", color="r"
+            )  # Plotting vertical line at #cluster =n
         ax2.set_ylim(0)
         ax2.set_xlabel("# of Clusters")
         ax2.set_ylabel("Value error")
         ax2.set_title("Value error by number of clusters")
         ax2.legend()
-
-        fig2.savefig("clusters_value_error.png", dpi=300, bbox_inches="tight")
-
         plt.show()
 
     df_train_error = pd.DataFrame(
