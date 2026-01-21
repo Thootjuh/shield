@@ -1249,13 +1249,14 @@ class WetChickenExperiment(Experiment):
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.lengths_trajectory = ast.literal_eval(self.experiment_config['BASELINE']['lengths_trajectory'])
         if self.baseline_method == 'heuristic':
-            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'threshold', 'pi_b_perf', 'length_trajectory']
+            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'threshold', 'pi_b_perf', 'pi_b_succ_rate', 'pi_b_avoid_rate', 'length_trajectory']
         else:
             self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'threshold', 'pi_b_perf',
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         self.prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
+        self.avoid_prop = "Pmax=? [G !\"waterfall\"]"
         self.goal = []
         self.traps = []
     def _run_one_iteration(self):
@@ -1263,7 +1264,8 @@ class WetChickenExperiment(Experiment):
         Runs one iteration on the Wet Chicken benchmark, so iterates through different baseline and data set parameters
         and then starts the computation for each algorithm.
         """
-        shield_thresholds = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+        # shield_thresholds = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+        shield_thresholds = [0.2]
         for theta in shield_thresholds:
             for epsilon_baseline in self.epsilons_baseline:
                 print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
@@ -1271,8 +1273,9 @@ class WetChickenExperiment(Experiment):
                 if self.baseline_method == 'heuristic':
                     self.pi_b = WetChickenBaselinePolicy(env=self.env, gamma=self.gamma, method=self.baseline_method,
                                                         epsilon=epsilon_baseline).pi
+                    pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
                     self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline, theta,
-                                                                            self._policy_evaluation_exact(self.pi_b)]
+                                                                            self._policy_evaluation_exact(self.pi_b), pi_b_succ_rate, pi_b_avoid_rate]
                     for length_trajectory in self.lengths_trajectory:
                         print(f'Starting with length_trajectory {length_trajectory} out of {self.lengths_trajectory}.')
                         self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
@@ -1365,7 +1368,7 @@ class RandomMDPsExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'nb_states', 'nb_actions', 'nb_next_state_transition']
     variable_params_exp_columns = ['iteration', 'softmax_target_perf_ratio',  'baseline_target_perf_ratio',
-                                   'threshold', 'baseline_perf', 'pi_rand_perf', 'pi_star_perf','nb_trajectories']
+                                   'threshold', 'baseline_perf', 'baseline_succ_rate', 'baseline_avoid_rate', 'pi_rand_perf', 'pi_star_perf','nb_trajectories']
 
     def _set_env_params(self):
         """
@@ -1391,6 +1394,7 @@ class RandomMDPsExperiment(Experiment):
         self.log = bool(util.strtobool(self.experiment_config['META']['log']))
         self.env_name = self.experiment_config['META']['env_name']
         self.prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        self.avoid_prop = "Pmax=? [G !\"trap\"]"
     def _run_one_iteration(self):
         """
         Runs one iteration on the Random MDPs benchmark, so iterates through different baseline and data set parameters
@@ -1419,14 +1423,18 @@ class RandomMDPsExperiment(Experiment):
                                                         baseline_target_perf_ratio=baseline_target_perf_ratio)
                 self.R_state_state = self.garnet.compute_reward()
                 self.P = self.garnet.transition_function
-
+                self.goal = [self.garnet.final_state]
+                self.P[self.goal, :, :] = 0.0
+                self.P[self.goal, :, self.goal] = 1.0
                 self.traps = self.garnet.get_traps()
                 self.easter_egg = None
-
+                pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
                 self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
-                self.to_append_run_one_iteration += [theta, self.pi_b_perf, self.pi_rand_perf, self.pi_star_perf]
+                self.to_append_run_one_iteration += [theta, self.pi_b_perf, pi_b_succ_rate, pi_b_avoid_rate, self.pi_rand_perf, self.pi_star_perf]
+                
 
-
+                
+                
                 for nb_trajectories in self.nb_trajectories_list:
                     print(
                         f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
@@ -1441,7 +1449,7 @@ class RandomMDPsExperiment(Experiment):
                     self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
                     self.estimator.calculate_intervals()
                     self.intervals = self.estimator.get_intervals()
-                    self.goal = [self.garnet.final_state]
+                    
                     self.shielder = ShieldRandomMDP(self.structure, self.traps, self.goal, self.intervals, self.prop)
                     self.shielder.calculateShield()
                     self._run_algorithms()
@@ -1546,16 +1554,16 @@ class RandomMDPsExperiment(Experiment):
         """
         num_states = self.nb_states
         num_actions = self.nb_actions
-        max_transitions = self.nb_next_state_transition
+        # max_transitions = self.nb_next_state_transition
         # Prepare the reduced matrix to hold the indices of possible states
-        reduced_matrix = np.zeros((num_states, num_actions, max_transitions), dtype=int)
+        reduced_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)        
         
         # Loop through each state and action to populate the reduced matrix
         for state in range(num_states):
             for action in range(num_actions):
                 # Get indices of nonzero probabilities (possible end states)
                 possible_states = np.nonzero(transition_matrix[state, action])[0]
-                reduced_matrix[state, action, :len(possible_states)] = possible_states
+                reduced_matrix[state, action] = possible_states
         
         return reduced_matrix
     
@@ -1890,7 +1898,7 @@ class GymTaxiExperiment(Experiment):
     
 class GymFrozenLakeExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
-    fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method','pi_rand_perf', 'pi_star_perf']
+    fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method','pi_rand_perf', 'pi_star_perf', 'baseline_success_rate', 'baseline_avoid_rate']
     
     def compute_r_state_action(self, P, R):
         result = defaultdict(float)
@@ -1945,14 +1953,17 @@ class GymFrozenLakeExperiment(Experiment):
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()
+
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
         with open("optimal.txt", "w") as file:
             for item in pi_star.pi:
                 file.write(f"{item}\n")
         print(f"pi_star_perf = {pi_star_perf}")
         self.fixed_params_exp_list.append(pi_star_perf)
+        
 
 
+        
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
         print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
@@ -1965,10 +1976,16 @@ class GymFrozenLakeExperiment(Experiment):
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
-        self.prop = "Pmax=? [!\"hole\"U\"goal\"]"
-        self.avoid_prop = "Pmax=? [F \"hole\"]"
+
         self.env_name = self.experiment_config['META']['env_name']
         
+        self.pi_b = self.env.get_baseline_policy(epsilon=0.5)
+        self.prop = "Pmax=? [!\"hole\"U\"goal\"]"
+        self.avoid_prop = "Pmax=? [G !\"hole\"]"
+        
+        pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
+        self.fixed_params_exp_list.append(pi_b_succ_rate)
+        self.fixed_params_exp_list.append(pi_b_avoid_rate)
     def _run_one_iteration(self):
         for epsilon_baseline in self.epsilons_baseline:
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
@@ -1980,7 +1997,7 @@ class GymFrozenLakeExperiment(Experiment):
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]
             # print("b")
-            
+
             for nb_trajectories in self.nb_trajectories_list:
                 print(
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '

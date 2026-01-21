@@ -80,4 +80,4 @@ class evaluator:
     def find_avoid_prob(self):
         # Use the DTMC to find the probability of avoiding bad states
         result = self.invoke_storm(self.avoid_prop)
-        return 1-result.get_values()[self.init]
+        return result.get_values()[self.init]

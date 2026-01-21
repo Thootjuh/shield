@@ -144,6 +144,7 @@ class Garnets:
             R[s, self.final_state] = 1
             for trap in self.traps:
                 R[s, trap] = self.punishment
+        R[self.final_state, self.final_state] = 0
         return R
 
     # Transition function matrix
