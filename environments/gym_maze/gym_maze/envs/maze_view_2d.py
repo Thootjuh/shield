@@ -50,6 +50,8 @@ class MazeView2D:
         # Set the Goal
         self.__goal = np.array(self.maze_size) - np.array((1, 1))
 
+        # set traps
+        self.traps = np.array([[0, self.maze_size[1]-1],[self.maze_size[1]-1, 0]])
         # Create the Robot
         self.__robot = self.entrance
 
@@ -103,9 +105,9 @@ class MazeView2D:
                 "dir cannot be %s. The only valid dirs are %s."
                 % (str(dir), str(self.__maze.COMPASS.keys()))
             )
-
+        # print(self.__maze)
+        # print(self.__robot)
         if self.__maze.is_open(self.__robot, dir):
-
             # update the drawing
             self.__draw_robot(transparency=0)
 
@@ -119,11 +121,28 @@ class MazeView2D:
             self.__draw_robot(transparency=255)
 
     def reset_robot(self):
-
         self.__draw_robot(transparency=0)
         self.__robot = np.zeros(2, dtype=int)
         self.__draw_robot(transparency=255)
 
+    def set_random_state(self):
+        gen_new_state = True
+        self.__draw_robot(transparency=0)
+        while gen_new_state:
+            dim_one = random.randint(0, self.maze_size[0]-1)
+            dim_two = random.randint(0, self.maze_size[1]-1)
+            
+            # Check if the selected state is a goal state
+            start_state = np.array([dim_one,dim_two])
+            gen_new_state = np.array_equal(start_state, self.goal)
+            
+            # Also check if it is a trap
+            if not gen_new_state:
+                gen_new_state = np.any(np.all(self.traps == start_state, axis=1))
+        self.__robot = np.array([dim_one,dim_two])
+        self.__draw_robot(transparency=255)
+        return [dim_one, dim_two]
+    
     def __controller_update(self):
         if not self.__game_over:
             for event in pygame.event.get():

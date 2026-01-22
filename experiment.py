@@ -48,7 +48,7 @@ from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
 from batch_rl_algorithms.spibb_dqn.spibb_dqn import spibb_dqn
 
-from shield import ShieldRandomMDP, ShieldCartpole, ShieldCrashingMountainCar
+from shield import ShieldRandomMDP, ShieldCartpole, ShieldCrashingMountainCar, ShieldMaze
 from PACIntervalEstimator import PACIntervalEstimator
 from evaluate_cartpole import evaluate_policy
 from discretization.grid.define_imdp import imdp_builder
@@ -662,7 +662,8 @@ class GymCartPoleExperiment(Experiment):
                 data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
                 
-                self.data_df = trajToDF(self.data_cont, self.dimensions, True)
+                self.data_df = trajToDF(self.data_cont, self.dimensions, 1)
+                self.data_df.to_csv("data_set.csv", index=False)
                 print(len(self.data_df.index))
                 # self.data_df = pd.read_csv("data_set.csv")
                 # print(self.data_cont)
@@ -690,7 +691,7 @@ class GymCartPoleExperiment(Experiment):
                     distance_threshold=0.5,
                     th = 5,
                     eta = 25,
-                    precision_thresh = 0.1, #1e-14
+                    precision_thresh = 1e-14, #1e-14
                     classification = 'DecisionTreeClassifier',
                     split_classifier_params = {'random_state':0, 'max_depth':10},
                     clustering = 'Agglomerative',
@@ -706,6 +707,7 @@ class GymCartPoleExperiment(Experiment):
                 m.create_PR(0.2, 0.8, -1, 0.2, "max")
                 P_temp = m.P.copy()
                 P_temp = P_temp.transpose(1, 0, 2)
+                print(P_temp)
                 self.structure = self.reduce_transition_matrix(P_temp)
                 d_data = self.discretize_data(self.data_cont, self.predictor)
                 # print(d_data)
@@ -723,7 +725,7 @@ class GymCartPoleExperiment(Experiment):
                 goal_mrl = [i for i in range(len(self.structure)) if i not in traps]
                 self.shielder = ShieldCartpole(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
+                self.shielder.printShield()
                 
                 # Run the algoirhtm
                 self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
@@ -731,6 +733,8 @@ class GymCartPoleExperiment(Experiment):
                 self.data = d_data
                 # In this environment, the reward is always 1 for every step, so we create a matrix of shape (nb_states, nb_states) filled with ones
                 self.R_state_state = np.ones((self.nb_states, self.nb_states))
+                self.R_state_state[:, traps[0]] = 0
+                self.R_state_state[traps[0], :] = 0
                 print(self.nb_states)
                 print("Running Algorithms")
                 self._run_algorithms()
@@ -757,7 +761,11 @@ class GymCartPoleExperiment(Experiment):
                 # self._run_algorithms()
                 # ----------------------------- SPIBB-DQN ----------------------------------
                 # self._run_spibb_dqn('SPIBB-DQN')
-                
+         
+         
+    def MLE_transitions(self, data):
+        pass   
+        
     def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
         """
         Generates a data batch for an episodic MDP.
@@ -785,8 +793,9 @@ class GymCartPoleExperiment(Experiment):
                 next_region = env.state2region(next_state)
                 is_done = env.is_done()                    
                 trajectorY.append([action_choice, region, next_region, reward])
-                crashed = env.check_crashed()
-                trajectorY_cont.append([state, action_choice, next_state, reward, is_done, crashed])
+                terminated = env.is_terminated()
+                truncated = env.is_truncated()
+                trajectorY_cont.append([state, action_choice, next_state, reward, terminated, truncated])
                 region = next_region
                 nb_steps += 1
             trajectories_cont.append(trajectorY_cont)
@@ -975,7 +984,7 @@ class GymMazeExperiment(Experiment):
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         print("estimating transitions")
         # self.estimate_transitions()
-        
+        self.dimensions = 2
     def _run_one_iteration(self):
         for epsilon_baseline in self.epsilons_baseline:
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
@@ -994,15 +1003,17 @@ class GymMazeExperiment(Experiment):
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
                 # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
+                self.pi_b = mazePolicy(self.env, epsilon=epsilon_baseline).pi
                 data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
                 
-                self.data_df = trajToDF(self.data_cont, 4, True)
+                self.data_df = trajToDF(self.data_cont, self.dimensions, self.data_cont[0][0][3])
+
                 # print(self.data_cont)
                 # with pd.option_context('display.max_rows', None,
                 #        'display.max_columns', None):
                 #     print(self.data_df)
-                print("getting abstraction")
+                # print("getting abstraction")
                 # Get the intervals from the abstraction using the method from badings
                 # self._count()
                 # # print("done counts")
@@ -1011,21 +1022,21 @@ class GymMazeExperiment(Experiment):
                 
                 # ------------------------ MRL --------------------------
                 self.discretization_method = 'mrl'
-                self.dimensions = 4
                 # Get discretization
+                # self.data_df = pd.read_csv("data_set.csv")
                 m = MDP_model()
                 m.fit(
                     self.data_df,
-                    pfeatures=4,
+                    pfeatures=self.dimensions,
                     h = -1,
                     gamma = 1,
-                    max_k = 100,
+                    max_k = 50,
                     distance_threshold=0.5,
-                    th = 10,
-                    eta = 50,
-                    precision_thresh = 0.1, #1e-14
+                    th = 0,
+                    eta = 25,
+                    precision_thresh = 1e-14, #1e-14
                     classification = 'DecisionTreeClassifier',
-                    split_classifier_params = {'random_state':0, 'max_depth':10},
+                    split_classifier_params = {'random_state':0, 'max_depth':2},
                     clustering = 'Agglomerative',
                     n_clusters = None,
                     random_state = 0,
@@ -1033,14 +1044,20 @@ class GymMazeExperiment(Experiment):
                     verbose=False
                 )
                 print("Trained the model!!")
-                self.predictor = predict_cluster(m.df_trained, 4)
-
+                self.predictor = predict_cluster(m.df_trained, self.dimensions)
+                print(m.R_df) 
                 # Get transition function:
-                m.create_PR(0.2, 0.8, -1, 0.2, "max")
+                m.create_PR(0.2, 0.85, -1, 0.5, "max")
+                print(m.R_df) 
                 P_temp = m.P.copy()
                 P_temp = P_temp.transpose(1, 0, 2)
                 self.structure = self.reduce_transition_matrix(P_temp)
                 d_data = self.discretize_data(self.data_cont, self.predictor)
+                
+                # with open("data_d.txt", "w") as f:
+                #     for item in d_data:
+                #         f.write(item)
+                #         f.write("\n")
                 # print(d_data)
                 self.structure = self.add_trans_from_data(self.structure, d_data)
                 # print(self.structure)
@@ -1052,18 +1069,26 @@ class GymMazeExperiment(Experiment):
                 
                 print("Calculating Shield") 
                 # print(m.R_df) 
-                # traps = m.R_df[m.R_df == 0.0].index.tolist()
-                # goal_mrl = [i for i in range(len(self.structure)) if i not in traps]
-                # self.shielder = ShieldCartpole(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
-                # self.shielder.calculateShield()
+                traps = m.R_df[m.R_df == -1.0].index.tolist()
+                goal_mrl = m.R_df[m.R_df == 1.0].index.tolist()
+                self.shielder = ShieldMaze(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
                 # self.shielder.printShield()
                 
                 # Run the algoirhtm
-                self.pi_b = mazePolicy(self.env, epsilon=epsilon_baseline).pi
+                self.pi_b = mazePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
                 self.nb_states = len(self.structure)
                 self.data = d_data
-                # In this environment, the reward is always 1 for every step, so we create a matrix of shape (nb_states, nb_states) filled with ones
-                self.R_state_state = np.ones((self.nb_states, self.nb_states))
+
+                # Reward = -1/nb_states for all timesteps except for the end state, which has a reward of 1
+                
+                
+                self.R_state_state = np.full((self.nb_states, self.nb_states), -0.04) # change this value to not be manual
+                self.R_state_state[:, goal_mrl[0]] = 1
+                self.R_state_state[:, traps[0]] = -1
+                self.R_state_state[goal_mrl[0], :] = 1
+                self.R_state_state[traps[0], :] = -1
+                print(self.R_state_state)
                 print(self.nb_states)
                 print("Running Algorithms")
                 self._run_algorithms()
@@ -1091,7 +1116,7 @@ class GymMazeExperiment(Experiment):
                 # ----------------------------- SPIBB-DQN ----------------------------------
                 # self._run_spibb_dqn('SPIBB-DQN')
                 
-    def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
+    def generate_batch(self, nb_trajectories, env, pi, max_steps=100):
         """
         Generates a data batch for an episodic MDP.
         :param nb_steps: number of steps in the data batch
@@ -1099,32 +1124,41 @@ class GymMazeExperiment(Experiment):
         :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
         :return: data batch as a list of sublists of the form [state, action, next_state, reward]
         """
+        succ_count = 0
         trajectories = []
         trajectories_cont = []
+        env.reset()
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
             trajectorY_cont = []
-            env.reset()
-            state, region = env.get_init_state()
+            state = env.get_state()
+            region = env.state2region(state)
             is_done = False
+            # print(state)
             while nb_steps < max_steps and not is_done:
                 # print("AAAAA")
                 action_choice = np.random.choice(pi.shape[1], p=pi[region])
                 state, next_state, reward = env.step(action_choice)
+                if reward == 1:
+                    succ_count+=1
                 # print(state)
                 # print(type(state))
                 region = env.state2region(state)
                 next_region = env.state2region(next_state)
                 is_done = env.is_done()                    
                 trajectorY.append([action_choice, region, next_region, reward])
-                crashed = env.check_crashed()
-                trajectorY_cont.append([state, action_choice, next_state, reward, is_done, crashed])
+                terminated = env.is_terminated()
+                truncated = env.is_truncated()
+                trajectorY_cont.append([state, action_choice, next_state, reward, terminated, truncated])
                 region = next_region
                 nb_steps += 1
             trajectories_cont.append(trajectorY_cont)
             trajectories.append(trajectorY)
+            env.reset()
+            env.set_random_state()
         batch_traj = [val for sublist in trajectories for val in sublist]
+        print("number of successes = ", succ_count)
         return trajectories, batch_traj, trajectories_cont
             
     
@@ -1167,8 +1201,8 @@ class GymMazeExperiment(Experiment):
                 r = transition[3]
                 terminated = transition[4]
                 died = transition[5]
-                s_d = state2region(predictor, s, 4)
-                ns_d = state2region(predictor, ns, 4)
+                s_d = state2region(predictor, s, self.dimensions)
+                ns_d = state2region(predictor, ns, self.dimensions)
                 traj.append([a, s_d, ns_d, r])
             data_disc.append(traj)
         return data_disc

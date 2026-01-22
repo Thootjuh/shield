@@ -71,12 +71,21 @@ class cartPole:
         old_state = self.state
         # old_region = self.state2region(old_state)
         next_state, reward, terminated, truncated, info = self.env.step(action)
-        self.terminated = terminated or truncated
-        self.crashed = terminated
+        self.terminated = terminated and not truncated
+        if self.terminated:
+            reward = 0
+        self.truncated = truncated
+        self.done = terminated or truncated
         self.state = next_state
         # next_region = self.state2region(next_state)
 
         return old_state, next_state, reward
+    
+    def is_terminated(self):
+        return self.terminated
+    
+    def is_truncated(self):
+        return self.truncated
     
     def is_done(self):
         return self.terminated

@@ -4,7 +4,7 @@ import gymnasium as gym
 from gymnasium import error, spaces, utils
 from gymnasium.utils import seeding
 from environments.gym_maze.gym_maze.envs.maze_view_2d import MazeView2D
-
+import random
 
 class MazeEnv(gym.Env):
     metadata = {
@@ -68,6 +68,10 @@ class MazeEnv(gym.Env):
 
         # Just need to initialize the relevant attributes
         self.configure()
+    
+    def gen_offset(self):
+        offset = np.array((random.random(), random.random()))
+        return offset
 
     def __del__(self):
         if self.enable_render is True:
@@ -85,27 +89,39 @@ class MazeEnv(gym.Env):
             self.maze_view.move_robot(self.ACTION[action])
         else:
             self.maze_view.move_robot(action)
-
+        # print(self.maze_view.robot)
+        # print(self.maze_view.goal)
         if np.array_equal(self.maze_view.robot, self.maze_view.goal):
+        
             reward = 1
+            done = True
+        elif np.any(np.all(self.maze_view.traps == self.maze_view.robot, axis=1)):
+            reward = -1
             done = True
         else:
             reward = -1 / (self.maze_size[0] * self.maze_size[1])
             done = False
+        
 
-        self.state = self.maze_view.robot
-
+        center = self.maze_view.robot
+        self.state = center + self.gen_offset()
         info = {}
         return self.state, reward, done, False, info
     
     def get_goal(self):
         return self.maze_view.goal
     
+    def set_random_state(self):
+        state = self.maze_view.set_random_state()
+        self.state = state + self.gen_offset()
+        return self.state
+        
     def reset(self, seed=None, options=None):
         self.maze_view.reset_robot()
-        self.state = np.zeros(2)
+        self.state = np.zeros(2) + self.gen_offset()
         self.steps_beyond_done = None
         self.done = False
+        # print("aaaaaaaaaaaaaaa", self.state)
         return self.state
 
     def is_game_over(self):

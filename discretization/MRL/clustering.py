@@ -43,6 +43,8 @@ from .testing import (
     next_clusters,
 )
 
+# suppressing warnings from here because sklearn forces warnings
+# https://stackoverflow.com/questions/32612180/eliminating-warnings-from-scikit-learn
 def warn(*args, **kwargs):
     pass
 
@@ -156,7 +158,10 @@ def initializeClusters(
     df.loc[df["ID"] != df["ID"].shift(-1), "NEXT_CLUSTER"] = 0
     df["NEXT_CLUSTER"] = df["NEXT_CLUSTER"].astype(int)
     df.loc[df["ID"] != df["ID"].shift(-1), "NEXT_CLUSTER"] = "None"
-
+    
+    k = df["CLUSTER"].nunique()  # initial number of clusters
+    print(df["CLUSTER"].unique())
+    print("n_clusters = ", k)
     # change end state to 'end'
     # so here end state is when no action is taken. Otherwise the next state is 'None'
     df.loc[df["ACTION"] == "None", "NEXT_CLUSTER"] = "End"
@@ -588,6 +593,7 @@ def splitter(
         grid = False
 
     k = df["CLUSTER"].nunique()  # initial number of clusters
+    print("n_clusters = ", k)
     nc = k  # number of clusters
 
     df_new = deepcopy(df)
@@ -773,7 +779,7 @@ def splitter(
             # and also if maximum incoherence is lower than calculated threshold
             if verbose:
                 print("train error: ", train_error)
-            if train_error < (min_error + precision_thresh):
+            if train_error < (min_error - precision_thresh):
                 # if max_inc < threshold:
                 min_error = train_error
                 best_df = df_new.copy()
@@ -788,7 +794,7 @@ def splitter(
                 backup_min_error = train_error
                 backup_df = df_new.copy()
                 backup_opt_k = nc + 1
-            # best_df = df_new.copy() # Remove later
+
             cont = True
             nc += 1
             if verbose:
@@ -838,6 +844,7 @@ def splitter(
         ax2.set_ylabel("Value error")
         ax2.set_title("Value error by number of clusters")
         ax2.legend()
+        plt.savefig("clusters.png")
         plt.show()
 
     df_train_error = pd.DataFrame(

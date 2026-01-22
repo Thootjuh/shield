@@ -6,11 +6,11 @@ from discretization.MRL.helper_functions import state2region
 
 def infer_action_mrl(state, predictor, policy, dimensions):
     region = state2region(predictor, state, dimensions)
-    return np.argmax(policy[region])
+    return int(np.argmax(policy[region]))
 
 def infer_action(state, env, policy):
     region = env.state2region(state)
-    return np.argmax(policy[region])
+    return int(np.argmax(policy[region]))
 
 def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method, noise_factor=1.0, predictor=None, dimensions=0):
     """ Evaluate the baseline number_of_epochs times for number_of_steps steps.

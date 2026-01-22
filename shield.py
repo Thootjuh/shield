@@ -5,7 +5,7 @@ import os
 import time
 import numpy as np
 from IntervalMDPBuilder import IntervalMDPBuilderPacman, IntervalMDPBuilderRandomMDP, IntervalMDPBuilderAirplane, IntervalMDPBuilderSlipperyGridworld, IntervalMDPBuilderWetChicken, IntervalMDPBuilderPrism, IntervalMDPBuilderTaxi, IntervalMDPBuilderFrozenLake
-from PrismEncoder import encodeCartPole, encodeCrashingMountainCar
+from PrismEncoder import encodeCartPole, encodeCrashingMountainCar, encodeMaze
 import pycarl
 import subprocess
 from collections import defaultdict
@@ -434,7 +434,94 @@ class ShieldCartpole(Shield):
             print(f"State: {state}, action: {action}, with probability of falling: {prob}")
         print(f"with crash states being {self.traps} and success states being {self.goal}")
         
+
+class ShieldMaze(Shield):
+    # Calculate the shield for the Random MDPs environment
+    def __init__(self, transition_matrix, traps, goal, intervals, init):
+        """
+        args:
+        transition_matrix (np.ndarray): 
+            A NumPy array of shape (num_states, num_actions), where each element is a list of possible
+            next states for the corresponding state-action pair.
+
+        traps (list[int]):
+            A list of state indices that represent trap states (undesirable or absorbing states).
+
+        goal (list[int]):
+            A list of state indices that represent goal states (desirable or target states).
+
+        intervals (dict[tuple[int, int, int], tuple[float, float]])
+            A dictionary mapping (state, action, next_state) tuples to a (min, max) interval tuple representing
+            the range of possible transition probabilities due to uncertainty.
+        """
+        # self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps) 
+        self.prism_text = encodeMaze(transition_matrix, intervals, traps, goal)
+        super().__init__(transition_matrix, traps, goal, intervals)
         
+    def calculateShield(self):
+        """
+        calculate the probability of violating the safety specification for the Random MDPs environment
+        """
+        # How likely are we to step into a trap
+        # prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        # prop = "Pmax=? [!\"goal\"U\"trap\"]"
+        prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        # prop1 = "Pmax=? [  F \"trap\" ]"
+        
+        # Is it possible to reach the goal
+        # prop2 = "Pmax=? [F \"goal\" & !F<4 \"trap\"]"
+        # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
+        # prop3 = "Pmin=? [F<=5 \"reach\"]"
+        # super().calculateShieldInterval(prop, self.model_builder.build_model())
+        super().calculateShieldPrism(self.prism_text, prop)
+        self.shield = self.shield
+        
+    def get_safe_actions_from_shield(self, state, threshold=0.05, buffer = 0.1):
+        """
+        calculate the actions allowed by the shield for a given state
+        Args:
+            state (int): the state for which we want compute the safe actions
+            threshold (float, optional): maximum probability for which we will accept an action. Defaults to 0.2.
+            buffer (float, optional): we allow any actions within the buffer of the best action. Defaults to 0.05.
+
+        Returns:
+            safe_actions (list[int]): list containing the actions deemed to be 'safe' by the shield
+        """
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            if probs[0] >= 1 and probs[1] < 1:
+                safe_actions.append(1)
+            if probs[1] >= 1 and probs[0] < 1:
+                safe_actions.append(0)
+            else:
+                min_value = np.min(probs)
+                safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
+        return safe_actions
+    
+    def printShield(self):
+        """
+        print the probabilities associated with each state-action pair
+        """
+        state_action_prob_pairs = []
+        for state in range(len(self.shield)):
+            for action in range(len(self.shield[state])):
+                prob = self.shield[state][action]
+                state_action_prob_pairs.append([state, action, prob])
+        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        state_action_prob_pairs = [i for i in state_action_prob_pairs] # if i[2] < 0.95 and i[2]> 0
+        for pair in state_action_prob_pairs:
+            state = pair[0]
+            action = pair[1]
+            prob = pair[2]
+                        
+            print(f"State: {state}, action: {action}, with probability of falling: {prob}")
+        print(f"with crash states being {self.traps} and success states being {self.goal}")
+               
 class ShieldCrashingMountainCar(Shield):
     # Calculate the shield for the Random MDPs environment
     def __init__(self, transition_matrix, traps, goal, intervals, init):

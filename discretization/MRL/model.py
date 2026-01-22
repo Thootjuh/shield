@@ -310,7 +310,8 @@ class MDP_model:
             distance_threshold=distance_threshold,
             random_state=random_state,
         )
-
+        k = df_init["CLUSTER"].nunique()  # initial number of clusters
+        print("n_clusters = ", k)
         # print('df init model.fit', df_init)
 
         print("Clusters Initialized")
@@ -371,7 +372,7 @@ class MDP_model:
             self.opt_k = self.training_error["Clusters"].max()
 
         self.create_model(stochastic=stochastic)
-
+        self.df_trained.to_csv("data_set_trained.csv", index=False)
     def create_model(self, stochastic):
         """
         After MRL is trained. Creates the underlying MDP model by fitting a decision tree 
@@ -527,7 +528,9 @@ class MDP_model:
         # model transitions
         for row in P_thresh.itertuples():
             x, y, z = row[2], row[1], row[3]  # ACTION, CLUSTER, NEXT_CLUSTER
+            print(x, " ", y, " ", z)
             P[x, y, z] = 1
+            
 
         # reinsert transition for cluster/action pairs taken out by alpha test
         excl_alph = P_df.loc[
