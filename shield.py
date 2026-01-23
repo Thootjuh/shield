@@ -537,8 +537,8 @@ class ShieldSimplifiedPacman(Shield):
         """
         self.width = width
         self.height = height
-        self.model_builder = IntervalMDPBuilderPacman(transition_matrix, intervals, goal, traps, prop)
-        super().__init__(transition_matrix, traps, goal, intervals)
+        self.model_builder = IntervalMDPBuilderPacman(transition_matrix, intervals, goal, traps)
+        super().__init__(transition_matrix, traps, goal, intervals, prop)
         
 
     def calculateShield(self):

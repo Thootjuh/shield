@@ -838,6 +838,7 @@ class SimplifiedPacmanExperiment(Experiment):
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         self.env_name = self.experiment_config['META']['env_name']
         self.prop = "Pmax=? [!\"eaten\"U\"goal\"]"
+        self.avoid_prop = "Pmax=? [G !\"eaten\"]"
         
     def generate_batch(self, trajectories, nb_trajectories, env, pi, max_steps=2500):
         """
