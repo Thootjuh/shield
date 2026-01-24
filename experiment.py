@@ -56,6 +56,7 @@ from discretization.grid.define_imdp import imdp_builder
 from discretization.MRL.helper_functions import trajToDF, state2region
 from discretization.MRL.model import MDP_model
 from discretization.MRL.testing import predict_cluster
+from discretization.MRL_scratch.mrl_scratch import MRL_scratch
 directory = os.path.dirname(os.path.expanduser(__file__))
 
 def write_policy_to_file(policy, filename):
@@ -216,6 +217,7 @@ class Experiment:
             self._compute_speed_up_dict()
         # self._run_shielded_baseline()
         for key in self.algorithms_dict.keys():
+            print(key)
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
                 self._run_spibb(key)
             elif key in {ExactSoftSPIBB.NAME, ApproxSoftSPIBB.NAME, LowerApproxSoftSPIBB.NAME, AdvApproxSoftSPIBB.NAME}:
@@ -288,11 +290,13 @@ class Experiment:
             t_0 = time.time()
             spibb.fit()
             t_1 = time.time()
+            print("trained policy")
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
                 spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
             elif self.discretization_method=='grid':
                 spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
+            print("evaluated policy")
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
@@ -689,9 +693,9 @@ class GymCartPoleExperiment(Experiment):
                     gamma = 1,
                     max_k = 100,
                     distance_threshold=0.5,
-                    th = 5,
+                    th = 10,
                     eta = 25,
-                    precision_thresh = 1e-14, #1e-14
+                    precision_thresh = -1, #1e-14
                     classification = 'DecisionTreeClassifier',
                     split_classifier_params = {'random_state':0, 'max_depth':10},
                     clustering = 'Agglomerative',
@@ -701,43 +705,89 @@ class GymCartPoleExperiment(Experiment):
                     verbose=False
                 )
                 print("Trained the model!!")
-                self.predictor = predict_cluster(m.df_trained, self.dimensions)
                 
-                # Get transition function:
-                m.create_PR(0.2, 0.8, -1, 0.2, "max")
-                P_temp = m.P.copy()
-                P_temp = P_temp.transpose(1, 0, 2)
-                print(P_temp)
-                self.structure = self.reduce_transition_matrix(P_temp)
+                # discretize data
+                self.predictor = predict_cluster(m.df_trained, self.dimensions)
                 d_data = self.discretize_data(self.data_cont, self.predictor)
-                # print(d_data)
+                
+                nb_states = m.df_trained["CLUSTER"].nunique()
+                print("nb states = ", nb_states)                
+                # get discrete reward function
+                self.R_state_state = np.zeros((nb_states, nb_states))
+                traps = []
+                goal = []
+                for state in range(len(self.R_state_state)):
+                    r = m.R_df[state]
+                    self.R_state_state[:, state] = r
+                    if r == 0.0:
+                        traps.append(state)
+
+                # get structure transition function
+                self.structure = self.get_empty_structure(nb_states)
                 self.structure = self.add_trans_from_data(self.structure, d_data)
-                # print(self.structure)
-                print("NB_states = ", len(self.structure))
+                
+                # # with open("data_d.txt", "w") as f:
+                # #     for item in d_data:
+                # #         f.write(item)
+                # #         f.write("\n")
+                # # print(d_data)
+                
                 # Calculate Shield                
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()                
                 
                 print("Calculating Shield") 
-                print(m.R_df) 
-                traps = m.R_df[m.R_df == 0.0].index.tolist()
-                goal_mrl = [i for i in range(len(self.structure)) if i not in traps]
-                self.shielder = ShieldCartpole(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
+                # print(m.R_df) 
+                self.shielder = ShieldCartpole(self.structure, traps, goal, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
                 self.shielder.printShield()
                 
-                # Run the algoirhtm
-                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
-                self.nb_states = len(self.structure)
+                # # Run the algoirhtm
+                self.nb_states = nb_states
                 self.data = d_data
-                # In this environment, the reward is always 1 for every step, so we create a matrix of shape (nb_states, nb_states) filled with ones
-                self.R_state_state = np.ones((self.nb_states, self.nb_states))
-                self.R_state_state[:, traps[0]] = 0
-                self.R_state_state[traps[0], :] = 0
-                print(self.nb_states)
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states)
+
                 print("Running Algorithms")
                 self._run_algorithms()
+                
+                
+                
+                # # Get transition function:
+                # m.create_PR(0.2, 0.8, -1, 0.2, "max")
+                # P_temp = m.P.copy()
+                # P_temp = P_temp.transpose(1, 0, 2)
+                # print(P_temp)
+                # self.structure = self.reduce_transition_matrix(P_temp)
+                # d_data = self.discretize_data(self.data_cont, self.predictor)
+                # # print(d_data)
+                # self.structure = self.add_trans_from_data(self.structure, d_data)
+                # # print(self.structure)
+                # print("NB_states = ", len(self.structure))
+                # # Calculate Shield                
+                # self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                # self.estimator.calculate_intervals()
+                # self.intervals = self.estimator.get_intervals()                
+                
+                # print("Calculating Shield") 
+                # print(m.R_df) 
+                # traps = m.R_df[m.R_df == 0.0].index.tolist()
+                # goal_mrl = [i for i in range(len(self.structure)) if i not in traps]
+                # self.shielder = ShieldCartpole(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
+                # self.shielder.calculateShield()
+                # self.shielder.printShield()
+                
+                # # Run the algoirhtm
+                # self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
+                # self.nb_states = len(self.structure)
+                # self.data = d_data
+                # # In this environment, the reward is always 1 for every step, so we create a matrix of shape (nb_states, nb_states) filled with ones
+                # self.R_state_state = np.ones((self.nb_states, self.nb_states))
+                # self.R_state_state[:, traps[0]] = 0
+                # self.R_state_state[traps[0], :] = 0
+                # print(self.nb_states)
+                # print("Running Algorithms")
+                # self._run_algorithms()
                 
                 # ----------------------------- GRID ---------------------------------
                 # self.discretization_method = 'grid'
@@ -762,9 +812,6 @@ class GymCartPoleExperiment(Experiment):
                 # ----------------------------- SPIBB-DQN ----------------------------------
                 # self._run_spibb_dqn('SPIBB-DQN')
          
-         
-    def MLE_transitions(self, data):
-        pass   
         
     def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
         """
@@ -849,7 +896,14 @@ class GymCartPoleExperiment(Experiment):
             data_disc.append(traj)
         return data_disc
                              
+    def get_empty_structure(self, nb_states):
+        empty_structure = np.empty((nb_states, self.nb_actions), dtype=object)                      
+        
+        for state in range(nb_states):
+            for action in range(self.nb_actions):
+                empty_structure[state, action] = np.array([])
                 
+        return empty_structure            
     def add_trans_from_data(self,structure, data):
         # num_states = len(structure)
         # num_actions = len(structure[0])
@@ -1023,7 +1077,6 @@ class GymMazeExperiment(Experiment):
                 # ------------------------ MRL --------------------------
                 self.discretization_method = 'mrl'
                 # Get discretization
-                # self.data_df = pd.read_csv("data_set.csv")
                 m = MDP_model()
                 m.fit(
                     self.data_df,
@@ -1032,7 +1085,7 @@ class GymMazeExperiment(Experiment):
                     gamma = 1,
                     max_k = 50,
                     distance_threshold=0.5,
-                    th = 0,
+                    th = 1,
                     eta = 25,
                     precision_thresh = 1e-14, #1e-14
                     classification = 'DecisionTreeClassifier',
@@ -1044,24 +1097,35 @@ class GymMazeExperiment(Experiment):
                     verbose=False
                 )
                 print("Trained the model!!")
+                
+                # discretize data
                 self.predictor = predict_cluster(m.df_trained, self.dimensions)
-                print(m.R_df) 
-                # Get transition function:
-                m.create_PR(0.2, 0.85, -1, 0.5, "max")
-                print(m.R_df) 
-                P_temp = m.P.copy()
-                P_temp = P_temp.transpose(1, 0, 2)
-                self.structure = self.reduce_transition_matrix(P_temp)
                 d_data = self.discretize_data(self.data_cont, self.predictor)
                 
-                # with open("data_d.txt", "w") as f:
-                #     for item in d_data:
-                #         f.write(item)
-                #         f.write("\n")
-                # print(d_data)
+                nb_states = m.df_trained["CLUSTER"].nunique()
+                print("nb states = ", nb_states)                
+                # get discrete reward function
+                self.R_state_state = np.zeros((nb_states, nb_states))
+                traps = []
+                goal = []
+                for state in range(len(self.R_state_state)):
+                    r = m.R_df[state]
+                    self.R_state_state[:, state] = r
+                    if r == -1.0:
+                        traps.append(state)
+                    if r == 1.0:
+                        goal.append(state)
+
+                # get structure transition function
+                self.structure = self.get_empty_structure(nb_states)
                 self.structure = self.add_trans_from_data(self.structure, d_data)
-                # print(self.structure)
-                print("NB_states = ", len(self.structure))
+                
+                # # with open("data_d.txt", "w") as f:
+                # #     for item in d_data:
+                # #         f.write(item)
+                # #         f.write("\n")
+                # # print(d_data)
+                
                 # Calculate Shield                
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
@@ -1069,27 +1133,15 @@ class GymMazeExperiment(Experiment):
                 
                 print("Calculating Shield") 
                 # print(m.R_df) 
-                traps = m.R_df[m.R_df == -1.0].index.tolist()
-                goal_mrl = m.R_df[m.R_df == 1.0].index.tolist()
-                self.shielder = ShieldMaze(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
+                self.shielder = ShieldMaze(self.structure, traps, goal, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
                 
-                # Run the algoirhtm
-                self.pi_b = mazePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
-                self.nb_states = len(self.structure)
+                # # Run the algoirhtm
+                self.nb_states = nb_states
                 self.data = d_data
+                self.pi_b = mazePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states)
 
-                # Reward = -1/nb_states for all timesteps except for the end state, which has a reward of 1
-                
-                
-                self.R_state_state = np.full((self.nb_states, self.nb_states), -0.04) # change this value to not be manual
-                self.R_state_state[:, goal_mrl[0]] = 1
-                self.R_state_state[:, traps[0]] = -1
-                self.R_state_state[goal_mrl[0], :] = 1
-                self.R_state_state[traps[0], :] = -1
-                print(self.R_state_state)
-                print(self.nb_states)
                 print("Running Algorithms")
                 self._run_algorithms()
                 
@@ -1206,7 +1258,15 @@ class GymMazeExperiment(Experiment):
                 traj.append([a, s_d, ns_d, r])
             data_disc.append(traj)
         return data_disc
-                             
+      
+    def get_empty_structure(self, nb_states):
+        empty_structure = np.empty((nb_states, self.nb_actions), dtype=object)                      
+        
+        for state in range(nb_states):
+            for action in range(self.nb_actions):
+                empty_structure[state, action] = np.array([])
+                
+        return empty_structure
                 
     def add_trans_from_data(self,structure, data):
         # num_states = len(structure)

@@ -27,12 +27,12 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method,
     for epoch in range(number_of_epochs):
         # if epoch % 10 == 0: 
         #     print("Starting epoch {}".format(epoch), flush=True)
-        
         env.reset()
         last_state = env.get_state()
         term, start_time = False, time.time()
         rewards, all_nb_steps, current_reward, nb_steps, total_nb_steps = [], [], 0, 0, 0
         while total_nb_steps < number_of_steps:
+            # print(f"epoch {epoch}, step {nb_steps}")
             if not term:
                 if disc_method == 'mrl':
                     action = infer_action_mrl(last_state, predictor, policy, dimensions)

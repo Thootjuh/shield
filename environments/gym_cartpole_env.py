@@ -88,7 +88,7 @@ class cartPole:
         return self.truncated
     
     def is_done(self):
-        return self.terminated
+        return self.terminated or self.truncated
     
     def check_crashed(self):
         return self.crashed

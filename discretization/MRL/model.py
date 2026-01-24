@@ -370,9 +370,11 @@ class MDP_model:
         else:
             self.df_trained = df_new
             self.opt_k = self.training_error["Clusters"].max()
-
+            
+        self.df_new = df_new
         self.create_model(stochastic=stochastic)
         self.df_trained.to_csv("data_set_trained.csv", index=False)
+        
     def create_model(self, stochastic):
         """
         After MRL is trained. Creates the underlying MDP model by fitting a decision tree 
