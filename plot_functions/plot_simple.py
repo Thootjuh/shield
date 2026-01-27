@@ -34,7 +34,7 @@ def read_data_from_directory(directory_path):
 
 def extract_data(data):
     # Extract relevant columns
-    relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time']]
+    relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time', 'nb_states']]
 
     # Group by method and calculate the average performance for each length_trajectory
     return relevant_data_new
@@ -176,7 +176,56 @@ def plot_cvar(cvar_data, filename):
     plt.savefig(filename)
     plt.show()
    
+def plot_avg_perf_vs_nb_states(data, filename):
+    grouped_data = data.groupby(['method', 'nb_states'])
+    data_mean = grouped_data.method_perf.mean().reset_index()
 
+    plt.figure(figsize=(12, 8))
+    for method in data_mean['method'].unique():
+        method_data = data_mean[data_mean['method'] == method]
+        plt.plot(method_data['nb_states'], method_data['method_perf'], label=method)
+
+    plt.xlabel('Number of States')
+    plt.ylabel('Average Method Performance')
+    plt.title('Average Performance vs. Number of States by Method')
+    plt.legend(title='Method')
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.show()
+    
+def plot_avg_perf_vs_nb_states_max_traj(data, filename):
+    """
+    Plot average performance vs nb_states, 
+    using only entries with the maximum length_trajectory.
+    """
+    max_traj = data['length_trajectory'].max()
+    print(f"Using length_trajectory = {max_traj}")
+
+    filtered_data = data[data['length_trajectory'] == max_traj]
+
+    grouped_data = filtered_data.groupby(
+        ['method', 'nb_states']
+    )['method_perf'].mean().reset_index()
+
+    plt.figure(figsize=(12, 8))
+    for method in grouped_data['method'].unique():
+        method_data = grouped_data[grouped_data['method'] == method]
+        plt.plot(
+            method_data['nb_states'],
+            method_data['method_perf'],
+            label=method
+        )
+
+    plt.xlabel('Number of States')
+    plt.ylabel('Average Method Performance')
+    plt.title(
+        f'Average Performance vs. Number of States\n'
+        f'(length_trajectory = {max_traj})'
+    )
+    plt.legend(title='Method')
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.show()
 # pass this path as an argument in the commandline
 if len(sys.argv) > 1:
     directory_path = sys.argv[1]
@@ -188,5 +237,10 @@ plot_data(data, 'Results.png')
 plot_positive_data(data, 'Results_positive.png')
 plot_data_interval(data, 'Results_interval.png')
 plot_positive_data_interval(data, 'Results_positive_Interval.png')
+plot_avg_perf_vs_nb_states(data, 'Results_vs_nb_states.png')
+plot_avg_perf_vs_nb_states_max_traj(
+    data,
+    'Results_vs_nb_states_max_traj.png'
+)
 cvar = calculate_cvar(data)
 plot_cvar(cvar, "Results_CVAR")

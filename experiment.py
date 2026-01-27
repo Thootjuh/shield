@@ -86,7 +86,7 @@ class Experiment:
     fixed_params_exp_list = None
     fixed_params_exp_columns = None
     variable_params_exp_columns = None
-    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'run_time']
+    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'run_time', 'nb_states']
 
     def __init__(self, experiment_config, seed, nb_iterations, machine_specific_experiment_directory):
         """
@@ -249,7 +249,7 @@ class Experiment:
         method_perf = basic_rl_perf
         hyperparam = None
         run_time = t_1 - t_0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
     
     def _run_spibb_shielded(self, key):
         """
@@ -276,7 +276,7 @@ class Experiment:
             hyperparam = N_wedge
             run_time = t_1 - t_0
             write_policy_to_file(spibb.pi, "policy_shielded.txt")
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
                   
     def _run_spibb(self, key):
         """
@@ -303,7 +303,7 @@ class Experiment:
             hyperparam = N_wedge
             run_time = t_1 - t_0
             write_policy_to_file(spibb.pi, "policy.txt")
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
     
     def _run_spibb_dqn(self, key):
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
@@ -316,7 +316,7 @@ class Experiment:
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
             
     def _run_soft_spibb(self, key):
         """
@@ -362,9 +362,9 @@ class Experiment:
                         if self.safety_deltas:
                             bound = soft_spibb.get_advantage(self.initial_state) - 1 / (1 - self.gamma) * epsilon
                             self.results.append(
-                                self.to_append + [method, hyperparam, method_perf, run_time, delta, bound])
+                                self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, delta, bound])
                         else:
-                            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+                            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
 
     def _run_basic_rl(self, key):
         """
@@ -382,7 +382,7 @@ class Experiment:
         method_perf = basic_rl_perf
         hyperparam = None
         run_time = t_1 - t_0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
+        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
         
     
 
