@@ -42,6 +42,7 @@ from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
 from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
+from batch_rl_algorithms.MO_SPIBB.mo_spibb import ConstSPIBBAgent
 
 
 from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld, ShieldSimplifiedPacman, ShieldPrism, ShieldTaxi, ShieldFrozenLake
@@ -221,6 +222,8 @@ class Experiment:
                 self._run_rmdp(key)
             elif key in {Shield_WorstCaseRMDP.NAME}:
                 self._run_rmdp_shielded(key)
+            elif key in {ConstSPIBBAgent.NAME}:
+                self._run_mo_spibb(key)
             else:
                 print("KEY NOT FOUND")
             
@@ -508,7 +511,28 @@ class Experiment:
             
             self.results.append(self.to_append + [method, hyperparam, method_perf, run_time])
         
-    
+    def _run_mo_spibb(self, key):
+        """
+        Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
+        :param key: SPIBB.NAME or Lower_SPIBB.NAME, depending on which algorithm is supposed to be run
+        """
+        for N_wedge in self.algorithms_dict[key]['hyperparam']:
+            spibb = ConstSPIBBAgent(termination_condition="",coeff_list="", pi_b=self.pi_b, 
+                                    estimate_baseline=False, R_state_state=self.R_state_state, C_state_state=self.C_state_state,
+                                    data=self.data, gamma=self.gamma, episodic=self.episodic, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                                    epsilon=N_wedge)
+            t_0 = time.time()
+            spibb.fit()
+            t_1 = time.time()
+            spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            spibb_succ_rate, spibb_avoid_rate = self.policy_evaluation_success_rate(spibb.pi)
+            method = spibb.NAME
+            method_perf = spibb_perf
+            method_succ_rate = spibb_succ_rate
+            method_avoid_rate = spibb_avoid_rate
+            hyperparam = N_wedge
+            run_time = t_1 - t_0
+            self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time])
             
     def _run_spibb(self, key):
         """
@@ -1423,11 +1447,15 @@ class RandomMDPsExperiment(Experiment):
                                                         softmax_target_perf_ratio=softmax_target_perf_ratio,
                                                         baseline_target_perf_ratio=baseline_target_perf_ratio)
                 self.R_state_state = self.garnet.compute_reward()
+                self.C_state_state = np.zeros_like(self.R_state_state)
                 self.P = self.garnet.transition_function
                 self.goal = [self.garnet.final_state]
                 self.P[self.goal, :, :] = 0.0
                 self.P[self.goal, :, self.goal] = 1.0
                 self.traps = self.garnet.get_traps()
+                C = np.zeros_like(self.R_state_state)
+                C[:, self.traps] = 1
+                self.C_state_state = C
                 self.easter_egg = None
                 pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
                 self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
@@ -2171,7 +2199,8 @@ algorithm_name_dict = {SPIBB.NAME: SPIBB, Lower_SPIBB.NAME: Lower_SPIBB,
                        RMin.NAME: RMin, Shield_RMin.NAME: Shield_RMin, MBIE.NAME: MBIE, shield_MBIE.NAME : shield_MBIE, 
                        RaMDP.NAME: RaMDP, Shield_RaMDP.NAME : Shield_RaMDP, Shield_SPIBB.NAME: Shield_SPIBB, 
                        Shield_Lower_SPIBB.NAME: Shield_Lower_SPIBB,
-                       WorstCaseRMDP.NAME : WorstCaseRMDP, Shield_WorstCaseRMDP.NAME : Shield_WorstCaseRMDP, PiStar.NAME: PiStar}
+                       WorstCaseRMDP.NAME : WorstCaseRMDP, Shield_WorstCaseRMDP.NAME : Shield_WorstCaseRMDP, PiStar.NAME: PiStar,
+                       ConstSPIBBAgent.NAME : ConstSPIBBAgent}
 
 
 
