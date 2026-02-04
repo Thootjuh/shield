@@ -269,7 +269,7 @@ class AI:
     def similarite(self, x1, x2, param, weights=None):
         return max(0, 1 - self.distance(x1, x2) / param)
     
-    def compute_counts(self, states, actions, nb_actions, param=0.2, max_cdist=10000, k=200):
+    def compute_counts(self, states, actions, nb_actions, param=0.2, max_cdist=10000000, k=200):
         """
         Computes pseudocounts for state-action pairs.
         Uses full pairwise distances for small datasets,
@@ -280,11 +280,14 @@ class AI:
         counts = np.zeros((N, nb_actions), dtype=np.float32)
 
         if N <= max_cdist:
+            print("Starting Counts")
             # ---- Small dataset: exact full pairwise distances ----
             dist_matrix = cdist(flat_states, flat_states, metric="euclidean")
             sim_matrix = np.maximum(0, 1 - dist_matrix / param)
 
             for i in range(N):
+                if i % 1000 == 0:
+                    print("count = ", i)
                 np.add.at(counts[i], actions, sim_matrix[i])
 
         else:
@@ -308,8 +311,12 @@ class AI:
         
 
             
-    def format_dataset(self, dataset, param = 0.2):
+    def format_dataset(self, dataset_raw, param = 0.2, episodic = True):
         # dataset = [state, action_choice, next_state, reward, is_done]
+        if episodic:
+            dataset = [val for sublist in dataset_raw for val in sublist]
+        else:
+            dataset = self.dataset_raw.copy()
         print("Computing counts. The dataset contains {} transitions.".format(len(dataset)), flush=True)
 
         data = {}
@@ -338,7 +345,7 @@ class AI:
         #             data['c'][i, dataset[j][1]] += s
         # else: # For larger datasets (>10000), we instead use knn
         for i in range(len(dataset) - 1):
-            print("THIS IS WHAT THIS SHIT LOOKED LIKE: ", dataset[i][0])
+            # print("THIS IS WHAT THIS SHIT LOOKED LIKE: ", dataset[i][0])
             data['s'][i] = dataset[i][0]
             data['a'][i] = dataset[i][1]
             data['s2'][i] = dataset[i][2]

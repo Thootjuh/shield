@@ -12,7 +12,7 @@ def infer_action(state, env, policy):
     region = env.state2region(state)
     return int(np.argmax(policy[region]))
 
-def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method, noise_factor=1.0, predictor=None, dimensions=0):
+def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None):
     """ Evaluate the baseline number_of_epochs times for number_of_steps steps.
 
     Args:
@@ -23,6 +23,9 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method,
       Prints the mean performance on each epoch. And the mean, 10% and 1% CVAR of the performance on those epochs.
     """
 
+    episode_count = 0
+    success_count = 0
+    failure_count = 0
     all_rewards = []
     for epoch in range(number_of_epochs):
         # if epoch % 10 == 0: 
@@ -38,6 +41,8 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method,
                     action = infer_action_mrl(last_state, predictor, policy, dimensions)
                 elif disc_method == 'grid':
                     action = infer_action(last_state, env, policy)
+                elif disc_method == 'SPIBB-DQN':
+                    action, _, _, _ = ai.inference(last_state)
                 _, _, reward = env.step(action)
                 term = env.is_done()
                 last_state = env.get_state()
@@ -48,9 +53,14 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method,
                 last_state = env.get_state()
                 rewards.append(current_reward)
                 all_nb_steps.append(nb_steps)
+                episode_count+=1
+                if nb_steps < 50: 
+                    failure_count+=1
+                if nb_steps >= 200:
+                    success_count+=1
                 total_nb_steps += nb_steps
                 current_reward, nb_steps = 0, 0
                 term = False
 
         all_rewards.append(np.mean(rewards))
-    return np.mean(all_rewards)
+    return np.mean(all_rewards), (success_count/episode_count), (failure_count/episode_count)

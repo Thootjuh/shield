@@ -86,7 +86,7 @@ class Experiment:
     fixed_params_exp_list = None
     fixed_params_exp_columns = None
     variable_params_exp_columns = None
-    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'run_time', 'nb_states']
+    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'run_time', 'nb_states', 'success_rate', 'failure_rate']
 
     def __init__(self, experiment_config, seed, nb_iterations, machine_specific_experiment_directory):
         """
@@ -223,7 +223,7 @@ class Experiment:
             elif key in {ExactSoftSPIBB.NAME, ApproxSoftSPIBB.NAME, LowerApproxSoftSPIBB.NAME, AdvApproxSoftSPIBB.NAME}:
                 self._run_soft_spibb(key)
             # elif key in {'SPIBB-DQN'}:
-            #     self._run_spibb_dqn(key)
+                # self._run_spibb_dqn(key)
             elif key in {Shield_SPIBB.NAME, Shield_Lower_SPIBB.NAME}:
                 self._run_spibb_shielded(key)
             elif key in {Basic_rl.NAME}:
@@ -267,16 +267,16 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
             elif self.discretization_method=='grid':
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
             
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
             write_policy_to_file(spibb.pi, "policy_shielded.txt")
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate])
                   
     def _run_spibb(self, key):
         """
@@ -293,9 +293,9 @@ class Experiment:
             print("trained policy")
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
             elif self.discretization_method=='grid':
-                spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
             print("evaluated policy")
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method = spibb.NAME + "_" + self.discretization_method
@@ -303,7 +303,7 @@ class Experiment:
             hyperparam = N_wedge
             run_time = t_1 - t_0
             write_policy_to_file(spibb.pi, "policy.txt")
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate])
     
     def _run_spibb_dqn(self, key):
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
@@ -311,12 +311,12 @@ class Experiment:
             t_0 = time.time()
             spibb.learn(passes_on_dataset = 25)
             t_1 = time.time()
-            spibb_perf = spibb.evaluate_policy(1, 100)
+            spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 1, 100, self.discretization_method, ai=spibb.ai)
             method = 'spibb_dqn'
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate])
             
     def _run_soft_spibb(self, key):
         """
@@ -741,7 +741,7 @@ class GymCartPoleExperiment(Experiment):
                 # print(m.R_df) 
                 self.shielder = ShieldCartpole(self.structure, traps, goal, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
-                self.shielder.printShield()
+                # self.shielder.printShield()
                 
                 # # Run the algoirhtm
                 self.nb_states = nb_states
@@ -752,65 +752,36 @@ class GymCartPoleExperiment(Experiment):
                 self._run_algorithms()
                 
                 
-                
-                # # Get transition function:
-                # m.create_PR(0.2, 0.8, -1, 0.2, "max")
-                # P_temp = m.P.copy()
-                # P_temp = P_temp.transpose(1, 0, 2)
-                # print(P_temp)
-                # self.structure = self.reduce_transition_matrix(P_temp)
-                # d_data = self.discretize_data(self.data_cont, self.predictor)
-                # # print(d_data)
-                # self.structure = self.add_trans_from_data(self.structure, d_data)
-                # # print(self.structure)
-                # print("NB_states = ", len(self.structure))
-                # # Calculate Shield                
-                # self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
-                # self.estimator.calculate_intervals()
-                # self.intervals = self.estimator.get_intervals()                
-                
-                # print("Calculating Shield") 
-                # print(m.R_df) 
-                # traps = m.R_df[m.R_df == 0.0].index.tolist()
-                # goal_mrl = [i for i in range(len(self.structure)) if i not in traps]
-                # self.shielder = ShieldCartpole(self.structure, traps, goal_mrl, self.intervals, self.initial_state)
-                # self.shielder.calculateShield()
-                # self.shielder.printShield()
-                
-                # # Run the algoirhtm
-                # self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(len(self.structure))
-                # self.nb_states = len(self.structure)
-                # self.data = d_data
-                # # In this environment, the reward is always 1 for every step, so we create a matrix of shape (nb_states, nb_states) filled with ones
-                # self.R_state_state = np.ones((self.nb_states, self.nb_states))
-                # self.R_state_state[:, traps[0]] = 0
-                # self.R_state_state[traps[0], :] = 0
-                # print(self.nb_states)
-                # print("Running Algorithms")
-                # self._run_algorithms()
-                
                 # ----------------------------- GRID ---------------------------------
-                # self.discretization_method = 'grid'
+                self.discretization_method = 'grid'
                 self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
-                # self.nb_states = self.env.get_nb_states()
-                # self.data = data_grid
-                # self.R_state_state = self.env.get_reward_function()
+                print("The baseline has length:", len(self.pi_b))
+                self.nb_states = self.env.get_nb_states()
+                self.data = data_grid
+                self.R_state_state = self.env.get_reward_function()
                 
-                # print("Estimating Intervals")            
-                # self._count()
+                print("Estimating Intervals")            
+                self._count(self.data)
+                self._build_model()
+                self.structure = self._tm_to_next_states()
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()   
                 # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
                 # self.intervals = self.estimator.get_intervals()
                 
                 
-                # print("Calculating Shield")  
+                print("Calculating Shield")  
                 # self.structure = self.build_transition_matrix()
-                # self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
-                # self.shielder.calculateShield()
-                # # self.shielder.printShield()
-                # print("Running Algorithms")
-                # self._run_algorithms()
+                self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
+                print("Running Algorithms")
+                self._run_algorithms()
                 # ----------------------------- SPIBB-DQN ----------------------------------
-                # self._run_spibb_dqn('SPIBB-DQN')
+                self.discretization_method = 'SPIBB-DQN'
+                self.data = self.data_cont
+                self._run_spibb_dqn('SPIBB-DQN')
          
         
     def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
@@ -851,21 +822,54 @@ class GymCartPoleExperiment(Experiment):
         return trajectories, batch_traj, trajectories_cont
             
     
-    def _count(self):
+    def _count(self, data):
         """
         Counts the state-action pairs and state-action-triplets and stores them.
         """
         if self.episodic:
-            batch_trajectory = [val for sublist in self.data for val in sublist]
+            batch_trajectory = [val for sublist in data for val in sublist]
         else:
-            batch_trajectory = self.data.copy()
+            batch_trajectory = data.copy()
         self.count_state_action_state = defaultdict(int)
         self.count_state_action = defaultdict(int)
         for [action, state, next_state, _] in batch_trajectory:
             self.count_state_action_state[(int(state), action, int(next_state))] += 1
             self.count_state_action[(int(state), action)] += 1
     
+    def _build_model(self):
+        """
+        Estimates the transition probabilities from the given data.
+        """
+        self.transition_model = {}
 
+        for (s, a, s_prime), count in self.count_state_action_state.items():
+            denom = self.count_state_action.get((s, a), 0)
+
+            if denom == 0:
+                continue  # Avoid division by zero; unseen (s,a) pairs are skipped
+
+            prob = count / denom
+            self.transition_model[(s, a, s_prime)] = prob
+            
+    def _tm_to_next_states(self):
+        structure = np.empty((self.nb_states, self.nb_actions), dtype=object)
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                structure[s, a] = []
+
+        # Populate from sparse transition model
+        for (s, a, s_prime), prob in self.transition_model.items():
+            if prob > 0:
+                structure[s, a].append(s_prime)
+        
+        # If a state has no successors in the data, just map to itself
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                if len(structure[s, a]) == 0:
+                    structure[s, a].append(s)
+                    
+        return structure
+    
     def estimate_transitions(self):
         count = 0
         # Prepare the reduced matrix with empty lists
