@@ -1451,10 +1451,15 @@ class RandomMDPsExperiment(Experiment):
                 self.P = self.garnet.transition_function
                 self.goal = [self.garnet.final_state]
                 self.P[self.goal, :, :] = 0.0
-                self.P[self.goal, :, self.goal] = 1.0
+                # self.P[self.goal, :, self.goal] = 1.0
                 self.traps = self.garnet.get_traps()
+                print(self.traps)
+                for trp in self.traps:
+                    self.P[trp, :, :] = 0.0
+                    # self.P[trp, :, trp] = 1.0
+                print(self.P[self.traps[0]])
                 C = np.zeros_like(self.R_state_state)
-                C[:, self.traps] = 1
+                C[:, self.traps] = 10.0
                 self.C_state_state = C
                 self.easter_egg = None
                 pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
