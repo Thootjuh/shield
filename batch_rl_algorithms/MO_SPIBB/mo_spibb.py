@@ -43,11 +43,18 @@ class ConstSPIBBAgent():
         self.episodic = episodic
         self.gamma = gamma
         self.data = data
-        self.C_state_state = C_state_state
-        self.R_state_state = R_state_state
-        self.estimate_baseline = estimate_baseline
         self.nb_states = nb_states
         self.nb_actions = nb_actions
+        self.C_state_state = C_state_state
+        self.R_state_state = R_state_state
+        if isinstance(R_state_state, dict):
+            # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
+            reward_matrix = np.zeros((self.nb_states, self.nb_states))
+            for (state, next_state), reward in R_state_state.items():
+                reward_matrix[state, next_state] = reward
+            self.R_state_state = reward_matrix
+        self.estimate_baseline = estimate_baseline
+
         self.epsilon = epsilon
         self.max_nb_it=max_nb_it
         if self.estimate_baseline:

@@ -1255,6 +1255,10 @@ class WetChickenExperiment(Experiment):
         self.R_state_state = self.env.get_reward_function()
         
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
+        C = np.zeros((self.nb_states, self.nb_states))
+        C[:, self.nb_states-1] = 10.0
+        self.C_state_state = C
+        
         self.baseline_method = self.experiment_config['BASELINE']['method']
         self.fixed_params_exp_list = [self.seed, self.gamma, self.length, self.width, self.max_turbulence,
                                       self.max_velocity, self.baseline_method]
@@ -1327,8 +1331,9 @@ class WetChickenExperiment(Experiment):
         for _ in np.arange(nb_steps):
             action_choice = np.random.choice(pi.shape[1], p=pi[state])
             state, reward, next_state = env.step(action_choice)
-            trajectory.append([action_choice, state, next_state, reward])
+            trajectory.append([action_choice, state, next_state, reward])        
             state = next_state
+        
             if state == self.length * self.width:
                 state, reward, next_state = env.step(action_choice)
                 trajectory.append([0, state, next_state, reward])
@@ -1970,7 +1975,13 @@ class GymFrozenLakeExperiment(Experiment):
         
         self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
-
+        C = np.zeros((self.nb_states, self.nb_states))
+        print(C.shape)
+        print(self.traps)
+        for trp in self.traps:
+            C[:, trp] = 10.0
+            
+        self.C_state_state = C
         print("calcing r_sa")
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         
