@@ -5,14 +5,18 @@ import time
 from batch_rl_algorithms.spibb_dqn.ai import AI
 
 class spibb_dqn:
-    def __init__(self, baseline, gamma, dataset=None, env=None, episode_max_len=1000, folder_name='/experiments',
-               minimum_count=0, max_start_nullops=0):
+    def __init__(self, baseline, gamma, dataset_raw=None, env=None, episode_max_len=1000, folder_name='/experiments',
+               minimum_count=0, max_start_nullops=0, episodic = True):
 
+        if episodic:
+            dataset = [val for sublist in dataset_raw for val in sublist]
+        else:
+            dataset = self.dataset_raw.copy()
         self.dataset = dataset
         self.last_episode_steps = 0
         self.score_agent = 0
         self.env = env
-        self.ai = AI(baseline, env, dataset, state_shape=env.get_state_shape(), nb_actions=env.get_nb_actions(), gamma=gamma, minibatch_size=32, minimum_count=minimum_count)
+        self.ai = AI(baseline, env, dataset, state_shape=[4], nb_actions=2, gamma=gamma, minibatch_size=64, minimum_count=minimum_count)
         self.folder_name = folder_name
         self.max_start_nullops = max_start_nullops
         self.episode_max_len = episode_max_len
@@ -20,16 +24,17 @@ class spibb_dqn:
     def learn(self, number_of_epochs=1, steps_per_test=10000, exp_id=0, passes_on_dataset=100, **kwargs):
 
         # filename = os.path.join(self.folder_name, "spibb_{}_{}.csv".format(exp_id, self.ai.minimum_count))
-        target_updates=50000
+        target_updates=10000
         total_steps, updates = 0, 0
         minibatch_size = self.ai.minibatch_size
 
         # How many updates per full pass over the dataset
-        # updates_per_epoch = len(self.dataset) // minibatch_size
+        print("LENGTH", len(self.dataset))
+        updates_per_epoch = len(self.dataset) // minibatch_size
 
         # How many passes we need to hit ~target_updates
-        # passes_on_dataset = max(1, target_updates // updates_per_epoch)
-        passes_on_dataset = 100
+        passes_on_dataset = max(10, target_updates // updates_per_epoch)
+        # passes_on_dataset = 100
         for epoch in range(number_of_epochs):
             begin = time.time()
             print('=' * 30, flush=True)
@@ -49,7 +54,7 @@ class spibb_dqn:
 
         print('>>>>> Training ran in {} seconds.'.format(time.time() - begin), flush=True)
     
-            
+    
     def evaluate_policy(self, number_of_steps, number_of_epochs):
         """ Evaluate the baseline number_of_epochs times for number_of_steps steps.
 
@@ -89,8 +94,3 @@ class spibb_dqn:
 
             all_rewards.append(np.mean(rewards))
         return np.mean(all_rewards)
-
-
-        
-        
-        

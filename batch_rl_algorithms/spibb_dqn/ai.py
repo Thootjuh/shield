@@ -53,7 +53,6 @@ class AI:
         self.epsilon_soft = epsilon_soft
         
         self.data = self.format_dataset(dataset)
-        self.print_count_stats(self.data, self.minimum_count)
 
     def _build_network(self):
         if self.network_size == 'small':
@@ -269,7 +268,7 @@ class AI:
     def similarite(self, x1, x2, param, weights=None):
         return max(0, 1 - self.distance(x1, x2) / param)
     
-    def compute_counts(self, states, actions, nb_actions, param=0.2, max_cdist=10000000, k=200):
+    def compute_counts(self, states, actions, nb_actions, param=0.2, max_cdist=10000, k=200):
         """
         Computes pseudocounts for state-action pairs.
         Uses full pairwise distances for small datasets,
@@ -280,14 +279,11 @@ class AI:
         counts = np.zeros((N, nb_actions), dtype=np.float32)
 
         if N <= max_cdist:
-            print("Starting Counts")
             # ---- Small dataset: exact full pairwise distances ----
             dist_matrix = cdist(flat_states, flat_states, metric="euclidean")
             sim_matrix = np.maximum(0, 1 - dist_matrix / param)
 
             for i in range(N):
-                if i % 1000 == 0:
-                    print("count = ", i)
                 np.add.at(counts[i], actions, sim_matrix[i])
 
         else:
@@ -302,21 +298,8 @@ class AI:
 
         return counts
     
-    def print_count_stats(self, data, minimum_count):
-        c = data['c']
-        known_fraction = np.mean(c >= minimum_count)
-        print(f"[Diagnostics] Known fraction: {known_fraction*100:.1f}% "
-            f"({(c >= minimum_count).sum()} / {c.size})")
-        
-        
-
-            
-    def format_dataset(self, dataset_raw, param = 0.2, episodic = True):
+    def format_dataset(self, dataset, param = 0.2, episodic=True):
         # dataset = [state, action_choice, next_state, reward, is_done]
-        if episodic:
-            dataset = [val for sublist in dataset_raw for val in sublist]
-        else:
-            dataset = self.dataset_raw.copy()
         print("Computing counts. The dataset contains {} transitions.".format(len(dataset)), flush=True)
 
         data = {}
@@ -330,35 +313,34 @@ class AI:
         data['c'] = np.zeros((len(dataset) - 1, self.nb_actions), dtype='float32')
         data['p'] = np.zeros((len(dataset) - 1, self.nb_actions), dtype='float32')
         
-        # if len(dataset) < 10000:
-        #     for i in range(len(dataset) - 1):
-        #         if i % 1000 == 999:
-        #             print('{} samples processed'.format(i))
-        #         data['s'][i] = dataset[i][0]
-        #         data['a'][i] = dataset[i][1]
-        #         data['s2'][i] = dataset[i][2]
-        #         data['r'][i] = dataset[i][3]
-        #         data['t'][i] = dataset[i][4]
-        #         data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
-        #         for j in range(len(dataset) - 1):
-        #             s = self.similarite(dataset[i][0], dataset[j][0], param)
-        #             data['c'][i, dataset[j][1]] += s
-        # else: # For larger datasets (>10000), we instead use knn
-        for i in range(len(dataset) - 1):
-            # print("THIS IS WHAT THIS SHIT LOOKED LIKE: ", dataset[i][0])
-            data['s'][i] = dataset[i][0]
-            data['a'][i] = dataset[i][1]
-            data['s2'][i] = dataset[i][2]
-            data['r'][i] = dataset[i][3]
-            data['t'][i] = dataset[i][4]
-            data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
-        print("computing counts")
-        data['c'] = self.compute_counts(
-            states=data['s'],
-            actions=data['a'],
-            nb_actions=self.nb_actions,
-            param=param
-        )
+        if len(dataset) < 10000:
+            for i in range(len(dataset) - 1):
+                if i % 1000 == 999:
+                    print('{} samples processed'.format(i))
+                data['s'][i] = dataset[i][0]
+                data['a'][i] = dataset[i][1]
+                data['s2'][i] = dataset[i][2]
+                data['r'][i] = dataset[i][3]
+                data['t'][i] = dataset[i][4]
+                data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
+                for j in range(len(dataset)-1):
+                    s = self.similarite(dataset[i+1][0], dataset[j][0], param)
+                    data['c'][i, dataset[j][1]] += s
+        else: # For larger datasets (>10000), we instead use knn
+            for i in range(len(dataset) - 1):
+                data['s'][i] = dataset[i][0]
+                data['a'][i] = dataset[i][1]
+                data['s2'][i] = dataset[i][2]
+                data['r'][i] = dataset[i][3]
+                data['t'][i] = dataset[i][4]
+                data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
+            print("computing counts")
+            data['c'] = self.compute_counts(
+                states=data['s'],
+                actions=data['a'],
+                nb_actions=self.nb_actions,
+                param=param
+            )
         return data
     
     @staticmethod
@@ -370,4 +352,3 @@ class AI:
         del _dict['device']  # is not picklable
         del _dict['transitions']  # huge object (if you need the replay buffer, save its contnts with np.save)
         return _dict
-
