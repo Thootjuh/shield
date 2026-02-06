@@ -2,19 +2,19 @@ from gym.envs.registration import register
 
 
 register(
-    id="maze-v0", entry_point="gym_maze.envs:MazeEnvSample5x5", max_episode_steps=2000,
+    id="maze-v0", entry_point="gym_maze.envs:MazeEnvSample5x5", max_episode_steps=200,
 )
 
 register(
     id="maze-sample-5x5-v0",
     entry_point="gym_maze.envs:MazeEnvSample5x5",
-    max_episode_steps=2000,
+    max_episode_steps=200,
 )
 
 register(
     id="maze-random-5x5-v0",
     entry_point="gym_maze.envs:MazeEnvRandom5x5",
-    max_episode_steps=2000,
+    max_episode_steps=200,
     nondeterministic=True,
 )
 

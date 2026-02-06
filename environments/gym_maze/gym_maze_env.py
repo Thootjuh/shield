@@ -11,7 +11,7 @@ import sys
 sys.path.append("../gym_maze/")
 
 MAZE = "maze-sample-5x5-v0"
-
+STANDARD_REWARD = -0.04
 class maze:
     def __init__(self):
         self.env = gym.make(MAZE)
@@ -84,7 +84,17 @@ class maze:
         return self.crashed
     
     def get_reward_function(self):
-        pass
+        reward_matrix = np.zeros((self.nb_states, self.nb_states))
+        goal = self.get_goal_state()
+        traps = self.get_traps()
+        for ns in range(len(reward_matrix)):
+            if ns in goal:
+                reward_matrix[:, ns] = 10
+            elif ns in traps:
+                reward_matrix[:, ns] = -10
+            else:
+                reward_matrix[:, ns] = STANDARD_REWARD
+        return reward_matrix
     
     def get_nb_actions(self):
         return 4
@@ -98,11 +108,42 @@ class maze:
     def get_nb_states(self):
         return self.nb_states
     
+    
+    def _regions_intersecting_cell(self, cell_coord, cell_size=1.0):
+        """
+        Return list of partition state indices whose region intersects
+        the environment cell defined by top-left coordinate `cell_coord`.
+        """
+        partition = self.partition
+
+        cell_low = np.array(cell_coord, dtype=float)
+        cell_upp = cell_low + cell_size
+
+        low = partition['low']
+        upp = partition['upp']
+
+        intersecting = []
+        for i in range(partition['nr_regions']):
+            # Intersection check per dimension
+            if np.all((low[i] < cell_upp) & (upp[i] > cell_low)):
+                intersecting.append(i)
+
+        return intersecting
+    
     def get_traps(self):
-        return []
+        traps = self.env.env.env.env.get_trap()
+
+        trap_states = []
+        for trap_cell in traps:
+            trap_states.extend(self._regions_intersecting_cell(trap_cell))
+        
+        return list(set(trap_states))
     
     def get_goal_state(self):
-        return []
+        goal = self.env.env.env.env.get_goal()
+
+        goal_states = self._regions_intersecting_cell(goal)
+        return goal_states
     
     def get_init_state(self):
         # print("our init state = ", self.init)

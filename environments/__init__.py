@@ -9,19 +9,19 @@ register(
     entry_point='environments.frozenLakeEnv:FrozenLakeEnv',
 )
 register(
-    id="maze-v0", entry_point="environments.gym_maze.gym_maze.envs.maze_env:MazeEnvSample5x5", max_episode_steps=2000,
+    id="maze-v0", entry_point="environments.gym_maze.gym_maze.envs.maze_env:MazeEnvSample5x5", max_episode_steps=200,
 )
 
 register(
     id="maze-sample-5x5-v0",
     entry_point="environments.gym_maze.gym_maze.envs.maze_env:MazeEnvSample5x5",
-    max_episode_steps=2000,
+    max_episode_steps=200,
 )
 
 register(
     id="maze-random-5x5-v0",
     entry_point="environments.gym_maze.gym_maze.envs.maze_env:MazeEnvRandom5x5",
-    max_episode_steps=2000,
+    max_episode_steps=200,
     nondeterministic=True,
 )
 

@@ -5,7 +5,7 @@ import time
 from batch_rl_algorithms.spibb_dqn.ai import AI
 
 class spibb_dqn:
-    def __init__(self, baseline, gamma, dataset_raw=None, env=None, episode_max_len=1000, folder_name='/experiments',
+    def __init__(self, baseline, gamma, state_shape, nb_actions, dataset_raw=None, env=None, episode_max_len=1000, folder_name='/experiments',
                minimum_count=0, max_start_nullops=0, episodic = True):
 
         if episodic:
@@ -16,7 +16,7 @@ class spibb_dqn:
         self.last_episode_steps = 0
         self.score_agent = 0
         self.env = env
-        self.ai = AI(baseline, env, dataset, state_shape=[4], nb_actions=2, gamma=gamma, minibatch_size=64, minimum_count=minimum_count)
+        self.ai = AI(baseline, env, dataset, state_shape=state_shape, nb_actions=nb_actions, gamma=gamma, minibatch_size=64, minimum_count=minimum_count)
         self.folder_name = folder_name
         self.max_start_nullops = max_start_nullops
         self.episode_max_len = episode_max_len

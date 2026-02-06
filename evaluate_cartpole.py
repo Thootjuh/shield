@@ -12,7 +12,10 @@ def infer_action(state, env, policy):
     region = env.state2region(state)
     return int(np.argmax(policy[region]))
 
-def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None):
+def infer_action_DQN(state, ai):
+    action, _, _, _ = ai.inference(state)
+    return int(action)
+def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None, env_name="cartpole"):
     """ Evaluate the baseline number_of_epochs times for number_of_steps steps.
 
     Args:
@@ -39,10 +42,19 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method,
             if not term:
                 if disc_method == 'mrl':
                     action = infer_action_mrl(last_state, predictor, policy, dimensions)
+                    # if nb_steps == 0 and epoch == 0:
+                    #     print(type(action))
+                    #     print(action)
                 elif disc_method == 'grid':
                     action = infer_action(last_state, env, policy)
+                    # if nb_steps == 0 and epoch == 0:
+                    #     print(type(action))
+                    #     print(action)
                 elif disc_method == 'SPIBB-DQN':
-                    action, _, _, _ = ai.inference(last_state)
+                    action = infer_action_DQN(last_state, ai)
+                    # if nb_steps == 0 and epoch == 0:
+                        # print(type(action))
+                        # print(action)
                 _, _, reward = env.step(action)
                 term = env.is_done()
                 last_state = env.get_state()
@@ -54,10 +66,16 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method,
                 rewards.append(current_reward)
                 all_nb_steps.append(nb_steps)
                 episode_count+=1
-                if nb_steps < 50: 
-                    failure_count+=1
-                if nb_steps >= 200:
-                    success_count+=1
+                if env_name=="cartpole":
+                    if nb_steps < 50: 
+                        failure_count+=1
+                    if nb_steps >= 200:
+                        success_count+=1
+                if env_name=="cartpole":
+                    if reward<-1: 
+                        failure_count+=1
+                    if reward > 0:
+                        success_count+=1
                 total_nb_steps += nb_steps
                 current_reward, nb_steps = 0, 0
                 term = False

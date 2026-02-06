@@ -6,6 +6,9 @@ from gymnasium.utils import seeding
 from environments.gym_maze.gym_maze.envs.maze_view_2d import MazeView2D
 import random
 
+FAIL_PUNISHMENT = -10
+REWARD = 10
+
 class MazeEnv(gym.Env):
     metadata = {
         "render.modes": ["human", "rgb_array"],
@@ -85,18 +88,19 @@ class MazeEnv(gym.Env):
         return [seed]
 
     def step(self, action):
-        if isinstance(action, int):
-            self.maze_view.move_robot(self.ACTION[action])
-        else:
+        if action in ['N', 'E', 'S', 'W']:
+            # print(type(action))
             self.maze_view.move_robot(action)
+        else:
+            self.maze_view.move_robot(self.ACTION[action])
+
         # print(self.maze_view.robot)
         # print(self.maze_view.goal)
         if np.array_equal(self.maze_view.robot, self.maze_view.goal):
-        
-            reward = 1
+            reward = REWARD
             done = True
         elif np.any(np.all(self.maze_view.traps == self.maze_view.robot, axis=1)):
-            reward = -1
+            reward = FAIL_PUNISHMENT
             done = True
         else:
             reward = -1 / (self.maze_size[0] * self.maze_size[1])
@@ -110,6 +114,9 @@ class MazeEnv(gym.Env):
     
     def get_goal(self):
         return self.maze_view.goal
+    
+    def get_trap(self):
+        return self.maze_view.traps
     
     def set_random_state(self):
         state = self.maze_view.set_random_state()

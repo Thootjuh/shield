@@ -307,7 +307,7 @@ class Experiment:
     
     def _run_spibb_dqn(self, key):
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
-            spibb = spibb_dqn(baseline=self.pi_b, gamma=self.gamma, dataset_raw=self.data_cont, env=self.env, minimum_count=N_wedge)
+            spibb = spibb_dqn(baseline=self.pi_b, gamma=self.gamma, state_shape=[self.dimensions], nb_actions=self.nb_actions, dataset_raw=self.data_cont, env=self.env, minimum_count=N_wedge)
             t_0 = time.time()
             spibb.learn(passes_on_dataset = 25)
             t_1 = time.time()
@@ -684,74 +684,74 @@ class GymCartPoleExperiment(Experiment):
                 # self.intervals = self.estimator.get_intervals()
                 
                 # ------------------------ MRL --------------------------
-                # self.discretization_method = 'mrl'
+                self.discretization_method = 'mrl'
                 
-                # # Get discretization
-                # m = MDP_model()
-                # m.fit(
-                #     self.data_df,
-                #     pfeatures=self.dimensions,
-                #     h = -1,
-                #     gamma = 1,
-                #     max_k = 100,
-                #     distance_threshold=0.5,
-                #     th = 10,
-                #     eta = 25,
-                #     precision_thresh = -1, #1e-14
-                #     classification = 'DecisionTreeClassifier',
-                #     split_classifier_params = {'random_state':0, 'max_depth':10},
-                #     clustering = 'Agglomerative',
-                #     n_clusters = None,
-                #     random_state = 0,
-                #     plot=True,
-                #     verbose=False
-                # )
-                # print("Trained the model!!")
+                # Get discretization
+                m = MDP_model()
+                m.fit(
+                    self.data_df,
+                    pfeatures=self.dimensions,
+                    h = -1,
+                    gamma = 1,
+                    max_k = 50,
+                    distance_threshold=0.5,
+                    th = 10,
+                    eta = 25,
+                    precision_thresh = -1, #1e-14
+                    classification = 'DecisionTreeClassifier',
+                    split_classifier_params = {'random_state':0, 'max_depth':10},
+                    clustering = 'Agglomerative',
+                    n_clusters = None,
+                    random_state = 0,
+                    plot=True,
+                    verbose=False
+                )
+                print("Trained the model!!")
                 
-                # # discretize data
-                # self.predictor = predict_cluster(m.df_trained, self.dimensions)
-                # d_data = self.discretize_data(self.data_cont, self.predictor)
+                # discretize data
+                self.predictor = predict_cluster(m.df_trained, self.dimensions)
+                d_data = self.discretize_data(self.data_cont, self.predictor)
                 
-                # nb_states = m.df_trained["CLUSTER"].nunique()
-                # print("nb states = ", nb_states)                
-                # # get discrete reward function
-                # self.R_state_state = np.zeros((nb_states, nb_states))
-                # traps = []
-                # goal = []
-                # for state in range(len(self.R_state_state)):
-                #     r = m.R_df[state]
-                #     self.R_state_state[:, state] = r
-                #     if r == 0.0:
-                #         traps.append(state)
+                nb_states = m.df_trained["CLUSTER"].nunique()
+                print("nb states = ", nb_states)                
+                # get discrete reward function
+                self.R_state_state = np.zeros((nb_states, nb_states))
+                traps = []
+                goal = []
+                for state in range(len(self.R_state_state)):
+                    r = m.R_df[state]
+                    self.R_state_state[:, state] = r
+                    if r == 0.0:
+                        traps.append(state)
 
-                # # get structure transition function
-                # self.structure = self.get_empty_structure(nb_states)
-                # self.structure = self.add_trans_from_data(self.structure, d_data)
+                # get structure transition function
+                self.structure = self.get_empty_structure(nb_states)
+                self.structure = self.add_trans_from_data(self.structure, d_data)
                 
-                # # # with open("data_d.txt", "w") as f:
-                # # #     for item in d_data:
-                # # #         f.write(item)
-                # # #         f.write("\n")
-                # # # print(d_data)
+                # # with open("data_d.txt", "w") as f:
+                # #     for item in d_data:
+                # #         f.write(item)
+                # #         f.write("\n")
+                # # print(d_data)
                 
-                # # Calculate Shield                
-                # self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
-                # self.estimator.calculate_intervals()
-                # self.intervals = self.estimator.get_intervals()                
+                # Calculate Shield                
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()                
                 
-                # print("Calculating Shield") 
-                # # print(m.R_df) 
-                # self.shielder = ShieldCartpole(self.structure, traps, goal, self.intervals, self.initial_state)
-                # self.shielder.calculateShield()
-                # # self.shielder.printShield()
+                print("Calculating Shield") 
+                # print(m.R_df) 
+                self.shielder = ShieldCartpole(self.structure, traps, goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
                 
-                # # # Run the algoirhtm
-                # self.nb_states = nb_states
-                # self.data = d_data
-                # self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states)
+                # # Run the algoirhtm
+                self.nb_states = nb_states
+                self.data = d_data
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states)
 
-                # print("Running Algorithms")
-                # self._run_algorithms()
+                print("Running Algorithms")
+                self._run_algorithms()
                 
                 
                 # ----------------------------- GRID ---------------------------------
@@ -781,9 +781,9 @@ class GymCartPoleExperiment(Experiment):
                 print("Running Algorithms")
                 self._run_algorithms()
                 # ----------------------------- SPIBB-DQN ----------------------------------
-                # self.discretization_method = 'SPIBB-DQN'
-                # self.data = self.data_cont
-                # self._run_spibb_dqn('SPIBB-DQN')
+                self.discretization_method = 'SPIBB-DQN'
+                self.data = self.data_cont
+                self._run_spibb_dqn('SPIBB-DQN')
          
         
     def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
@@ -1117,9 +1117,9 @@ class GymMazeExperiment(Experiment):
                 for state in range(len(self.R_state_state)):
                     r = m.R_df[state]
                     self.R_state_state[:, state] = r
-                    if r == -1.0:
+                    if r <= -1.0:
                         traps.append(state)
-                    if r == 1.0:
+                    if r >= 0.0:
                         goal.append(state)
 
                 # get structure transition function
@@ -1152,27 +1152,32 @@ class GymMazeExperiment(Experiment):
                 self._run_algorithms()
                 
                 # ----------------------------- GRID ---------------------------------
-                # self.discretization_method = 'grid'
-                # self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
-                # self.nb_states = self.env.get_nb_states()
-                # self.data = data_grid
-                # self.R_state_state = self.env.get_reward_function()
+                self.discretization_method = 'grid'
+                self.pi_b = mazePolicy(self.env, epsilon=epsilon_baseline).pi
+                self.nb_states = self.env.get_nb_states()
+                self.data = data_grid
+                self.R_state_state = self.env.get_reward_function()
                 
-                # print("Estimating Intervals")            
-                # self._count()
-                # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
-                # self.intervals = self.estimator.get_intervals()
+                print("Estimating Intervals")            
+                self._count(self.data)
+                self._build_model()
+                self.structure = self._tm_to_next_states()
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()   
                 
                 
-                # print("Calculating Shield")  
+                print("Calculating Shield")  
                 # self.structure = self.build_transition_matrix()
-                # self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
-                # self.shielder.calculateShield()
-                # # self.shielder.printShield()
-                # print("Running Algorithms")
-                # self._run_algorithms()
+                self.shielder = ShieldMaze(self.structure, self.traps, self.goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
+                print("Running Algorithms")
+                self._run_algorithms()
                 # ----------------------------- SPIBB-DQN ----------------------------------
-                # self._run_spibb_dqn('SPIBB-DQN')
+                self.discretization_method = 'SPIBB-DQN'
+                self.data = self.data_cont
+                self._run_spibb_dqn('SPIBB-DQN')
                 
     def generate_batch(self, nb_trajectories, env, pi, max_steps=100):
         """
@@ -1220,19 +1225,53 @@ class GymMazeExperiment(Experiment):
         return trajectories, batch_traj, trajectories_cont
             
     
-    def _count(self):
+    def _count(self, data):
         """
         Counts the state-action pairs and state-action-triplets and stores them.
         """
         if self.episodic:
-            batch_trajectory = [val for sublist in self.data for val in sublist]
+            batch_trajectory = [val for sublist in data for val in sublist]
         else:
-            batch_trajectory = self.data.copy()
+            batch_trajectory = data.copy()
         self.count_state_action_state = defaultdict(int)
         self.count_state_action = defaultdict(int)
         for [action, state, next_state, _] in batch_trajectory:
             self.count_state_action_state[(int(state), action, int(next_state))] += 1
             self.count_state_action[(int(state), action)] += 1
+            
+    def _build_model(self):
+        """
+        Estimates the transition probabilities from the given data.
+        """
+        self.transition_model = {}
+
+        for (s, a, s_prime), count in self.count_state_action_state.items():
+            denom = self.count_state_action.get((s, a), 0)
+
+            if denom == 0:
+                continue  # Avoid division by zero; unseen (s,a) pairs are skipped
+
+            prob = count / denom
+            self.transition_model[(s, a, s_prime)] = prob
+            
+    def _tm_to_next_states(self):
+        structure = np.empty((self.nb_states, self.nb_actions), dtype=object)
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                structure[s, a] = []
+
+        # Populate from sparse transition model
+        for (s, a, s_prime), prob in self.transition_model.items():
+            if prob > 0:
+                structure[s, a].append(s_prime)
+        
+        # If a state has no successors in the data, just map to itself
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                if len(structure[s, a]) == 0:
+                    structure[s, a].append(s)
+                    
+        return structure
     
 
     def estimate_transitions(self):
