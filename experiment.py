@@ -770,7 +770,7 @@ class Experiment:
         evals.construct_DTMC()
         RA_prob = evals.find_reach_avoid_prob()
         A_prob = evals.find_avoid_prob()
-        return RA_prob, A_prob
+        return RA_prob, A_prob # 1-A_prob for wet chicken
     
     def compute_r_state_action(self, P, R):
         if isinstance(P, dict):
@@ -831,7 +831,8 @@ class SimplifiedPacmanExperiment(Experiment):
         self.R_state_state = self.env.get_reward_function()
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         
-
+        self.C_state_state = self.env.get_cost_function()
+        print(type(self.C_state_state))
         
         self.fixed_params_exp_list = [self.seed, self.gamma, self.width, self.height, self.lag, self.ghost_opt_chance]
         
@@ -1285,7 +1286,7 @@ class WetChickenExperiment(Experiment):
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         self.prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
-        self.avoid_prop = "Pmax=? [G !\"waterfall\"]"
+        self.avoid_prop = "Pmax=? [F<15 \"waterfall\"]"
         self.goal = []
         self.traps = []
     def _run_one_iteration(self):
@@ -1335,6 +1336,7 @@ class WetChickenExperiment(Experiment):
             state = next_state
         
             if state == self.length * self.width:
+                
                 state, reward, next_state = env.step(action_choice)
                 trajectory.append([0, state, next_state, reward])
         return trajectory

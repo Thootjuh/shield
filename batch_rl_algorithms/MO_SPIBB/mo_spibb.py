@@ -73,7 +73,7 @@ class ConstSPIBBAgent():
 
         # Prepare coefficients list
         lambda_R_vals = [1.0]  # >=0
-        lambda_C_vals = [0.0]  # >=0
+        lambda_C_vals = [0.1]  # >=0
         self.lambda_coeffs = [(lr, lc) for lc in lambda_C_vals for lr in lambda_R_vals][0]
         
         self.operator = self.make_policy_iteration_operator()
@@ -178,7 +178,7 @@ class ConstSPIBBAgent():
         # for each (s,a)
         for s in range(self.nb_states):
             for a in range(self.nb_actions):
-                if count_sa[s, a] < 3.0:
+                if count_sa[s, a] < 7.0:
                     eQ[s, a] = np.inf
                 else:
                     eQ[s, a] = np.sqrt(2 * np.log(2 * ((self.nb_states * self.nb_actions) / delta)) / count_sa[s, a])
