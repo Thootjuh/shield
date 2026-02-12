@@ -119,23 +119,33 @@ class spibb():
     def fit(self):
         pi = self.pi_b.copy()
         q = np.zeros((self.nb_states, self.nb_actions))
-        old_q = np.ones((self.nb_states, self.nb_actions))
-        nb_sa = self.nb_states * self.nb_actions
-        nb_it = 0
         old_pi = None
-        while np.linalg.norm(q - old_q) > 0.000000001 and nb_it < self.max_nb_it:
+
+        # reshape reward once (important)
+        R = self.R.reshape(self.nb_states, self.nb_actions)
+
+        for nb_it in range(self.max_nb_it):
             old_q = q.copy()
-            M = np.eye(nb_sa) - self.gamma * np.einsum('ijk,kl->ijkl', self.P, pi).reshape(nb_sa, nb_sa)
-            q = np.dot(np.linalg.inv(M), self.R).reshape(self.nb_states, self.nb_actions)
+
+            # --- Policy evaluation ---
+            v = np.sum(pi * q, axis=1)  # shape: (S,)
+            q = R + self.gamma * np.einsum('sas,s->sa', self.P, v)
+
             if self.q_pib_est_masked is not None:
                 q += self.q_pib_est_masked
+
+            # --- Policy improvement ---
             pi = self.update_pi(q, old_pi)
-            old_pi = pi
-            nb_it += 1
-            if nb_it > 1000:
-                with open("notconverging.txt", "a") as myfile:
-                    myfile.write(str(self.space) + " epsilon=" + str(self.epsilon) + " nb_traj=" + str(1) + " is not converging. \n")
+
+            # convergence checks
+            if np.max(np.abs(q - old_q)) < 1e-9:
                 break
+
+            if old_pi is not None and np.allclose(pi, old_pi):
+                break
+
+            old_pi = pi
+
         self.pi = pi
         self.q = q
 
