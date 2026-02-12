@@ -60,7 +60,7 @@ class Experiment:
     fixed_params_exp_list = None
     fixed_params_exp_columns = None
     variable_params_exp_columns = None
-    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'method_succ_rate', 'method_avoid_rate', 'run_time']
+    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'method_perf_no_neg', 'method_succ_rate', 'method_avoid_rate', 'run_time']
 
     def __init__(self, experiment_config, seed, nb_iterations, machine_specific_experiment_directory):
         """
@@ -236,6 +236,7 @@ class Experiment:
         pi_b_s.fit()
         t_1 = time.time()
         basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
+        basic_rl_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_b_s.pi)
         basic_rl_succ_rate, basic_rl_avoid_rate = self.policy_evaluation_success_rate(pi_b_s.pi)
         method = pi_b_s.NAME
         method_perf = basic_rl_perf
@@ -243,7 +244,7 @@ class Experiment:
         method_avoid_rate = basic_rl_avoid_rate
         hyperparam = None
         run_time = t_1 - t_0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time])
+        self.results.append(self.to_append + [method, hyperparam, method_perf, basic_rl_perf_no_neg, method_succ_rate, method_avoid_rate, run_time])
         
     def _run_rmdp_shielded(self, key):
         """
@@ -370,6 +371,7 @@ class Experiment:
             spibb.fit()
             t_1 = time.time()
             spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            spibb_no_neg = self._policy_evaluation_exact_no_neg(spibb.pi)
             spibb_succ_rate, spibb_avoid_rate = self.policy_evaluation_success_rate(spibb.pi)
             method = spibb.NAME
             method_perf = spibb_perf
@@ -378,7 +380,7 @@ class Experiment:
             hyperparam = N_wedge
             run_time = t_1 - t_0
             
-            self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, spibb_no_neg, method_succ_rate, method_avoid_rate, run_time])
             
     def _run_spibb_experiment(self, key):
         """
@@ -525,6 +527,7 @@ class Experiment:
             spibb.fit()
             t_1 = time.time()
             spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            spibb_no_neg = self._policy_evaluation_exact_no_neg(spibb.pi)
             spibb_succ_rate, spibb_avoid_rate = self.policy_evaluation_success_rate(spibb.pi)
             method = spibb.NAME
             method_perf = spibb_perf
@@ -532,7 +535,7 @@ class Experiment:
             method_avoid_rate = spibb_avoid_rate
             hyperparam = N_wedge
             run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, spibb_no_neg, method_succ_rate, method_avoid_rate, run_time])
             
     def _run_spibb(self, key):
         """
@@ -547,6 +550,7 @@ class Experiment:
             spibb.fit()
             t_1 = time.time()
             spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            spibb_no_neg = self._policy_evaluation_exact_no_neg(spibb.pi)
             spibb_succ_rate, spibb_avoid_rate = self.policy_evaluation_success_rate(spibb.pi)
             method = spibb.NAME
             method_perf = spibb_perf
@@ -554,7 +558,7 @@ class Experiment:
             method_avoid_rate = spibb_avoid_rate
             hyperparam = N_wedge
             run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, spibb_no_neg, method_succ_rate, method_avoid_rate, run_time])
             
     def _run_soft_spibb(self, key):
         """
@@ -765,12 +769,19 @@ class Experiment:
         """
         return policy_evaluation_exact(pi, self.R_state_action, self.P, self.gamma)[0][self.initial_state]
     
+    def _policy_evaluation_exact_no_neg(self, pi):
+        """
+        Evaluates policy pi exactly.
+        :param pi: policy as numpy array with shape (nb_states, nb_actions)
+        """
+        return policy_evaluation_exact(pi, self.R_state_action_no_neg, self.P, self.gamma)[0][self.initial_state]
+    
     def policy_evaluation_success_rate(self, pi):
         evals = evaluator(self.P, pi, self.prop, self.avoid_prop, self.nb_states, self.nb_actions, self.initial_state, self.goal,self.traps, self.env_name)
         evals.construct_DTMC()
         RA_prob = evals.find_reach_avoid_prob()
         A_prob = evals.find_avoid_prob()
-        return RA_prob, A_prob # 1-A_prob for wet chicken
+        return RA_prob, 1-A_prob # 1-A_prob for wet chicken
     
     def compute_r_state_action(self, P, R):
         if isinstance(P, dict):
@@ -1239,7 +1250,7 @@ class WetChickenExperiment(Experiment):
         """
         Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
         """
-        self.episodic = False
+        self.episodic = True
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         self.length = int(self.experiment_config['ENV_PARAMETERS']['LENGTH'])
         self.width = int(self.experiment_config['ENV_PARAMETERS']['WIDTH'])
@@ -1252,10 +1263,14 @@ class WetChickenExperiment(Experiment):
         self.env = WetChicken(length=self.length, width=self.width, max_turbulence=self.max_turbulence,
                               max_velocity=self.max_velocity)
         self.initial_state = self.env.get_state_int()
+        self.goal = [self.env.get_state_int()]
         self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
-        
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
+        
+        self.R_state_state_no_neg = self.env.get_reward_function_no_neg()
+        self.R_state_action_no_neg = self.compute_r_state_action(self.P, self.R_state_state_no_neg)
+        
         C = np.zeros((self.nb_states, self.nb_states))
         C[:, self.nb_states-1] = 10.0
         self.C_state_state = C
@@ -1287,7 +1302,7 @@ class WetChickenExperiment(Experiment):
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
         self.prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
         self.avoid_prop = "Pmax=? [F<15 \"waterfall\"]"
-        self.goal = []
+        # self.goal = []
         self.traps = []
     def _run_one_iteration(self):
         """
@@ -1312,7 +1327,7 @@ class WetChickenExperiment(Experiment):
                         self.to_append = self.to_append_run_one_iteration + [length_trajectory]
                         self.structure = self.reduce_transition_matrix(self.P)
                         self.goal = self.find_closest_states(list(range(len(self.structure))), self.length)
-                        self.estimator = PACIntervalEstimator(self.structure, 0.1, [self.data], self.nb_actions, alpha=10)
+                        self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
                         self.intervals = self.estimator.get_intervals()
                         self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, theta)
                         self.shielder.calculateShield()
@@ -1327,19 +1342,25 @@ class WetChickenExperiment(Experiment):
         :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
         :return: data batch as a list of sublists of the form [state, action, next_state, reward]
         """
-        trajectory = []
+        trajectories = []
         state = env.get_state_int()
-        for _ in np.arange(nb_steps):
-            action_choice = np.random.choice(pi.shape[1], p=pi[state])
-            state, reward, next_state = env.step(action_choice)
-            trajectory.append([action_choice, state, next_state, reward])        
-            state = next_state
         
-            if state == self.length * self.width:
-                
+        for _ in np.arange(nb_steps):
+            is_done = False
+            steps = 0
+            trajectorY = []
+            while steps < 1000 and not is_done:
+                action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, reward, next_state = env.step(action_choice)
-                trajectory.append([0, state, next_state, reward])
-        return trajectory
+                trajectorY.append([action_choice, state, next_state, reward])        
+                state = next_state
+            
+                if state == self.length * self.width:
+                    state, reward, next_state = env.step(action_choice)
+                    trajectorY.append([0, state, next_state, reward])
+                    is_done = True
+            trajectories.append(trajectorY)
+        return trajectories
             
 
     def reduce_transition_matrix(self, transition_matrix):
@@ -1977,6 +1998,7 @@ class GymFrozenLakeExperiment(Experiment):
         
         self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
+        self.R_state_state_no_neg = self.env.get_reward_function_no_neg()
         C = np.zeros((self.nb_states, self.nb_states))
         print(C.shape)
         print(self.traps)
@@ -1986,7 +2008,7 @@ class GymFrozenLakeExperiment(Experiment):
         self.C_state_state = C
         print("calcing r_sa")
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
-        
+        self.R_state_action_no_neg = self.compute_r_state_action(self.P, self.R_state_state_no_neg)
         self.baseline_method = self.experiment_config['BASELINE']['method']
         self.fixed_params_exp_list = [self.seed, self.gamma, self.baseline_method]
 

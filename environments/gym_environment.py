@@ -1,11 +1,12 @@
 import gymnasium as gym
-from stormvogel.extensions.gym_grid import *
-from stormvogel import *
+# from stormvogel.extensions.gym_grid import *
+# from stormvogel import *
 import IPython.display as ipd
 import numpy as np
-import stormvogel.stormpy_utils.mapping as mapping
+# import stormvogel.stormpy_utils.mapping as mapping
 import environments
 import random
+import math
 
 class gymTaxi:
     def __init__(self):
@@ -68,21 +69,21 @@ class gymTaxi:
     def get_transition_function(self):
         return self.transition_model
                 
-    def get_baseline_policy_old(self, epsilon):
-        pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
+    # def get_baseline_policy_old(self, epsilon):
+    #     pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         
-        stormpy_model = mapping.stormvogel_to_stormpy(self.sv_model)
-        prop = stormpy.parse_properties('Rmax=? [S]')
-        res = stormpy.model_checking(stormpy_model, prop[0], extract_scheduler=True)
-        scheduler = res.scheduler
+    #     stormpy_model = mapping.stormvogel_to_stormpy(self.sv_model)
+    #     prop = stormpy.parse_properties('Rmax=? [S]')
+    #     res = stormpy.model_checking(stormpy_model, prop[0], extract_scheduler=True)
+    #     scheduler = res.scheduler
         
-        pi_sched = np.full((self.nb_states, self.nb_actions), 0)   
-        for next_state in range(self.nb_states):
-            choice = scheduler.get_choice(next_state).get_deterministic_choice()
-            pi_sched[next_state][choice] = 1
+    #     pi_sched = np.full((self.nb_states, self.nb_actions), 0)   
+    #     for next_state in range(self.nb_states):
+    #         choice = scheduler.get_choice(next_state).get_deterministic_choice()
+    #         pi_sched[next_state][choice] = 1
         
-        pi = (1-epsilon) * pi_sched + epsilon * pi_r        
-        return pi    
+    #     pi = (1-epsilon) * pi_sched + epsilon * pi_r        
+    #     return pi    
     
     def get_baseline_policy(self, epsilon):
         pi_r = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
@@ -146,12 +147,12 @@ class gymTaxi:
 class gymIce:
     def __init__(self):
         self.env = gym.make("FrozenLakeCustom-v0", render_mode="rgb_array", map_name = "8x8", is_slippery=True)
-        self.sv_model = gymnasium_grid_to_stormvogel(self.env)
+        # self.sv_model = gymnasium_grid_to_stormvogel(self.env)
         self.initial_calculations()
         observation, _ = self.env.env.env.reset()
         self.init = observation
         self.state = observation
-        self.goal = get_target_state(self.env)
+        self.goal = self.get_target_state(self.env)
         self.terminated = False
         
     def reset(self):
@@ -177,16 +178,31 @@ class gymIce:
         #         print("Fell :(, self.state = )", self.state)
         return self.terminated
     
+    # from storm vogel
+    def get_target_state(self, env):
+        """Calculate the target state for an env. Works for FrozenLake and Cliffwalking"""
+        return env.observation_space.n - 1
+
+    # from storm vogel
+    def to_coordinate(self, s, env):
+        """Calculate the state's coordinates. Works for FrozenLake, Cliffwalking, and Taxi"""
+        num_states = env.observation_space.n
+        grid_size = int(math.sqrt(num_states))
+        x_target = int(s % grid_size)
+        y_target = int(s // grid_size)
+        return x_target, y_target
+
     def initial_calculations(self):
         # print("goal: ", self.env.env.env.desc[0][0])
         P = self.env.env.env.P
         self.reward_model = {}
+        self.reward_model_no_neg = {}
         self.transition_model = {}
         self.nb_states = len(P)
         self.nb_actions = len(P[0])
         self.traps = []
         for state in P:
-            col, row = to_coordinate(state, self.env.env.env)
+            col, row = self.to_coordinate(state, self.env.env.env)
             if self.env.env.env.desc[row][col] == b"H":
                 self.traps.append(state)
             elif self.env.env.env.desc[row][col] != b"G": # Dont add terminal statess
@@ -195,12 +211,16 @@ class gymIce:
                         self.transition_model[(state, action, next_state)] = prob
                         if reward != 0:
                             self.reward_model[(state, next_state)] = reward
+                            if reward > 0:
+                                self.reward_model_no_neg[(state, next_state)] = reward
             if self.env.env.env.desc[row][col] == b"H":
                 self.traps.append(state)
 
     def get_reward_function(self):
         return self.reward_model
-   
+    
+    def get_reward_function_no_neg(self):
+        return self.reward_model_no_neg
     def get_transition_function(self):
         # print(self.transition_model)
         return self.transition_model

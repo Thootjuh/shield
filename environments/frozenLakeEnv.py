@@ -101,9 +101,9 @@ class FrozenLakeEnv(Env):
     ### Rewards
 
     Reward schedule:
-    - Reach goal(G): +1
+    - Reach goal(G): +10
     - Reach hole(H): 0
-    - Reach frozen(F): 0
+    - Reach frozen(F): -25
 
     ### Arguments
 

@@ -123,7 +123,7 @@ class WetChicken:
                         prob_mass = 1 / (2 * turbulence) * self._get_overlap(
                             x_hat_interval, target_interval)
                         transition_function[(state, action_nb, x_hat * self.length + y_new)] += prob_mass
-                    # transition_function[(nb_states-1, action_nb, 0)] = 1.0
+                    transition_function[(nb_states-1, action_nb, 0)] = 1.0
         
         transition_function = {key: value for key, value in transition_function.items() if value != 0.0}
         return transition_function

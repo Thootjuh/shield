@@ -34,7 +34,7 @@ def read_data_from_directory(directory_path):
 
 def extract_data(data):
     # Extract relevant columns
-    relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time']]
+    relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'method_perf_no_neg','run_time']]
 
     # Group by method and calculate the average performance for each length_trajectory
     return relevant_data_new
@@ -51,6 +51,25 @@ def plot_data(data, filename):
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance')
+    plt.title('Average Performance vs. Length Trajectory by Method (New Dataset)')
+    plt.legend(title='Method')
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.show()
+    
+    
+def plot_data_no_neg(data, filename):
+    grouped_data = data.groupby(['method', 'length_trajectory'])
+    data = grouped_data.method_perf_no_neg.mean().reset_index()
+    # Plot average performance against length_trajectory for each method
+    plt.figure(figsize=(12, 8))
+    for method in data['method'].unique():
+        method_data = data[data['method'] == method]
+        plt.plot(method_data['length_trajectory'], method_data['method_perf_no_neg'], label=method)
+
+    # Set plot labels and legend
+    plt.xlabel('Length Trajectory')
+    plt.ylabel('Average Method Performance Without Negative Rewards')
     plt.title('Average Performance vs. Length Trajectory by Method (New Dataset)')
     plt.legend(title='Method')
     plt.grid(True)
@@ -185,6 +204,7 @@ else:
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
 plot_data(data, 'Results.png')
+plot_data_no_neg(data, 'Results_no_neg')
 plot_positive_data(data, 'Results_positive.png')
 plot_data_interval(data, 'Results_interval.png')
 plot_positive_data_interval(data, 'Results_positive_Interval.png')

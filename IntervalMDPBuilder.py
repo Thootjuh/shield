@@ -116,7 +116,8 @@ class IntervalMDPBuilderWetChicken(IntervalMDPBuilder):
                 
         # Build the waterfall
         builder.new_row_group(counter) 
-        builder.add_next_value(counter, 1, pycarl.Interval(1, 1))
+        # builder.add_next_value(counter, 1, pycarl.Interval(1, 1)) Turn this on for non-episodic
+        # Maybe make this loop to itself?
 
         transition_matrix = builder.build()
         state_labels = self.set_state_labels()
@@ -140,8 +141,10 @@ class IntervalMDPBuilderWetChicken(IntervalMDPBuilder):
         labels = {"waterfall", "init", "goal"}
         for label in labels:
             state_labeling.add_label(label)
-        edge_states = self.find_closest_states(range(self.num_states-1), 5)
-        for i in edge_states:
+        # edge_states = self.find_closest_states(range(self.num_states-1), 5)
+        # for i in edge_states:
+        #     state_labeling.add_label_to_state("goal", i)
+        for i in self.goal:
             state_labeling.add_label_to_state("goal", i)
         state_labeling.add_label_to_state("waterfall", self.num_states-1)
         

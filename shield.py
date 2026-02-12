@@ -233,7 +233,7 @@ class ShieldWetChicken(Shield):
         """
         self.width = width
         self.length = length
-        self.model_builder = IntervalMDPBuilderWetChicken(transition_matrix, intervals, [], [])
+        self.model_builder = IntervalMDPBuilderWetChicken(transition_matrix, intervals,goals, [])
         self.theta = theta
         super().__init__(transition_matrix, [], [], intervals, prop)
         
