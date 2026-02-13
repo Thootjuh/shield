@@ -20,7 +20,7 @@ class Garnets:
             
         self.current_state = self.initial_state
         self.final_state = nb_states - 1
-        self.punishment = -5
+        self.punishment = -5 #-5
         self._set_traps(nb_traps)
         
         _, _, q_star, _ = self._find_farther_state(self.gamma)
@@ -144,6 +144,7 @@ class Garnets:
             R[s, self.final_state] = 1
             for trap in self.traps:
                 R[s, trap] = self.punishment
+        R[self.final_state, self.final_state] = 0
         return R
 
     # Transition function matrix
