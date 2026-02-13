@@ -1434,8 +1434,6 @@ class RandomMDPsExperiment(Experiment):
         """
         path_config = configparser.ConfigParser()
         path_config.read(os.path.join(directory, 'paths.ini'))
-        spibb_path = path_config['PATHS']['spibb_path']
-        sys.path.append(spibb_path)
         import SPIBBmaster.garnets as garnets
         self.garnet = garnets.Garnets(self.nb_states, self.nb_actions, self.nb_next_state_transition,
                                 env_type=self.env_type, self_transitions=self.self_transitions, nb_traps=5, gamma=self.gamma)
