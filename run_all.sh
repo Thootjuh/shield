@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
-NUM_THREADS=10
-NUM_ITERATIONS=10
+NUM_ITERATIONS=1000 # Set to the desired number of independent runs of the algorithms.
+
+NUM_THREADS=10 # SET this to the desired level of parallelism, MAKE SURE IT'S REASONBLE!
+
 NUM_ITERATION_PER_THREAD=$((NUM_ITERATIONS/NUM_THREADS)) # make sure its divisible, otherwise it will be floored.
 
-SEED=15077084497497197234
+SEED=15077084497497197234 # Randomly generated seed.
 
 echo "INFO: Running experiments"
 echo "INFO: Running $NUM_ITERATION_PER_THREAD iterations in $NUM_THREADS threads for a total of $NUM_ITERATIONS"
