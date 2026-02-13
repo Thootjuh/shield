@@ -6,8 +6,8 @@ def direct_policy_evaluation(P,
                              R,
                              discount: float,
                              policy: np.ndarray,
-                             tol: float = 1e-8,
-                             max_iter: int = 10_000
+                             tol: float = 1e-3,
+                             max_iter: int = 10
                              ) -> np.ndarray:
     """
     Fully sparse iterative policy evaluation.
@@ -30,42 +30,35 @@ def direct_policy_evaluation(P,
     -------
     V : ndarray (S,)
     """
+    transitions_s = {}
 
-    nb_states, nb_actions = policy.shape
-
-    # Pre-index transitions by (s,a) to avoid scanning whole dict each iteration
-    transitions_sa = {}
     for (s, a, sp), prob in P.items():
-        transitions_sa.setdefault((s, a), []).append((sp, prob))
-
+        transitions_s.setdefault(s, []).append((a, sp, prob))
+    nb_states, nb_actions = policy.shape
     V = np.zeros(nb_states)
 
     for _ in range(max_iter):
         delta = 0.0
-        V_new = np.zeros_like(V)
 
-        for s in range(nb_states):
-            v_s = 0.0
+        # in-place update (faster convergence)
+        for s, transitions in transitions_s.items():
 
-            for a in range(nb_actions):
+            v_old = V[s]
+            v_new = 0.0
+
+            # only actions that exist in data
+            for a, sp, prob in transitions:
+
                 pi_sa = policy[s, a]
                 if pi_sa == 0.0:
                     continue
 
-                # reward contribution
                 r_sa = R.get((s, a), 0.0)
 
-                # expected next value
-                exp_next = 0.0
-                for sp, prob in transitions_sa.get((s, a), []):
-                    exp_next += prob * V[sp]
+                v_new += pi_sa * (r_sa + discount * prob * V[sp])
 
-                v_s += pi_sa * (r_sa + discount * exp_next)
-
-            V_new[s] = v_s
-            delta = max(delta, abs(v_s - V[s]))
-
-        V = V_new
+            V[s] = v_new
+            delta = max(delta, abs(v_new - v_old))
 
         if delta < tol:
             break
@@ -110,7 +103,7 @@ def successive_approximation(xinit: np.ndarray,
 def bounded_successive_approximation(xinit,
                                      operator=lambda x: x,
                                      termination_condition=lambda xprev, x: False,
-                                     max_limit=50):
+                                     max_limit=100):
     """
     Iterations are bounded bt the max_limit variable
 
@@ -122,17 +115,18 @@ def bounded_successive_approximation(xinit,
     """
     count = 0
     for iterate in generate_iterates(xinit, operator, termination_condition):
-        if count % 10 == 0:
-            print(count)
+        # if count % 10 == 0:
         count += 1
         if count >= max_limit:
+            print(f"die at coung {count}")
             break
         else:
-            pass
+            print(f"{count} is lower than {max_limit}")
+            
 
     return iterate
 
-def default_termination(xprev, x, epsilon=1e-8):
+def default_termination(xprev, x, epsilon=1e-3):
     """
     A standard termination condition
     :param xprev:

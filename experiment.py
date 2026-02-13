@@ -42,7 +42,7 @@ from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
 from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
-from batch_rl_algorithms.MO_SPIBB.mo_spibb import ConstSPIBBAgent
+from batch_rl_algorithms.MO_SPIBB.mo_spibb_sparse import ConstSPIBBAgent
 
 
 from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld, ShieldSimplifiedPacman, ShieldPrism, ShieldTaxi, ShieldFrozenLake
@@ -839,8 +839,9 @@ class SimplifiedPacmanExperiment(Experiment):
                     self.traps.append(state)
         
         print("create reward function")
-        self.R_state_state = self.env.get_reward_function()
+        self.R_state_state, self.R_state_state_no_neg = self.env.get_reward_function()
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
+        self.R_state_action_no_neg = self.compute_r_state_action(self.P, self.R_state_state_no_neg)
         
         self.C_state_state = self.env.get_cost_function()
         print(type(self.C_state_state))

@@ -8,7 +8,7 @@ ACTION_TRANSLATOR = [
 ]
 
 GOAL_REWARD = 10
-EATEN_REWARD = -10
+EATEN_REWARD = -1
 
 class pacmanSimplified:
     def __init__(self, lag_chance, opt_chance):
@@ -245,13 +245,26 @@ class pacmanSimplified:
     
     def get_reward_function(self):
         reward_dict = defaultdict(float)
-
+        reward_dict_no_neg = defaultdict(float)
         for (state, action, next_state) in self.transition_function.keys():
             reward = self.get_reward_from_int(next_state)
             if reward != 0:
                 reward_dict[(state, next_state)] = reward
+                if reward > 0:
+                    reward_dict_no_neg[(state, next_state)] = reward
 
-        return reward_dict
+        return reward_dict, reward_dict_no_neg
+    
+    def get_cost_function(self):
+        cost_dict = defaultdict(float)
+        for (state, action, next_state) in self.transition_function.keys():
+            reward = self.get_reward_from_int(next_state)
+            if reward < 0:
+                cost_dict[(state, next_state)] = 10
+
+        return cost_dict
+    
+    
     
     def in_wall(self, x,y,gx1,gy1,gx2,gy2):
         if (x,y) in self.walls:
