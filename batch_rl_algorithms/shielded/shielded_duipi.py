@@ -48,16 +48,14 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
                          speed_up_dict, estimate_baseline)
         self.variance_q = np.zeros([self.nb_states, self.nb_actions])
         # self.pi = 1 / self.nb_actions * np.ones([self.nb_states, self.nb_actions])
+        # print("pi_b = ", self.pi_b)
+        # print("pi_b = ", self.pi)
         self.states = set()
         for (state, action, next_state) in self.transition_model.keys():
             self.states.add(state)
             self.states.add(next_state)
         self.shield_actions()
         self.mask = self.mask & self.allowed
-        if isinstance(R, dict):
-            self.r_min = min(R.values())
-        else:
-            self.r_min = np.min(R)
 
     def _initial_calculations(self):
         """
@@ -175,8 +173,8 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
         """
         q_uncertainty_and_mask_corrected = self.q - self.xi * np.sqrt(self.variance_q)
         # The extra modification to avoid unobserved state-action pairs
-        q_uncertainty_and_mask_corrected[~self.mask] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
-        # q_uncertainty_and_mask_corrected[~self.mask] = -np.inf
+        q_uncertainty_and_mask_corrected[~self.mask] = - np.inf
+
         best_action = np.argmax(q_uncertainty_and_mask_corrected, axis=1)
         for state in self.states:
             if len(self.q[state, self.mask[state]]) > 0:

@@ -80,7 +80,6 @@ class SPIBB(SPIBB_abstract):
         self.pi = pi
 
 
-
 class Lower_SPIBB(SPIBB_abstract):
     # Code and algorithm from 'Safe Policy Improvement with Baseline Bootstrapping' by Romain Laroche, Paul Trichelair
     # and Remi Tachet des Combeswhich implements Pi_<=b-SPIBB.
