@@ -47,7 +47,7 @@ class PACIntervalEstimator:
                     triplet = [state, action, next_state]
                     interval = self.get_transition_interval(triplet)
                     state_action_state_pairs[(state, action, next_state)] = interval
-        return state_action_state_pairs                    
+        return state_action_state_pairs
     
     def count(self):
         """

@@ -1,5 +1,8 @@
 import stormpy
-import pycarl
+try:
+    import stormpy.pycarl as pycarl
+except:
+    import pycarl
 
 class IntervalMDPBuilder:
     def __init__(self, transitions, intervals, goal, traps):
