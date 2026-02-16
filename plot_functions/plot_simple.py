@@ -51,7 +51,7 @@ def plot_data(data, filename):
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance')
-    plt.title('Average Performance vs. Length Trajectory by Method (New Dataset)')
+    plt.title('Average Performance vs. Length Trajectory by Method')
     plt.legend(title='Method')
     plt.grid(True)
     plt.savefig(filename)
@@ -70,7 +70,7 @@ def plot_data_no_neg(data, filename):
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')
     plt.ylabel('Average Method Performance Without Negative Rewards')
-    plt.title('Average Performance vs. Length Trajectory by Method (New Dataset)')
+    plt.title('Average Performance vs. Length Trajectory by Method, evaluated without negative rewards')
     plt.legend(title='Method')
     plt.grid(True)
     plt.savefig(filename)
