@@ -6,8 +6,8 @@ def direct_policy_evaluation(P,
                              R,
                              discount: float,
                              policy: np.ndarray,
-                             tol: float = 1e-3,
-                             max_iter: int = 10
+                             tol: float = 1e-4,
+                             max_iter: int = 25
                              ) -> np.ndarray:
     """
     Fully sparse iterative policy evaluation.
@@ -126,7 +126,7 @@ def bounded_successive_approximation(xinit,
 
     return iterate
 
-def default_termination(xprev, x, epsilon=1e-3):
+def default_termination(xprev, x, epsilon=1e-4):
     """
     A standard termination condition
     :param xprev:

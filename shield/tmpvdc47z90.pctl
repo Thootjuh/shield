@@ -1,0 +1,1 @@
+filter(printall, Pmax=? [!"trap" U "goal"], true)

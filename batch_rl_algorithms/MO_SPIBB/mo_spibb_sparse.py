@@ -30,7 +30,7 @@ class ConstSPIBBAgent():
                  nb_states,
                  nb_actions,
                  epsilon,
-                 max_nb_it=25,
+                 max_nb_it=100,
                  **kwargs):
 
         print("start")
@@ -41,9 +41,9 @@ class ConstSPIBBAgent():
         self.nb_actions = nb_actions
         self.epsilon = epsilon
         self.max_nb_it = max_nb_it
-
-        self.R_state_state = R_state_state
-        self.C_state_state = C_state_state
+        
+        self.R_state_state = self._to_sparse_dict(R_state_state)
+        self.C_state_state = self._to_sparse_dict(C_state_state)
 
 
         self.pi_b = pi_b
@@ -68,10 +68,26 @@ class ConstSPIBBAgent():
         print("operator")
         self.operator = self.make_policy_iteration_operator()
 
-    # ====================================================================== #
-    # Counting
-    # ====================================================================== #
 
+    def _to_sparse_dict(self, arr_or_dict):
+        """
+        If input is a 2D numpy array of shape (state, next_state),
+        convert it to a sparse dictionary {(s, s'): value} for non-zero values.
+        If it's already a dictionary, return as-is.
+        """
+        if isinstance(arr_or_dict, dict):
+            return arr_or_dict
+
+        if isinstance(arr_or_dict, np.ndarray):
+            sparse_dict = {}
+            states, next_states = arr_or_dict.shape
+            for s in range(states):
+                for ns in range(next_states):
+                    value = arr_or_dict[s, ns]
+                    if value != 0:
+                        sparse_dict[(s, ns)] = value
+            return sparse_dict
+    
     def _count(self):
         if self.episodic:
             batch = [x for traj in self.data for x in traj]
@@ -85,9 +101,6 @@ class ConstSPIBBAgent():
             self.count_state_action[(s, a)] += 1
             self.count_state_action_state[(s, a, sp)] += 1
 
-    # ====================================================================== #
-    # Sparse models
-    # ====================================================================== #
 
     def estimate_model(self):
         P = {}
@@ -117,11 +130,7 @@ class ConstSPIBBAgent():
         for (s, a, sp), p in self.transition_model.items():
             Csa[(s, a)] += p * self.C_state_state.get((s, sp), 0.0)
         return Csa
-
-    # ====================================================================== #
-    # Helpers
-    # ====================================================================== #
-
+    
     def _Q_from_V(self, V, Rsa):
         Q = np.zeros((self.nb_states, self.nb_actions))
         for (s, a), r in Rsa.items():
@@ -132,10 +141,6 @@ class ConstSPIBBAgent():
 
     def _get_error(self, s, a):
         return self.error_function.get((s, a), np.inf)
-
-    # ====================================================================== #
-    # SPIBB Operator
-    # ====================================================================== #
 
     def make_policy_iteration_operator(self):
 

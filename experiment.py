@@ -2015,7 +2015,7 @@ class GymFrozenLakeExperiment(Experiment):
         print(C.shape)
         print(self.traps)
         for trp in self.traps:
-            C[:, trp] = 10.0
+            C[:, trp] = 50.0
             
         self.C_state_state = C
         print("calcing r_sa")
