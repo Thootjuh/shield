@@ -42,12 +42,12 @@ from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
 from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
-from batch_rl_algorithms.MO_SPIBB.mo_spibb_sparse import ConstSPIBBAgent
+from batch_rl_algorithms.MO_SPIBB.mo_spibb import ConstSPIBBAgent
 
 
 from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld, ShieldSimplifiedPacman, ShieldPrism, ShieldTaxi, ShieldFrozenLake
 from PACIntervalEstimator import PACIntervalEstimator
-
+from PointEstimator import PointEstimator
 from evaluate import evaluator
 
 directory = os.path.dirname(os.path.expanduser(__file__))
@@ -228,7 +228,7 @@ class Experiment:
                 print("KEY NOT FOUND")
             
 
-    def _run_shielded_baseline(self):
+    def _run_shielded_baseline(self, suffix=""):
         pi_b_s = shieldedBaseline(pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
                                             episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
@@ -238,7 +238,7 @@ class Experiment:
         basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
         basic_rl_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_b_s.pi)
         basic_rl_succ_rate, basic_rl_avoid_rate = self.policy_evaluation_success_rate(pi_b_s.pi)
-        method = pi_b_s.NAME
+        method = pi_b_s.NAME + suffix
         method_perf = basic_rl_perf
         method_succ_rate = basic_rl_succ_rate
         method_avoid_rate = basic_rl_avoid_rate
@@ -357,7 +357,7 @@ class Experiment:
                                               duipi.variance_v[self.initial_state])])
                 else:
                     self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, run_time])
-    def _run_spibb_shielded(self, key):
+    def _run_spibb_shielded(self, key, suffix=""):
         """
         Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
         :param key: shield_SPIBB.NAME or shield_Lower_SPIBB.NAME, depending on which algorithm is supposed to be run
@@ -373,7 +373,7 @@ class Experiment:
             spibb_perf = self._policy_evaluation_exact(spibb.pi)
             spibb_no_neg = self._policy_evaluation_exact_no_neg(spibb.pi)
             spibb_succ_rate, spibb_avoid_rate = self.policy_evaluation_success_rate(spibb.pi)
-            method = spibb.NAME
+            method = spibb.NAME+suffix
             method_perf = spibb_perf
             method_succ_rate = spibb_succ_rate
             method_avoid_rate = spibb_avoid_rate
@@ -1332,8 +1332,16 @@ class WetChickenExperiment(Experiment):
                         self.intervals = self.estimator.get_intervals()
                         self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, theta)
                         self.shielder.calculateShield()
+                        self.shielder.printShield()
                         self._run_algorithms()
-                
+                        
+                        self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                        self.intervals = self.estimator.get_intervals()
+                        self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, theta)
+                        self.shielder.calculateShield()
+                        self.shielder.printShield()
+                        self._run_shielded_baseline("_point")
+                        self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
 
     def generate_batch(self, nb_steps, env, pi):
         """
@@ -1456,8 +1464,6 @@ class RandomMDPsExperiment(Experiment):
         """
         path_config = configparser.ConfigParser()
         path_config.read(os.path.join(directory, 'paths.ini'))
-        spibb_path = path_config['PATHS']['spibb_path']
-        sys.path.append(spibb_path)
         import SPIBBmaster.garnets as garnets
         self.garnet = garnets.Garnets(self.nb_states, self.nb_actions, self.nb_next_state_transition,
                                 env_type=self.env_type, self_transitions=self.self_transitions, nb_traps=50, gamma=self.gamma)
@@ -1527,6 +1533,19 @@ class RandomMDPsExperiment(Experiment):
                     self.shielder.calculateShield()
                     print("run algorithms")
                     self._run_algorithms()
+                    
+                    
+                    print("estimate intervals")
+                    self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                    self.estimator.calculate_intervals()
+                    self.intervals = self.estimator.get_intervals()
+                    
+                    print("calculate shield")
+                    self.shielder = ShieldRandomMDP(self.structure, self.traps, self.goal, self.intervals, self.prop)
+                    self.shielder.calculateShield()
+                    print("run algorithms")
+                    self._run_shielded_baseline("_point")
+                    self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
 
 
     def _set_traps(self, n, reward):
@@ -2102,6 +2121,21 @@ class GymFrozenLakeExperiment(Experiment):
                 # print("----------------------------------------------------------------")
                 print("Running Algorithms")
                 self._run_algorithms()
+                
+                
+                print("Estimating Intervals")            
+                self.structure = self.reduce_transition_matrix(self.P)   
+                self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()
+                # # print(intervals)
+                print("Calculating Shield")  
+                self.shielder = ShieldFrozenLake(self.structure, self.traps, self.goal, self.intervals, self.prop)
+                self.shielder.calculateS
+                
+                print("Running Algorithms")
+                self._run_shielded_baseline("_point")
+                self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
                 
 
     def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
