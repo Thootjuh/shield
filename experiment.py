@@ -42,7 +42,7 @@ from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
 from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
-from batch_rl_algorithms.MO_SPIBB.mo_spibb_sparse import ConstSPIBBAgent
+from batch_rl_algorithms.MO_SPIBB.mo_spibb import ConstSPIBBAgent
 
 
 from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld, ShieldSimplifiedPacman, ShieldPrism, ShieldTaxi, ShieldFrozenLake
@@ -2015,7 +2015,7 @@ class GymFrozenLakeExperiment(Experiment):
         print(C.shape)
         print(self.traps)
         for trp in self.traps:
-            C[:, trp] = 10.0
+            C[:, trp] = 50.0
             
         self.C_state_state = C
         print("calcing r_sa")

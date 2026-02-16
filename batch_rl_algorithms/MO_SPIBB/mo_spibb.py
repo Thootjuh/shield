@@ -73,7 +73,7 @@ class ConstSPIBBAgent():
 
         # Prepare coefficients list
         lambda_R_vals = [1.0]  # >=0
-        lambda_C_vals = [1.0]  # >=0
+        lambda_C_vals = [5.0]  # >=0
         self.lambda_coeffs = [(lr, lc) for lc in lambda_C_vals for lr in lambda_R_vals][0]
         
         self.operator = self.make_policy_iteration_operator()
