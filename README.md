@@ -1,6 +1,24 @@
 This repository was adapted from https://github.com/Philipp238/Safe-Policy-Improvement-Approaches-on-Discrete-Markov-Decision-Processes/tree/master, which contains the code accompanying the paper "Safe Policy Improvement Approaches and Their Limitations" by Philipp Scholl, Felix Dietrich, Clemens Otte, and Steffen Udluft.
 
 ## Requirements
+
+Before running the experiments, you have to create a file named `paths.ini`  which contains the following:
+````
+[PATHS]
+results_path = path/to/results
+````
+Where results_path should be the absolute path pointing to the location where the results should be stored.
+
+### Simple install
+
+You can collect all requirements to run the experiments with a single `pip` call:
+```bash
+pip install numpy==1.26.4 pandas matplotlib stormpy stormvogel cvxpy
+```
+
+Below, we provide more details.
+
+### Manual install
 The code is implemented in Python version 3.10 and requires the packages specified in ``requirements.txt``. Additionally [Storm](https://www.stormchecker.org/documentation/obtain-storm/build.html) and [Stormpy](https://github.com/moves-rwth/stormpy) are required. 
 The experiments where performed using Storm and Stormpy version 1.9.0, which also requires you to manually install [Pycarl](https://moves-rwth.github.io/pycarl/index.html).
 Some of the included bechmarks also require stormvogel, which can be found at https://stormchecker.github.io/stormvogel/1-landing.html.
@@ -9,13 +27,6 @@ We did not run our experiments with this set-up but we were able to run the code
 `pip install stormpy stormvogel`.
 
 In that case, `pycarl` is not necessary.
-
-Before running the experiments, you have to create a file named `paths.ini`  which contains the following:
-````
-[PATHS]
-results_path = path/to/results
-````
-Where results_path should be the absolute path pointing to the location where the results should be stored.
 
 ## Structure
 To run the experiment on the randomMDPs benchmark, one can use 
