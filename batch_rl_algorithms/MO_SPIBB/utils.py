@@ -81,7 +81,7 @@ def bounded_successive_approximation(xinit,
 
     return iterate
 
-def default_termination(xprev, x, epsilon=1e-8):
+def default_termination(xprev, x, epsilon=1e-5):
     """
     A standard termination condition
     :param xprev:

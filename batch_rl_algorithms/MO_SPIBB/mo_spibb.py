@@ -29,7 +29,7 @@ class ConstSPIBBAgent():
                  nb_states,
                  nb_actions,
                  epsilon,
-                 max_nb_it=100,
+                 max_nb_it=50,
                  **kwargs):
         """
 
@@ -178,7 +178,7 @@ class ConstSPIBBAgent():
         # for each (s,a)
         for s in range(self.nb_states):
             for a in range(self.nb_actions):
-                if count_sa[s, a] < 7.0:
+                if count_sa[s, a] == 0:
                     eQ[s, a] = np.inf
                 else:
                     eQ[s, a] = np.sqrt(2 * np.log(2 * ((self.nb_states * self.nb_actions) / delta)) / count_sa[s, a])

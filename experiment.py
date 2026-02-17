@@ -2131,7 +2131,7 @@ class GymFrozenLakeExperiment(Experiment):
                 # # print(intervals)
                 print("Calculating Shield")  
                 self.shielder = ShieldFrozenLake(self.structure, self.traps, self.goal, self.intervals, self.prop)
-                self.shielder.calculateS
+                self.shielder.calculateShield()
                 
                 print("Running Algorithms")
                 self._run_shielded_baseline("_point")
