@@ -66,8 +66,7 @@ def run_experiment(seed):
 def start_process():
     print('Starting', multiprocessing.current_process().name)
 
-
-if __name__ == '__main__':
+def main():
     pool_size = int(sys.argv[4])
     seed = int(sys.argv[3])
     ss = np.random.SeedSequence(seed)
@@ -88,4 +87,7 @@ if __name__ == '__main__':
             run_experiment(seed)
     else:
         raise ValueError(f"Invalid pool_size ({pool_size}) supplied! Should be an integer >= 1.")
+
+if __name__ == '__main__':
+    main()
     
