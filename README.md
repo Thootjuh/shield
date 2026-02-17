@@ -13,7 +13,7 @@ Where results_path should be the absolute path pointing to the location where th
 
 You can collect all requirements to run the experiments with a single `pip` call:
 ```bash
-pip install numpy==1.26.4 pandas matplotlib stormpy stormvogel cvxpy
+pip install numpy==1.26.4 pandas matplotlib stormpy cvxpy
 ```
 
 Below, we provide more details.
