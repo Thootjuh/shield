@@ -98,7 +98,6 @@ def bounded_successive_approximation(xinit,
     """
     count = 0
     for iterate in generate_iterates(xinit, operator, termination_condition):
-        print(count)
         count += 1
         if count >= max_limit:
             break

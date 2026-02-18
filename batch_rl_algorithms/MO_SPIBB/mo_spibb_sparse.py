@@ -164,7 +164,6 @@ class ConstSPIBBAgent():
             np.all(err_matrix[s] == np.inf) for s in range(self.nb_states)
         ])
 
-        print("operator")
         def operator(policy):
             vR = direct_policy_evaluation(self.transition_model,
                                         self.R_state_action,
