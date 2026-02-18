@@ -135,81 +135,96 @@ class ConstSPIBBAgent():
         return self.error_function.get((s, a), np.inf)
 
     def make_policy_iteration_operator(self):
-            vR_b = direct_policy_evaluation(self.transition_model,
-                                            self.R_state_action,
-                                            self.gamma,
-                                            self.pi_b)
-            QR_b = self._Q_from_V(vR_b, self.R_state_action)
-            AR_b = QR_b - vR_b[:, None]
+        # ---------- Precompute baseline values ----------
+        vR_b = direct_policy_evaluation(self.transition_model,
+                                        self.R_state_action,
+                                        self.gamma,
+                                        self.pi_b)
+        QR_b = self._Q_from_V(vR_b, self.R_state_action)
+        AR_b = QR_b - vR_b[:, None]
 
-            vC_b = direct_policy_evaluation(self.transition_model,
-                                            self.C_state_action,
-                                            self.gamma,
-                                            self.pi_b)
-            QC_b = self._Q_from_V(vC_b, self.C_state_action)
-            AC_b = QC_b - vC_b[:, None]
-            def operator(policy):
-                vR = direct_policy_evaluation(self.transition_model,
-                                            self.R_state_action,
-                                            self.gamma,
-                                            policy)
-                QR = self._Q_from_V(vR, self.R_state_action)
+        vC_b = direct_policy_evaluation(self.transition_model,
+                                        self.C_state_action,
+                                        self.gamma,
+                                        self.pi_b)
+        QC_b = self._Q_from_V(vC_b, self.C_state_action)
+        AC_b = QC_b - vC_b[:, None]
 
-                vC = direct_policy_evaluation(self.transition_model,
-                                            self.C_state_action,
-                                            self.gamma,
-                                            policy)
-                QC = self._Q_from_V(vC, self.C_state_action)
+        active_states = np.array(sorted(
+            set(s for (s, _) in self.R_state_action.keys()) |
+            set(s for (s, _) in self.C_state_action.keys()) |
+            set(s for (s, _) in self.count_state_action.keys())
+        ))
 
-                QL = self.lambda_coeffs[0] * QR - self.lambda_coeffs[1] * QC
+        err_matrix = np.full((self.nb_states, self.nb_actions), np.inf)
+        for (s, a), v in self.error_function.items():
+            err_matrix[s, a] = v
 
-                active_states = set(
-                    s for (s, _) in self.R_state_action.keys()
-                ) | set(
-                    s for (s, _) in self.C_state_action.keys()
-                ) | set(
-                    s for (s, _) in self.count_state_action.keys()
-                )
-                new_pi = policy.copy()
-                for s in active_states:
-                    pi = cp.Variable(self.nb_actions)
+        frozen_states = np.array([
+            np.all(err_matrix[s] == np.inf) for s in range(self.nb_states)
+        ])
 
-                    constraints = [
-                        pi >= 0,
-                        cp.sum(pi) == 1
-                    ]
+        print("operator")
+        def operator(policy):
+            vR = direct_policy_evaluation(self.transition_model,
+                                        self.R_state_action,
+                                        self.gamma,
+                                        policy)
+            QR = self._Q_from_V(vR, self.R_state_action)
 
-                    if self.epsilon < np.inf:
-                        err = np.array([
-                            self._get_error(s, a) if self._get_error(s, a) < np.inf else 0
-                            for a in range(self.nb_actions)
-                        ])
-                        constraints.append(
-                            cp.sum(cp.multiply(cp.abs(pi - self.pi_b[s]), err)) <= self.epsilon
-                        )
+            vC = direct_policy_evaluation(self.transition_model,
+                                        self.C_state_action,
+                                        self.gamma,
+                                        policy)
+            QC = self._Q_from_V(vC, self.C_state_action)
 
-                    constraints += [
-                        pi @ AR_b[s] >= 0,
-                        pi @ AC_b[s] <= 0
-                    ]
+            QL = self.lambda_coeffs[0] * QR - self.lambda_coeffs[1] * QC
 
-                    for a in range(self.nb_actions):
-                        if self._get_error(s, a) == np.inf:
-                            constraints.append(pi[a] == self.pi_b[s, a])
+            new_pi = policy.copy()
 
-                    prob = cp.Problem(cp.Maximize(pi @ QL[s]), constraints)
-                    # prob.solve(solver=cp.ECOS, warm_start=True)
-                    prob.solve()
-                    if pi.value is not None:
-                        new_pi[s] = pi.value
+            for s in active_states:
 
-                return new_pi
+                if frozen_states[s]:
+                    new_pi[s] = self.pi_b[s]
+                    continue
 
-            return operator
+                baseline_val = np.dot(self.pi_b[s], QL[s])
+                if np.max(QL[s]) <= baseline_val + 1e-12:
+                    new_pi[s] = self.pi_b[s]
+                    continue
 
-    # ====================================================================== #
-    # Training
-    # ====================================================================== #
+                pi = cp.Variable(self.nb_actions)
+
+                constraints = [
+                    pi >= 0,
+                    cp.sum(pi) == 1
+                ]
+
+                if self.epsilon < np.inf:
+                    err = np.where(err_matrix[s] < np.inf, err_matrix[s], 0.0)
+                    constraints.append(
+                        cp.sum(cp.multiply(cp.abs(pi - self.pi_b[s]), err)) <= self.epsilon
+                    )
+
+                constraints += [
+                    pi @ AR_b[s] >= 0,
+                    pi @ AC_b[s] <= 0
+                ]
+
+                for a in range(self.nb_actions):
+                    if err_matrix[s, a] == np.inf:
+                        constraints.append(pi[a] == self.pi_b[s, a])
+
+                prob = cp.Problem(cp.Maximize(pi @ QL[s]), constraints)
+
+                prob.solve(solver=cp.ECOS, warm_start=True)
+
+                if pi.value is not None:
+                    new_pi[s] = pi.value
+
+            return new_pi
+
+        return operator
 
     def fit(self):
         self.pi = bounded_successive_approximation(
