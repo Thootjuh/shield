@@ -2,67 +2,50 @@ import numpy as np
 import cvxpy as cp
 from typing import Callable, Generator, Tuple
 
-def direct_policy_evaluation(P,
-                             R,
-                             discount: float,
-                             policy: np.ndarray,
-                             tol: float = 1e-4,
-                             max_iter: int = 25
-                             ) -> np.ndarray:
-    """
-    Fully sparse iterative policy evaluation.
+def direct_policy_evaluation(
+    P: dict,
+    R: dict,
+    discount: float,
+    policy: np.ndarray,
+    tol: float = 1e-4,
+    max_iter: int = 10_000
+) -> np.ndarray:
 
-    Computes V^π using Bellman updates:
 
-        V_{k+1}(s) =
-            Σ_a π(s,a) [ R(s,a) + γ Σ_{s'} P(s'|s,a) V_k(s') ]
-
-    Inputs
-    ------
-    P : dict[(s,a,s')] -> prob
-    R : dict[(s,a)] -> expected reward
-    policy : ndarray (S,A)
-    discount : float
-    tol : convergence threshold
-    max_iter : safety iteration cap
-
-    Returns
-    -------
-    V : ndarray (S,)
-    """
-    transitions_s = {}
-
-    for (s, a, sp), prob in P.items():
-        transitions_s.setdefault(s, []).append((a, sp, prob))
     nb_states, nb_actions = policy.shape
+
+    transitions_sa = {}
+    for (s, a, sp), prob in P.items():
+        transitions_sa.setdefault(s, {}).setdefault(a, []).append((sp, prob))
+
     V = np.zeros(nb_states)
 
     for _ in range(max_iter):
         delta = 0.0
 
-        # in-place update (faster convergence)
-        for s, transitions in transitions_s.items():
-
+        for s in range(nb_states):
             v_old = V[s]
             v_new = 0.0
 
-            # only actions that exist in data
-            for a, sp, prob in transitions:
-
+            for a in range(nb_actions):
                 pi_sa = policy[s, a]
                 if pi_sa == 0.0:
                     continue
-
                 r_sa = R.get((s, a), 0.0)
+                exp_next = 0.0
+                for sp, prob in transitions_sa.get(s, {}).get(a, []):
+                    exp_next += prob * V[sp]
 
-                v_new += pi_sa * (r_sa + discount * prob * V[sp])
+                v_new += pi_sa * (r_sa + discount * exp_next)
 
             V[s] = v_new
             delta = max(delta, abs(v_new - v_old))
 
         if delta < tol:
             break
+
     return V
+
 
 
 def generate_iterates(xinit: np.ndarray,
@@ -115,6 +98,7 @@ def bounded_successive_approximation(xinit,
     """
     count = 0
     for iterate in generate_iterates(xinit, operator, termination_condition):
+        print(count)
         count += 1
         if count >= max_limit:
             break

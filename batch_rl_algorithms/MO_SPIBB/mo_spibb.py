@@ -261,7 +261,7 @@ class ConstSPIBBAgent():
 
             # add state based constraints
             for s in range(self.nb_states):
-
+                
                 # OPT
                 pi = cp.Variable(shape=(1, self.nb_actions))  # prob for each action in each state
                 obj = cp.Maximize(cp.sum(cp.multiply(pi, QL[[s]])))  # <Q_L(s,.), \pi(.|s)>
