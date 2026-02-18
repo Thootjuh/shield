@@ -781,7 +781,10 @@ class Experiment:
         evals.construct_DTMC()
         RA_prob = evals.find_reach_avoid_prob()
         A_prob = evals.find_avoid_prob()
-        return RA_prob, A_prob # 1-A_prob for wet chicken
+        if self.env_name == "wet_chicken":
+            return RA_prob, 1-A_prob # 1-A_prob for wet chicken as the avoid prop is different
+        return RA_prob, A_prob 
+        
     
     def compute_r_state_action(self, P, R):
         if isinstance(P, dict):
@@ -944,6 +947,22 @@ class SimplifiedPacmanExperiment(Experiment):
                 self.shielder.calculateShield()
                 print("Running Algorithms")
                 self._run_algorithms()
+                
+                
+                print("Estimating Intervals")  
+                self.structure = self.reduce_transition_matrix(self.P)   
+                self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()
+                print("Calculating Shield")  
+                self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height, self.prop)
+                self.shielder.calculateShield()
+                print("Running Algorithms")
+                self._run_algorithms()
+                
+                print("Running Algorithms")
+                self._run_shielded_baseline("_point")
+                self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
 
                 
     def reduce_transition_matrix(self, transition_matrix):

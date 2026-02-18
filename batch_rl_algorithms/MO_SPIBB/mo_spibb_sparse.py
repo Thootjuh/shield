@@ -103,7 +103,7 @@ class ConstSPIBBAgent():
     def compute_error_function(self, delta=1.0):
         eQ = {}
         for (s, a), c in self.count_state_action.items():
-            if c == 0:
+            if c <= 7:
                 eQ[(s, a)] = np.inf
             else:
                 eQ[(s, a)] = np.sqrt(
@@ -198,8 +198,8 @@ class ConstSPIBBAgent():
                             constraints.append(pi[a] == self.pi_b[s, a])
 
                     prob = cp.Problem(cp.Maximize(pi @ QL[s]), constraints)
-                    prob.solve(solver=cp.ECOS, warm_start=True)
-
+                    # prob.solve(solver=cp.ECOS, warm_start=True)
+                    prob.solve()
                     if pi.value is not None:
                         new_pi[s] = pi.value
 

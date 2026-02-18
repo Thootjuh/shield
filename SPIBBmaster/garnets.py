@@ -229,7 +229,12 @@ class Garnets:
         mask_0, thres = spibb.compute_mask(self.nb_states, self.nb_actions, 1, 1, [])
         mask_0 = ~mask_0
         rand_pi = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
-        for final_state in range(1, self.nb_states):
+        
+        # pick from N random states, where N = 1/10th of the total state space
+        N_candidate_states = int(self.nb_states/10)
+        valid_states = np.setdiff1d(np.arange(self.nb_states), self.traps)
+        random_states = np.random.choice(valid_states, size=N_candidate_states, replace=False)
+        for final_state in random_states:
             if final_state not in self.traps:
                 p, r = self._set_temporary_final_state(final_state)
                 r_reshaped = spibb_utils.get_reward_model(p, r)
