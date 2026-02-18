@@ -42,7 +42,7 @@ from batch_rl_algorithms.shielded.shielded_duipi import shield_DUIPI
 from batch_rl_algorithms.shielded.shielded_raMDP import Shield_RaMDP
 from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
-from batch_rl_algorithms.MO_SPIBB.mo_spibb import ConstSPIBBAgent
+from batch_rl_algorithms.MO_SPIBB.mo_spibb_sparse import ConstSPIBBAgent
 
 
 from shield import ShieldRandomMDP, ShieldWetChicken, ShieldAirplane, ShieldSlipperyGridworld, ShieldSimplifiedPacman, ShieldPrism, ShieldTaxi, ShieldFrozenLake
@@ -163,7 +163,7 @@ class Experiment:
         """
         if 'var_q' in self.speed_up_dict.keys():
             preparer = ApproxSoftSPIBB(pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                       nb_actions=self.nb_actions, data=self.data, R=self.R_state_state, epsilon=0,
+                                       nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train, epsilon=0,
                                        error_kind='mpeb', episodic=self.episodic, delta=1, max_nb_it=0,
                                        g_max=self.g_max,
                                        ensure_independence=self.theoretical_safety)
@@ -171,13 +171,13 @@ class Experiment:
             self.speed_up_dict['q_pi_b_est'] = preparer.q_pi_b_est
         elif 'q_pi_b_est' in self.speed_up_dict.keys():
             preparer = AdvApproxSoftSPIBB(pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                          nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                          nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                           epsilon=0, error_kind='hoeffding', episodic=self.episodic, delta=1,
                                           max_nb_it=0, ensure_independence=self.theoretical_safety)
             self.speed_up_dict['q_pi_b_est'] = preparer.q_pi_b_est
         else:
             preparer = Basic_rl(pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
-                                data=self.data, R=self.R_state_state, episodic=self.episodic)
+                                data=self.data, R=self.R_state_state_train, episodic=self.episodic)
         if self.theoretical_safety:
             self.speed_up_dict['augmented_count_state_action'] = preparer.augmented_count_state_action
         self.speed_up_dict['count_state_action'] = preparer.count_state_action
@@ -230,7 +230,7 @@ class Experiment:
 
     def _run_shielded_baseline(self, suffix=""):
         pi_b_s = shieldedBaseline(pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                             episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
         t_0 = time.time()
         pi_b_s.fit()
@@ -251,7 +251,7 @@ class Experiment:
         Runs rmdp for one data set.
         """
         rmdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                             episodic=self.episodic, shield=self.shielder, intervals=self.intervals, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
         t_0 = time.time()
         rmdp.fit()
@@ -268,7 +268,7 @@ class Experiment:
         Runs rmdp for one data set.
         """
         rmdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                             episodic=self.episodic, intervals=self.intervals, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
         t_0 = time.time()
         rmdp.fit()
@@ -293,7 +293,7 @@ class Experiment:
                 xis = self.algorithms_dict[key][bayesian_notifier]
             for i, xi in enumerate(xis):
                 duipi = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                                 nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                                 nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                                  xi=xi, episodic=self.episodic, bayesian=bayesian,
                                                  speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
                 t_0 = time.time()
@@ -332,7 +332,7 @@ class Experiment:
                 xis = self.algorithms_dict[key][bayesian_notifier]
             for i, xi in enumerate(xis):
                 duipi = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                                 nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                                 nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                                  xi=xi, episodic=self.episodic, shield=self.shielder, bayesian=bayesian,
                                                  speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
                 t_0 = time.time()
@@ -364,7 +364,7 @@ class Experiment:
         """
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
                                              speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
@@ -390,7 +390,7 @@ class Experiment:
         # 1. Modified data
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
                                              speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, shield_data=True, shield_action=False)
             t_0 = time.time()
@@ -408,7 +408,7 @@ class Experiment:
         # shield Actions")
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
                                              speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
                                              shield_baseline = False, shield_data=False, shield_action=True)
@@ -426,7 +426,7 @@ class Experiment:
         # 3. Shield on Actions + Modified Data
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
                                              speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
                                              shield_baseline = False, shield_data=True, shield_action=True)
@@ -444,7 +444,7 @@ class Experiment:
         # 4. Shield on Baseline
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
                                              speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
                                              shield_baseline = True, shield_data=False, shield_action=False)
@@ -462,7 +462,7 @@ class Experiment:
         # 5. Shield on Baseline + Modified Data
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
                                              speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
                                              shield_baseline = True, shield_data=True, shield_action=False)
@@ -480,7 +480,7 @@ class Experiment:
         # 6. Shield on Baseline + Shield on sactions
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
                                              speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
                                              shield_baseline = True, shield_data=False, shield_action=True)
@@ -498,7 +498,7 @@ class Experiment:
         # 7. Shield on Baseline + Shield on actions + Modified Data
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, 
                                              speed_up_dict=self.speed_up_dict,estimate_baseline=self.estimate_baseline, 
                                              shield_baseline = True, shield_data=True, shield_action=True)
@@ -544,7 +544,7 @@ class Experiment:
         """
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
             spibb.fit()
@@ -586,7 +586,7 @@ class Experiment:
                         soft_spibb = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma,
                                                               nb_states=self.nb_states,
                                                               nb_actions=self.nb_actions, data=self.data,
-                                                              R=self.R_state_state,
+                                                              R=self.R_state_state_train,
                                                               epsilon=epsilon, error_kind=error_kind,
                                                               episodic=self.episodic,
                                                               delta=delta, max_nb_it=max_nb_it,
@@ -614,7 +614,7 @@ class Experiment:
         :param key: BasicRL.NAME
         """
         basic_rl = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                             episodic=self.episodic, speed_up_dict=self.speed_up_dict, estimate_baseline=self.estimate_baseline)
         t_0 = time.time()
         basic_rl.fit()
@@ -633,7 +633,7 @@ class Experiment:
         """
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             r_min = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
                                              estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
@@ -653,7 +653,7 @@ class Experiment:
         """
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
             r_min = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              N_wedge=N_wedge, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict,
                                              estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
@@ -677,7 +677,7 @@ class Experiment:
             deltas = self.algorithms_dict[key]['deltas']
         for delta in deltas:
             mbie = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                             delta=delta, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
                                             estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
@@ -705,7 +705,7 @@ class Experiment:
             deltas = self.algorithms_dict[key]['deltas']
         for delta in deltas:
             mbie = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                            nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                             delta=delta, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict,
                                             estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
@@ -729,7 +729,7 @@ class Experiment:
         """
         for kappa in self.algorithms_dict[key]['hyperparam']:
             ramdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              kappa=kappa, episodic=self.episodic, speed_up_dict=self.speed_up_dict,
                                              estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
@@ -749,7 +749,7 @@ class Experiment:
         """
         for kappa in self.algorithms_dict[key]['hyperparam']:
             ramdp = algorithm_name_dict[key](pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
-                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
+                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state_train,
                                              kappa=kappa, episodic=self.episodic, shield=self.shielder, speed_up_dict=self.speed_up_dict,
                                              estimate_baseline=self.estimate_baseline)
             t_0 = time.time()
@@ -843,6 +843,11 @@ class SimplifiedPacmanExperiment(Experiment):
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         self.R_state_action_no_neg = self.compute_r_state_action(self.P, self.R_state_state_no_neg)
         
+        self.train_without_neg_values=bool((util.strtobool(self.experiment_config['META']['train_without_negative_values'])))
+        if self.train_without_neg_values:
+            self.R_state_state_train = self.R_state_state_no_neg
+        else:
+            self.R_state_state_train = self.R_state_state
         self.C_state_state = self.env.get_cost_function()
         print(type(self.C_state_state))
         
@@ -872,7 +877,7 @@ class SimplifiedPacmanExperiment(Experiment):
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
 
-        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
         self.env_name = self.experiment_config['META']['env_name']
         self.prop = "Pmax=? [!\"eaten\"U\"goal\"]"
         self.avoid_prop = "Pmax=? [G !\"eaten\"]"
@@ -1015,7 +1020,8 @@ class SlipperyGridworldExperiment(Experiment):
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
 
-        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
+        self.train_without_neg_values=bool((util.strtobool(self.experiment_config['META']['train_without_negative_values'])))
         
     def generate_batch(self, trajectories, nb_trajectories, env, pi, max_steps=2500):
         """
@@ -1146,7 +1152,8 @@ class AirplaneExperiment(Experiment):
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
 
-        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
+        self.train_without_neg_values=bool((util.strtobool(self.experiment_config['META']['train_without_negative_values'])))
         
     def set_success_and_crash_states(self):
         success = []
@@ -1272,6 +1279,11 @@ class WetChickenExperiment(Experiment):
         self.R_state_state_no_neg = self.env.get_reward_function_no_neg()
         self.R_state_action_no_neg = self.compute_r_state_action(self.P, self.R_state_state_no_neg)
         
+        self.train_without_neg_values=bool((util.strtobool(self.experiment_config['META']['train_without_negative_values'])))
+        if self.train_without_neg_values:
+            self.R_state_state_train = self.R_state_state_no_neg
+        else:
+            self.R_state_state_train = self.R_state_state
         C = np.zeros((self.nb_states, self.nb_states))
         C[:, self.nb_states-1] = 10.0
         self.C_state_state = C
@@ -1300,7 +1312,7 @@ class WetChickenExperiment(Experiment):
             self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'threshold', 'pi_b_perf',
                                                 'length_trajectory']
-        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
         self.prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
         self.avoid_prop = "Pmax=? [F<15 \"waterfall\"]"
         # self.goal = []
@@ -1445,7 +1457,8 @@ class RandomMDPsExperiment(Experiment):
         self.self_transitions = int(self.experiment_config['ENV_PARAMETERS']['self_transitions'])
         self.fixed_params_exp_list = [self.seed, self.gamma, self.nb_states, self.nb_actions,
                                       self.nb_next_state_transition]
-        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
+        self.train_without_neg_values=bool((util.strtobool(self.experiment_config['META']['train_without_negative_values'])))
         self.initial_state = 0
         self.pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
 
@@ -1486,7 +1499,10 @@ class RandomMDPsExperiment(Experiment):
                 print("get reward and cost functions")
                 self.R_state_state = self.garnet.compute_reward()
                 self.R_state_state_no_neg = np.maximum(self.R_state_state, 0)
-                                
+                if self.train_without_neg_values:
+                    self.R_state_state_train = self.R_state_state_no_neg
+                else:
+                    self.R_state_state_train = self.R_state_state                
                 self.C_state_state = np.zeros_like(self.R_state_state)
                 self.P = self.garnet.transition_function
                 self.goal = [self.garnet.final_state]
@@ -1722,7 +1738,8 @@ class PrismExperiment(Experiment):
             self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
                                                 'length_trajectory']
-        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
+        self.train_without_neg_values=bool((util.strtobool(self.experiment_config['META']['train_without_negative_values'])))
 
         
     def _run_one_iteration(self):
@@ -1890,7 +1907,8 @@ class GymTaxiExperiment(Experiment):
             self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
                                                 'length_trajectory']
-        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
+        self.train_without_neg_values=bool((util.strtobool(self.experiment_config['META']['train_without_negative_values'])))
 
         
     def _run_one_iteration(self):
@@ -2030,6 +2048,11 @@ class GymFrozenLakeExperiment(Experiment):
         self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
         self.R_state_state_no_neg = self.env.get_reward_function_no_neg()
+        self.train_without_neg_values=bool((util.strtobool(self.experiment_config['META']['train_without_negative_values'])))
+        if self.train_without_neg_values:
+            self.R_state_state_train = self.R_state_state_no_neg
+        else:
+            self.R_state_state_train = self.R_state_state
         C = np.zeros((self.nb_states, self.nb_states))
         print(C.shape)
         print(self.traps)
@@ -2075,8 +2098,8 @@ class GymFrozenLakeExperiment(Experiment):
             self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
                                                 'length_trajectory']
-        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
-
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
+        
         self.env_name = self.experiment_config['META']['env_name']
         
         self.pi_b = self.env.get_baseline_policy(epsilon=0.5)

@@ -14,22 +14,15 @@ class Garnets:
         self.initial_state = 0
         self.self_transitions = self_transitions
         self.gamma = gamma
-        print("start generating trans function")
         self._generate_transition_function()
-        print("generated trans function")
 
             
         self.current_state = self.initial_state
         self.final_state = nb_states - 1
         self.punishment = -5 #-5
-        print("start setting traps")
         self._set_traps(nb_traps)
-        print("finished setting traps")
-        print("finding farthest state")
         self.farther_state, self.pi_star_perf, self.q_star, self.pi_rand_perf = self._find_farther_state(self.gamma)
-        print("found the farthest state")
         while isinstance(self.q_star, int):
-            print("yeet, repeat!!")
             self.transition_function = np.zeros((self.nb_states, self.nb_actions, self.nb_states))
             self._generate_transition_function()
             self._set_traps(self.nb_traps)
@@ -59,7 +52,6 @@ class Garnets:
 
         isReachable = False
         while not isReachable:
-            print("AAAA")
             self.traps = []
             potential_trap_states = [s for s in range(self.nb_states) if s != self.final_state and s != 0]
             for _ in range(n):
@@ -202,8 +194,6 @@ class Garnets:
             pi[x, :] /= np.sum(pi[x, :])
             v, q = spibb.policy_evaluation_exact(pi, r_reshaped, p, gamma)
             counter+=1
-        # if counter >= 100:
-            # print("exited after 100 iterations")
 
         # avg_time_to_goal = np.log(v[0]) / np.log(gamma)
         print("Perturbed policy performance : " + str(v[0]))
@@ -240,8 +230,6 @@ class Garnets:
         mask_0 = ~mask_0
         rand_pi = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         for final_state in range(1, self.nb_states):
-            if final_state % 100 == 0:
-                print(final_state)
             if final_state not in self.traps:
                 p, r = self._set_temporary_final_state(final_state)
                 r_reshaped = spibb_utils.get_reward_model(p, r)

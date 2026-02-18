@@ -307,14 +307,9 @@ class ConstSPIBBAgent():
     
     
     def fit(self):
-        try:
-            # Note: we are giving the baseline policy as the initial policy to the operator
-            #        this can be the random policy also i.e. pi_random
-            self.pi = bounded_successive_approximation(self.pi_b,
-                                                        operator=self.operator,
-                                                        termination_condition=self.termination_condition,
-                                                        max_limit=self.max_nb_it )
-        except cp.error.SolverError:
-            # if unable to solve return the baseline
-            print("Couldn't solve, returning baseline")
-            self.pi = self.pi_b
+
+        self.pi = bounded_successive_approximation(self.pi_b,
+                                                    operator=self.operator,
+                                                    termination_condition=self.termination_condition,
+                                                    max_limit=self.max_nb_it )
+

@@ -6,8 +6,8 @@ def direct_policy_evaluation(P,
                              R,
                              discount: float,
                              policy: np.ndarray,
-                             tol: float = 1e-3,
-                             max_iter: int = 10
+                             tol: float = 1e-4,
+                             max_iter: int = 25
                              ) -> np.ndarray:
     """
     Fully sparse iterative policy evaluation.
@@ -62,7 +62,6 @@ def direct_policy_evaluation(P,
 
         if delta < tol:
             break
-
     return V
 
 
@@ -78,6 +77,7 @@ def generate_iterates(xinit: np.ndarray,
     :return: a generator that gives the next iterates
     """
     x, xprev = operator(xinit), xinit
+    
     yield x
     while not termination_condition(xprev, x):
         x, xprev = operator(x), x
@@ -115,18 +115,14 @@ def bounded_successive_approximation(xinit,
     """
     count = 0
     for iterate in generate_iterates(xinit, operator, termination_condition):
-        # if count % 10 == 0:
         count += 1
         if count >= max_limit:
-            print(f"die at coung {count}")
             break
-        else:
-            print(f"{count} is lower than {max_limit}")
             
 
     return iterate
 
-def default_termination(xprev, x, epsilon=1e-3):
+def default_termination(xprev, x, epsilon=1e-4):
     """
     A standard termination condition
     :param xprev:

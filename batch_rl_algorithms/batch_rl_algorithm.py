@@ -63,17 +63,18 @@ class BatchRLAlgorithm:
         self._initial_calculations()
 
             
+    def array_to_dict(self, arr):
+        sparse_dict = {}
+
+        # Iterate over the 3D array and add non-zero elements to the dictionary
+        for i in range(arr.shape[0]):
+            for j in range(arr.shape[1]):
+                for k in range(arr.shape[2]):
+                    if arr[i, j, k] != 0:
+                        sparse_dict[(i, j, k)] = arr[i, j, k]
+        return sparse_dict
     
     def reward_function_to_dict(self, arr):
-        """
-        Turns the given reward function into a dictionary
-
-        Args:
-            arr (np.ndarray): the reward function
-
-        Returns:
-            sparse_dict(dictionairy): the sparse dictionary representation of the reward function
-        """
         sparse_dict = {}
 
         # Iterate over the 3D array and add non-zero elements to the dictionary
@@ -84,12 +85,6 @@ class BatchRLAlgorithm:
         return sparse_dict
            
     def estimate_baseline(self):
-        """
-        Estimates the baseline policy based on the data
-
-        Returns:
-            result (np.array): The estimated baseline policy
-        """
         result = np.zeros((self.nb_states, self.nb_actions), dtype=float)
 
         # First, compute n(s): total visits per state
@@ -131,8 +126,8 @@ class BatchRLAlgorithm:
             self.nb_it += 1
             old_q = self.q.copy()
             self._policy_evaluation()
+            # q_func = self._policy_evaluation_old()
             self._policy_improvement()
-            
             if self.checks:
                 self._check_if_valid_policy()            
             
@@ -201,28 +196,33 @@ class BatchRLAlgorithm:
         for s in range(self.nb_states):
             self.pi[s, np.argmax(self.q[s, :])] = 1
             
+    def _policy_evaluation_old(self):
+        """
+        Computes the action-value function for the current policy self.pi.
+        """
+        nb_sa = self.nb_actions * self.nb_states
+        M = np.eye(nb_sa) - self.gamma * np.einsum('ijk,kl->ijkl', self.transition_model_old, self.pi).reshape(nb_sa, nb_sa)
+        q_func = np.linalg.solve(M, self.R_state_action.reshape(nb_sa)).reshape(self.nb_states, self.nb_actions)
+        return q_func
     
     def _policy_evaluation(self):
         """
         Computes the action-value function for the current policy self.pi.
         """
+        # Compute v(s) = sum_a pi(s,a) * q(s,a)
+        self.v = np.einsum('ij,ij->i', self.pi, self.q)
 
-        nb_sa = self.nb_actions * self.nb_states
+        # Initialize new q-values
+        new_q = np.zeros_like(self.q)
 
-        # Create identity matrix I
-        M = eye(nb_sa, format="lil")  # LIL format allows efficient element-wise updates
+        # Update q(s,a) using Bellman expectation
+        for (s, a, s_prime), prob in self.transition_model.items():
+            new_q[s, a] += prob * self.gamma * self.v[s_prime]
 
-        # Iterate over sparse transition_model
-        for (i, j, k), value in self.transition_model.items():
-            for l in range(self.nb_actions):  # Iterate over action indices
-                M[i * self.nb_actions + j, k * self.nb_actions + l] -= self.gamma * value * self.pi[k, l]
+        # Add expected rewards
+        new_q += self.R_state_action
 
-        # Convert M to CSR for efficient solving
-        M = M.tocsr()
-
-        # Solve for q
-        q_vector = spsolve(M, self.R_state_action.reshape(nb_sa))  # Solve Mq = R
-        self.q = q_vector.reshape(self.nb_states, self.nb_actions)  # Reshape to desired format
+        self.q = new_q
 
     def _check_if_valid_policy(self):
         checks = np.unique((np.sum(self.pi, axis=1)))

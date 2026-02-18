@@ -36,6 +36,7 @@ def generate_iterates(xinit: np.ndarray,
     :return: a generator that gives the next iterates
     """
     x, xprev = operator(xinit), xinit
+    
     yield x
     while not termination_condition(xprev, x):
         x, xprev = operator(x), x
