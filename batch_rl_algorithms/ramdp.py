@@ -40,7 +40,6 @@ class RaMDP(BatchRLAlgorithm):
         self.kappa = kappa
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen, max_nb_it, checks,
                          speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
-        print("starting ramdp")
 
     def _compute_R_state_action(self):
         '''

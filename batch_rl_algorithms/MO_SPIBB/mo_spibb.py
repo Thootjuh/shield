@@ -29,7 +29,7 @@ class ConstSPIBBAgent():
                  nb_states,
                  nb_actions,
                  epsilon,
-                 max_nb_it=50,
+                 max_nb_it=25,
                  **kwargs):
         """
 
@@ -48,7 +48,6 @@ class ConstSPIBBAgent():
         self.C_state_state = C_state_state
         self.R_state_state = R_state_state
         if isinstance(R_state_state, dict):
-            # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
             reward_matrix = np.zeros((self.nb_states, self.nb_states))
             for (state, next_state), reward in R_state_state.items():
                 reward_matrix[state, next_state] = reward

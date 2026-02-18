@@ -45,8 +45,6 @@ class Shield_RaMDP(shieldedBatchRLAlgorithm):
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, shield, zero_unseen, max_nb_it, checks,
                          speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
 
-        # print("raMDP")
-        # print(self.allowed.shape)
         
         
 
@@ -80,8 +78,7 @@ class Shield_RaMDP(shieldedBatchRLAlgorithm):
                 if (s, a) not in self.count_state_action:
                     self.R_state_action[s, a] = min_reward
         self.R_state_action[~self.allowed] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
-        # print("in shielded")
-        # print(self.R_state_action)
+
        
     def _policy_improvement(self):
         """
@@ -93,6 +90,5 @@ class Shield_RaMDP(shieldedBatchRLAlgorithm):
         self.pi = np.zeros([self.nb_states, self.nb_actions])
         for s in range(self.nb_states):    
             self.pi[s, np.argmax(self.q_shield[s, :])] = 1
-        # print(self.pi)
             
              

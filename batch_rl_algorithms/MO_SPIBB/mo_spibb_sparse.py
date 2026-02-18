@@ -30,7 +30,7 @@ class ConstSPIBBAgent():
                  nb_states,
                  nb_actions,
                  epsilon,
-                 max_nb_it=50,
+                 max_nb_it=25,
                  **kwargs):
 
         self.gamma = gamma

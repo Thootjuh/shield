@@ -48,8 +48,6 @@ class shield_DUIPI(shieldedBatchRLAlgorithm):
                          speed_up_dict, estimate_baseline)
         self.variance_q = np.zeros([self.nb_states, self.nb_actions])
         # self.pi = 1 / self.nb_actions * np.ones([self.nb_states, self.nb_actions])
-        # print("pi_b = ", self.pi_b)
-        # print("pi_b = ", self.pi)
         self.states = set()
         for (state, action, next_state) in self.transition_model.keys():
             self.states.add(state)

@@ -56,7 +56,6 @@ class DUIPI(BatchRLAlgorithm):
             self.r_min = min(R.values())
         else:
             self.r_min = np.min(R)
-        print("Starting DUIPI")
 
     def _initial_calculations(self):
         """
@@ -141,7 +140,6 @@ class DUIPI(BatchRLAlgorithm):
         """
         Evaluates the current policy self.pi and calculates its variance, using a sparse transition model.
         """
-        # print("POLICY EVALUATING S")
         # Value function: v(s) = sum_a pi(s,a) * q(s,a)
         self.v = np.einsum('ij,ij->i', self.pi, self.q)
 

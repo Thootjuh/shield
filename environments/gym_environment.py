@@ -164,7 +164,7 @@ class gymIce:
         random_state = random.choice(possible_states)
         self.env.env.env.s = random_state
         self.state = random_state
-        print(self.env.env.env.s, "==", self.state )
+
         
     def step(self, action):
         old_state = self.state
@@ -174,8 +174,6 @@ class gymIce:
         return old_state, next_state, reward
     
     def is_done(self):
-        #     else:
-        #         print("Fell :(, self.state = )", self.state)
         return self.terminated
     
     # from storm vogel
@@ -193,7 +191,6 @@ class gymIce:
         return x_target, y_target
 
     def initial_calculations(self):
-        # print("goal: ", self.env.env.env.desc[0][0])
         P = self.env.env.env.P
         self.reward_model = {}
         self.reward_model_no_neg = {}
@@ -222,7 +219,6 @@ class gymIce:
     def get_reward_function_no_neg(self):
         return self.reward_model_no_neg
     def get_transition_function(self):
-        # print(self.transition_model)
         return self.transition_model
    
     def get_nb_states(self):
@@ -257,5 +253,4 @@ class gymIce:
         #     pi_sched[next_state][choice] = 1
         
         pi = (1-epsilon) * pi_b + epsilon * pi_r
-        # print(pi_b)        
         return pi_r

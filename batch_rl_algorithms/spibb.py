@@ -43,7 +43,6 @@ class SPIBB_abstract(BatchRLAlgorithm):
         for (state, action, next_state) in self.transition_model.keys():
             self.states.add(state)
             self.states.add(next_state)
-        print("starting SPIBB")
 
     def _initial_calculations(self):
         """

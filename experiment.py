@@ -829,7 +829,6 @@ class SimplifiedPacmanExperiment(Experiment):
         
         self.initial_state = self.env.state_to_int()
         
-        print("create transition function")
         self.P = self.env.get_transition_function()
         self.traps = []
         self.goal = []
@@ -841,7 +840,6 @@ class SimplifiedPacmanExperiment(Experiment):
                 else:
                     self.traps.append(state)
         
-        print("create reward function")
         self.R_state_state, self.R_state_state_no_neg = self.env.get_reward_function()
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         self.R_state_action_no_neg = self.compute_r_state_action(self.P, self.R_state_state_no_neg)
@@ -852,16 +850,12 @@ class SimplifiedPacmanExperiment(Experiment):
         else:
             self.R_state_state_train = self.R_state_state
         self.C_state_state = self.env.get_cost_function()
-        print(type(self.C_state_state))
         
         self.fixed_params_exp_list = [self.seed, self.gamma, self.width, self.height, self.lag, self.ghost_opt_chance]
         
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
-        print("calcing pi rand")
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
         # pi_rand_perf = 0
-        print("pi_rand_perf:", pi_rand_perf)
-        print("calcing pi star")
 
         self.fixed_params_exp_list.append(pi_rand_perf)
         
@@ -871,12 +865,10 @@ class SimplifiedPacmanExperiment(Experiment):
             
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
         # pi_star_perf = 7.7
-        print("pi_star_perf:", pi_star_perf)
         self.fixed_params_exp_list.append(pi_star_perf)
         
         pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
         pi_b_perf = self._policy_evaluation_exact(pi_b)
-        print("pi_b_perf:", pi_b_perf)
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
 
@@ -920,7 +912,6 @@ class SimplifiedPacmanExperiment(Experiment):
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
                   f' {self.epsilons_baseline}')
             
-            print("creating Baseline Policy")
             self.pi_b = PacmanBaselinePolicy(env=self.env, epsilon=epsilon_baseline).pi
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]
@@ -931,36 +922,29 @@ class SimplifiedPacmanExperiment(Experiment):
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
 
-                print("Generating Trajectories")
                 trajectories, batch_traj = self.generate_batch(trajectories, nb_trajectories, self.env, self.pi_b)
                 self.data = trajectories
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                print("Estimating Intervals")  
+
           
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                print("Calculating Shield")  
                 self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height, self.prop)
                 self.shielder.calculateShield()
-                print("Running Algorithms")
                 self._run_algorithms()
                 
                 
-                print("Estimating Intervals")  
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                print("Calculating Shield")  
                 self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height, self.prop)
                 self.shielder.calculateShield()
-                print("Running Algorithms")
                 self._run_algorithms()
                 
-                print("Running Algorithms")
                 self._run_shielded_baseline("_point")
                 self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
 
@@ -1024,16 +1008,13 @@ class SlipperyGridworldExperiment(Experiment):
         
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        print("pi_Rand_perf:", pi_rand_perf)
         self.fixed_params_exp_list.append(pi_rand_perf)
         
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
-        print("pi-star")
         pi_star.fit()    
             
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        print("pi_star_perf:", pi_star_perf)
         self.fixed_params_exp_list.append(pi_star_perf)
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
@@ -1086,22 +1067,18 @@ class SlipperyGridworldExperiment(Experiment):
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
-                print("Generating Trajectories")
                 trajectories, batch_traj = self.generate_batch(trajectories, nb_trajectories, self.env, self.pi_b)
                 self.data = trajectories
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 
-                print("Calculating Shield")  
                 self.shielder = ShieldSlipperyGridworld(self.structure, self.traps, [self.goal], self.intervals, self.width, self.height)
                 self.shielder.calculateShield()
 
-                print("Running Algorithms")
                 self._run_algorithms()
                 
     def reduce_transition_matrix(self, transition_matrix):
@@ -1158,14 +1135,12 @@ class AirplaneExperiment(Experiment):
         
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        print("pi_Rand_perf:", pi_rand_perf)
         self.fixed_params_exp_list.append(pi_rand_perf)
         
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        print("pi_star_perf:", pi_star_perf)
         self.fixed_params_exp_list.append(pi_star_perf)
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
@@ -1313,14 +1288,12 @@ class WetChickenExperiment(Experiment):
 
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        print(f"pi_rand_perf = {pi_rand_perf}")
         self.fixed_params_exp_list.append(pi_rand_perf)
 
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        print(f"pi_star_perf = {pi_star_perf}")
         self.fixed_params_exp_list.append(pi_star_perf)
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
@@ -1363,14 +1336,12 @@ class WetChickenExperiment(Experiment):
                         self.intervals = self.estimator.get_intervals()
                         self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, theta)
                         self.shielder.calculateShield()
-                        self.shielder.printShield()
                         self._run_algorithms()
                         
                         self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
                         self.intervals = self.estimator.get_intervals()
                         self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, theta)
                         self.shielder.calculateShield()
-                        self.shielder.printShield()
                         self._run_shielded_baseline("_point")
                         self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
 
@@ -1509,13 +1480,11 @@ class RandomMDPsExperiment(Experiment):
                 softmax_target_perf_ratio = (baseline_target_perf_ratio + 1) / 2
                 self.to_append_run_one_iteration = self.to_append_run + [softmax_target_perf_ratio,
                                                                         baseline_target_perf_ratio]
-                print("generate baseline policy")
                 self.pi_b, self._q_pi_b, self.pi_star_perf, self.pi_b_perf, self.pi_rand_perf = \
                     self.garnet.generate_baseline_policy(self.gamma,
                                                         softmax_target_perf_ratio=softmax_target_perf_ratio,
                                                         baseline_target_perf_ratio=baseline_target_perf_ratio)
                     
-                print("get reward and cost functions")
                 self.R_state_state = self.garnet.compute_reward()
                 self.R_state_state_no_neg = np.maximum(self.R_state_state, 0)
                 if self.train_without_neg_values:
@@ -1528,7 +1497,6 @@ class RandomMDPsExperiment(Experiment):
                 self.P[self.goal, :, :] = 0.0
                 # self.P[self.goal, :, self.goal] = 1.0
                 self.traps = self.garnet.get_traps()
-                print(self.traps)
                 for trp in self.traps:
                     self.P[trp, :, :] = 0.0
                     # self.P[trp, :, trp] = 1.0
@@ -1536,7 +1504,6 @@ class RandomMDPsExperiment(Experiment):
                 C[:, self.traps] = 10.0
                 self.C_state_state = C
                 self.easter_egg = None
-                print("evaluate pi_b")
                 pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
                 self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
                 self.R_state_action_no_neg = self.compute_r_state_action(self.P, self.R_state_state_no_neg)
@@ -1550,35 +1517,27 @@ class RandomMDPsExperiment(Experiment):
                         f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
                         f'{self.nb_trajectories_list}')
                     # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
-                    print("generating data")
                     self.data, batch_traj = self.generate_batch(nb_trajectories, self.garnet, self.pi_b,
                                                                 easter_egg=self.easter_egg)
                     self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
                     # Generate the shield: First, we compute the PAC estimate IMDP, then we compute the shield
-                    print("reduce tansition matrix")
                     self.structure = self.reduce_transition_matrix(self.P)
-                    print("estimate intervals")
                     self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
                     self.estimator.calculate_intervals()
                     self.intervals = self.estimator.get_intervals()
                     
-                    print("calculate shield")
                     self.shielder = ShieldRandomMDP(self.structure, self.traps, self.goal, self.intervals, self.prop)
                     self.shielder.calculateShield()
-                    print("run algorithms")
                     self._run_algorithms()
                     
                     
-                    print("estimate intervals")
                     self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
                     self.estimator.calculate_intervals()
                     self.intervals = self.estimator.get_intervals()
                     
-                    print("calculate shield")
                     self.shielder = ShieldRandomMDP(self.structure, self.traps, self.goal, self.intervals, self.prop)
                     self.shielder.calculateShield()
-                    print("run algorithms")
                     self._run_shielded_baseline("_point")
                     self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
 
@@ -1738,7 +1697,6 @@ class PrismExperiment(Experiment):
 
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        print(f"pi_rand_perf = {pi_rand_perf}")
         
         self.fixed_params_exp_list.append(pi_rand_perf)
 
@@ -1746,7 +1704,6 @@ class PrismExperiment(Experiment):
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        print(f"pi_star_perf = {pi_star_perf}")
         self.fixed_params_exp_list.append(pi_star_perf)
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
@@ -1766,7 +1723,6 @@ class PrismExperiment(Experiment):
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
                   f' {self.epsilons_baseline}')
             
-            print("creating Baseline Policy")
             self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]
@@ -1776,19 +1732,15 @@ class PrismExperiment(Experiment):
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
-                print("Generating Trajectories")
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                print("Calculating Shield")  
                 self.shielder = ShieldPrism(self.structure, self.traps, self.goal, self.intervals)
                 self.shielder.calculateShield()
-                print("Running Algorithms")
                 self._run_algorithms()
                 
 
@@ -1894,17 +1846,14 @@ class GymTaxiExperiment(Experiment):
         self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
 
-        print("calcing r_sa")
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         
         self.baseline_method = self.experiment_config['BASELINE']['method']
         self.fixed_params_exp_list = [self.seed, self.gamma, self.baseline_method]
 
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
-        print("calcing rand perf")
 
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        print(f"pi_rand_perf = {pi_rand_perf}")
         
         self.fixed_params_exp_list.append(pi_rand_perf)
 
@@ -1912,13 +1861,11 @@ class GymTaxiExperiment(Experiment):
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        print(f"pi_star_perf = {pi_star_perf}")
         self.fixed_params_exp_list.append(pi_star_perf)
 
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
-        print(f"pi_baseline_perf = {pi_base_perf}")
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
         if self.baseline_method == 'heuristic':
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
@@ -1935,7 +1882,6 @@ class GymTaxiExperiment(Experiment):
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
                   f' {self.epsilons_baseline}')
             
-            print("creating Baseline Policy")
             self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]            
@@ -1944,20 +1890,16 @@ class GymTaxiExperiment(Experiment):
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
-                print("Generating Trajectories")
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.15, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
-                print("Calculating Shield")  
                 self.shielder = ShieldTaxi(self.structure, self.traps, self.goal, self.intervals)
                 self.shielder.calculateShield()
 
-                print("Running Algorithms")
                 self._run_algorithms()
                 
 
@@ -2053,14 +1995,11 @@ class GymFrozenLakeExperiment(Experiment):
         self.episodic = True
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         
-        print("start env")
         self.env = gymIce()
-        print("get values")
         self.nb_states = self.env.get_nb_states()
         # self.traps = [self.nb_states-1]
         self.nb_actions = self.env.get_nb_actions()
         self.traps = self.env.get_traps()
-        print("traps are: ", self.traps)
         self.goal = [self.env.get_goal_state()]
         self.initial_state = self.env.get_init_state()
         
@@ -2073,22 +2012,17 @@ class GymFrozenLakeExperiment(Experiment):
         else:
             self.R_state_state_train = self.R_state_state
         C = np.zeros((self.nb_states, self.nb_states))
-        print(C.shape)
-        print(self.traps)
         for trp in self.traps:
-            C[:, trp] = 50.0
+            C[:, trp] = 10.0
             
         self.C_state_state = C
-        print("calcing r_sa")
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         self.R_state_action_no_neg = self.compute_r_state_action(self.P, self.R_state_state_no_neg)
         self.baseline_method = self.experiment_config['BASELINE']['method']
         self.fixed_params_exp_list = [self.seed, self.gamma, self.baseline_method]
 
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
-        print("calcing rand perf")
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
-        print(f"pi_rand_perf = {pi_rand_perf}")
         
         self.fixed_params_exp_list.append(pi_rand_perf)
 
@@ -2100,7 +2034,6 @@ class GymFrozenLakeExperiment(Experiment):
         with open("optimal.txt", "w") as file:
             for item in pi_star.pi:
                 file.write(f"{item}\n")
-        print(f"pi_star_perf = {pi_star_perf}")
         self.fixed_params_exp_list.append(pi_star_perf)
         
 
@@ -2108,8 +2041,6 @@ class GymFrozenLakeExperiment(Experiment):
         
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
-        print(self.env.get_baseline_policy(self.epsilons_baseline[0]))
-        print(f"pi_baseline_perf = {pi_base_perf}")
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
         if self.baseline_method == 'heuristic':
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
@@ -2133,49 +2064,37 @@ class GymFrozenLakeExperiment(Experiment):
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
                   f' {self.epsilons_baseline}')
             
-            print("creating Baseline Policy")
             self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
-            # print("a")
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self._policy_evaluation_exact(self.pi_b)]
-            # print("b")
 
             for nb_trajectories in self.nb_trajectories_list:
                 print(
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
                     f'{self.nb_trajectories_list}')
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
-                print("Generating Trajectories")
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                # print("----------------------------------------------------------------")    
-                print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # # print(intervals)
-                print("Calculating Shield")  
                 self.shielder = ShieldFrozenLake(self.structure, self.traps, self.goal, self.intervals, self.prop)
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
-                # print("----------------------------------------------------------------")
-                print("Running Algorithms")
                 self._run_algorithms()
                 
                 
-                print("Estimating Intervals")            
                 self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # # print(intervals)
-                print("Calculating Shield")  
                 self.shielder = ShieldFrozenLake(self.structure, self.traps, self.goal, self.intervals, self.prop)
                 self.shielder.calculateShield()
                 
-                print("Running Algorithms")
                 self._run_shielded_baseline("_point")
                 self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
                 
@@ -2197,7 +2116,6 @@ class GymFrozenLakeExperiment(Experiment):
             state = self.initial_state
             is_done = False
             while nb_steps < max_steps and not is_done:
-                # print(is_done)
                 action_choice = np.random.choice(pi.shape[1], p=pi[state])
                 state, next_state, reward = env.step(action_choice)
                 is_done = env.is_done()                    
@@ -2206,10 +2124,6 @@ class GymFrozenLakeExperiment(Experiment):
                 nb_steps += 1
             trajectories.append(trajectorY)
         batch_traj = [val for sublist in trajectories for val in sublist]
-        # temppp = np.array(trajectories)
-        # print(temppp)
-        # print(trajectories)
-        # print(trajectories)
         return trajectories, batch_traj
             
     
@@ -2287,8 +2201,6 @@ def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
     # Solve (I - gamma * P_pi) * v = r_pi
     A = identity(num_states, format='csr') - gamma * P_pi.tocsr()
     v, info = bicgstab(A, r_pi, atol=1e-6)
-    if info != 0:
-        print("Warning: Iterative solver did not converge")
     # Compute Q-values
     q = np.zeros((num_states, num_actions))
     for (s, a, s_prime), prob in p_sparse.items():

@@ -437,7 +437,6 @@ class ShieldSlipperyGridworld(Shield):
         # prop = "Pmax=? [!\"save\"U\"trap\"]"
         
         super().calculateShieldInterval(prop, self.model_builder.build_model())
-        # self.printShield()
         # self.shield = 1-self.shield
     
     def get_safe_actions_from_shield(self, state, threshold=0.1, buffer = 0.1):

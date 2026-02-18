@@ -33,7 +33,6 @@ class Airplane:
     
     def encode_int(self, x, y, ay):
         if not (0 <= x < self.maxX and 0 <= y < self.maxY and 0 <= ay < self.maxY):
-            print(x, y, ay)
             raise ValueError("Input values out of range")
         return (x * self.maxY * self.maxY) + (y * self.maxY) + ay
         

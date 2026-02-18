@@ -93,7 +93,6 @@ class Shield_WorstCaseRMDP(shieldedBatchRLAlgorithm):
         for (i, j), val in result.items():
             self.R_state_action[i, j] = val
         
-        # print(f"estimated R_state_action = {self.R_state_action}")   
     
     def _policy_evaluation(self):
         """
@@ -141,5 +140,4 @@ class Shield_WorstCaseRMDP(shieldedBatchRLAlgorithm):
         self.pi = np.zeros([self.nb_states, self.nb_actions])
         for s in range(self.nb_states):    
             self.pi[s, np.argmax(self.q_shield[s, :])] = 1
-        # print(self.pi)
 

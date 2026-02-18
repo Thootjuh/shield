@@ -8,7 +8,7 @@ def direct_policy_evaluation(
     discount: float,
     policy: np.ndarray,
     tol: float = 1e-4,
-    max_iter: int = 10_000
+    max_iter: int = 100
 ) -> np.ndarray:
 
 
