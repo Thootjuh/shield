@@ -103,7 +103,7 @@ class ConstSPIBBAgent():
     def compute_error_function(self, delta=1.0):
         eQ = {}
         for (s, a), c in self.count_state_action.items():
-            if c <= 7:
+            if c == 0:
                 eQ[(s, a)] = np.inf
             else:
                 eQ[(s, a)] = np.sqrt(
