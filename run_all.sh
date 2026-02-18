@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-NUM_ITERATIONS=1000 # Set to the desired number of independent runs of the algorithms.
+NUM_ITERATIONS=100 # Set to the desired number of independent runs of the algorithms.
 
 NUM_THREADS=10 # SET this to the desired level of parallelism, MAKE SURE IT'S REASONBLE!
 
