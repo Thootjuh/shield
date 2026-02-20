@@ -23,11 +23,10 @@ from environments.pacman.pacman_dynamics_two_ghosts import pacmanSimplified
 from environments.pacman.pacman_heuristic_policy import PacmanBaselinePolicy
 
 from environments.read_env_from_prism import prism_env
-from environments.gym_environment import gymTaxi, gymIce
 from environments.gym_cartpole_env import cartPole, cartPolePolicy
 from environments.gym_maze.gym_maze_env import maze, mazePolicy
 from environments.gym_crashing_mountain_car import crashingMountainCar, crashingMountainCarPolicy
-
+from environments.gym_lunar_lander import LunarLander, LunarLanderPolicy
 
 from batch_rl_algorithms.basic_rl import Basic_rl
 from batch_rl_algorithms.pi_star import PiStar
@@ -48,7 +47,7 @@ from batch_rl_algorithms.shielded.shielded_mbie import shield_MBIE
 from batch_rl_algorithms.shielded.shielded_r_min import Shield_RMin
 from batch_rl_algorithms.spibb_dqn.spibb_dqn import spibb_dqn
 
-from shield import ShieldRandomMDP, ShieldCartpole, ShieldCrashingMountainCar, ShieldMaze
+from shield import ShieldRandomMDP, ShieldCartpole, ShieldCrashingMountainCar, ShieldMaze, ShieldLunarLander
 from PACIntervalEstimator import PACIntervalEstimator
 from evaluate_cartpole import evaluate_policy
 from discretization.grid.define_imdp import imdp_builder
@@ -898,6 +897,373 @@ class GymCartPoleExperiment(Experiment):
                 died = transition[5]
                 s_d = state2region(predictor, s, 4)
                 ns_d = state2region(predictor, ns, 4)
+                traj.append([a, s_d, ns_d, r])
+            data_disc.append(traj)
+        return data_disc
+                             
+    def get_empty_structure(self, nb_states):
+        empty_structure = np.empty((nb_states, self.nb_actions), dtype=object)                      
+        
+        for state in range(nb_states):
+            for action in range(self.nb_actions):
+                empty_structure[state, action] = np.array([])
+                
+        return empty_structure            
+    def add_trans_from_data(self,structure, data):
+        # num_states = len(structure)
+        # num_actions = len(structure[0])
+        for trajectory in data:
+            for transition in trajectory:
+                s=transition[1]
+                a=transition[0]
+                ns=transition[2]
+                poss_next = structure[s,a]
+                if not ns in poss_next:
+                    poss_next = np.append(poss_next, [ns])
+                    structure[s][a] = poss_next
+        return structure  
+    
+    def reduce_transition_matrix(self, transition_matrix):
+        """
+        Reduces a transition matrix to only include possible end states for each state-action pair.
+
+        Args:
+        - transition_matrix (numpy.ndarray): A 3D numpy array of shape (num_states, num_actions, num_states) 
+        where each element represents the probability of transitioning from one state to another
+        given a certain action.
+
+        Returns:
+        - numpy.ndarray: A 3D numpy array of shape (num_states, num_actions, num_possible_transitions) 
+        where each element contains the indices of possible end states.
+        """
+        num_states = len(transition_matrix)
+        num_actions = len(transition_matrix[0])
+        # Prepare the reduced matrix to hold the indices of possible states
+        reduced_matrix = np.empty((num_states, num_actions), dtype=object)
+        
+        # Loop through each state and action to populate the reduced matrix
+        for state in range(num_states):
+            for action in range(num_actions):
+                # Get indices of nonzero probabilities (possible end states)
+                possible_states = np.nonzero(transition_matrix[state, action])[0]
+                reduced_matrix[state, action] = np.array(possible_states)
+        
+        return reduced_matrix
+       
+    def build_transition_matrix(self):
+        """
+        Builds a reduced transition matrix that lists possible next states
+        for each (state, action) pair, based on the observed trajectories.
+
+        Returns
+        -------
+        np.ndarray
+            A 2D array of shape (num_states, num_actions), where each entry
+            is a list of possible next states for that (state, action).
+        """
+        count = 0
+        # Prepare the reduced matrix with empty lists
+        transition_matrix = self.transition_matrix.copy()
+
+
+        # Fill matrix with next states from counts
+        for (state, action, next_state) in self.count_state_action_state.keys():
+            if next_state not in transition_matrix[state, action]:
+                transition_matrix[state, action].append(next_state)
+
+        # for s in range(self.nb_states):
+        #     for a in range(self.nb_actions):
+        #         if len(transition_matrix[s, a]) == 0:
+        #             transition_matrix[s, a] = [self.traps]
+
+        # for i in range(len(transition_matrix)):
+        #     for j in range(len(transition_matrix[i])):
+        #         if len(transition_matrix[i][j]) > 1:
+        #             count+=1
+        # print(transition_matrix)
+        # print(count)
+        return transition_matrix
+    
+class GymLunarLanderExperiment(Experiment):
+    fixed_params_exp_columns = ['seed', 'gamma']
+    def _set_env_params(self):
+        """
+        Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
+        """
+        self.episodic = True
+        self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
+        
+        
+        
+        self.fixed_params_exp_list = [self.seed, self.gamma]
+        self.dimensions = 8
+
+
+        self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
+        
+        self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
+        self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
+
+        self.estimate_baseline=bool((util.strtobool(self.experiment_config['ENV_PARAMETERS']['estimate_baseline'])))
+        print("estimating transitions")
+        # self.estimate_transitions()
+        
+    def _run_one_iteration(self):
+        print("start env")
+        self.env = LunarLander()
+        print("get values")
+        self.nb_states = self.env.get_nb_states()
+        self.nb_actions = self.env.get_nb_actions()
+        self.traps = self.env.get_traps()
+        self.goal = self.env.get_goal_state()
+
+        self.initial_state = self.env.get_init_state()
+        
+        self.R_state_state = self.env.get_reward_function()
+        
+        for epsilon_baseline in self.epsilons_baseline:
+            print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
+                  f' {self.epsilons_baseline}')
+            
+            print("creating Baseline Policy")
+            self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
+            # self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+            #                                                             self._policy_evaluation_exact(self.pi_b)]
+            self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+                                                                        0]
+            for nb_trajectories in self.nb_trajectories_list:
+                print(
+                    f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
+                    f'{self.nb_trajectories_list}')
+                # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
+                print("Generating Trajectories")
+                # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
+                data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
+                
+                self.data_df = trajToDF(self.data_cont, self.dimensions, 1)
+                self.data_df.to_csv("data_set.csv", index=False)
+                print(len(self.data_df.index))
+                
+
+                # ------------------------ MRL --------------------------
+                print("getting abstraction")
+                self.discretization_method = 'mrl'
+                
+                # Get discretization
+                m = MDP_model()
+                m.fit(
+                    self.data_df,
+                    pfeatures=self.dimensions,
+                    h = -1,
+                    gamma = 1,
+                    max_k = 1000,
+                    distance_threshold=None,
+                    th = 10,
+                    eta = 25,
+                    precision_thresh = -1, #1e-14
+                    classification = 'DecisionTreeClassifier',
+                    split_classifier_params = {'random_state':0, 'max_depth':10},
+                    clustering = 'Agglomerative',
+                    n_clusters = 10,
+                    random_state = 0,
+                    plot=True,
+                    verbose=False
+                )
+                print("Trained the model!!")
+                
+                # discretize data
+                self.predictor = predict_cluster(m.df_trained, self.dimensions)
+                d_data = self.discretize_data(self.data_cont, self.predictor)
+                
+                nb_states = m.df_trained["CLUSTER"].nunique()
+                print("nb states = ", nb_states)                
+                # get discrete reward function
+                self.R_state_state = np.zeros((nb_states, nb_states))
+                #TODO fix this for this environment, also maybe write some stuff so that this does not have te be done manually
+                traps = []
+                goal = []
+                for state in range(len(self.R_state_state)):
+                    r = m.R_df[state]
+                    self.R_state_state[:, state] = r
+                    if r == -100:
+                        traps.append(state)
+                    if r == 100:
+                        goal.append(state)
+                print("traps = ", traps)
+                print("goal = ", goal)
+
+                # get structure transition function
+                self.structure = self.get_empty_structure(nb_states)
+                self.structure = self.add_trans_from_data(self.structure, d_data)
+                # # with open("data_d.txt", "w") as f:
+                # #     for item in d_data:
+                # #         f.write(item)
+                # #         f.write("\n")
+                # # print(d_data)
+                
+                # Calculate Shield                
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()                
+                
+                print("Calculating Shield") 
+                # print(m.R_df) 
+                self.shielder = ShieldLunarLander(self.structure, traps, goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
+                
+                # # Run the algoirhtm
+                self.nb_states = nb_states
+                self.data = d_data
+                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states)
+
+                print("Running Algorithms")
+                self._run_algorithms()
+                
+                
+                # ----------------------------- GRID ---------------------------------
+                self.discretization_method = 'grid'
+                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
+                print("The baseline has length:", len(self.pi_b))
+                self.nb_states = self.env.get_nb_states()
+                self.data = data_grid
+                self.R_state_state = self.env.get_reward_function()
+                
+                print("Estimating Intervals")            
+                self._count(self.data)
+                self._build_model()
+                self.structure = self._tm_to_next_states()
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()   
+                # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
+                # self.intervals = self.estimator.get_intervals()
+                
+                
+                print("Calculating Shield")  
+                # self.structure = self.build_transition_matrix()
+                self.shielder = ShieldLunarLander(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
+                print("Running Algorithms")
+                self._run_algorithms()
+                # ----------------------------- SPIBB-DQN ----------------------------------
+                self.discretization_method = 'SPIBB-DQN'
+                self.data = self.data_cont
+                self._run_spibb_dqn('SPIBB-DQN')
+         
+        
+    def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
+        """
+        Generates a data batch for an episodic MDP.
+        :param nb_steps: number of steps in the data batch
+        :param env: environment to be used to generate the batch on
+        :param pi: policy to be used to generate the data as numpy array with shape (nb_states, nb_actions)
+        :return: data batch as a list of sublists of the form [state, action, next_state, reward]
+        """
+        trajectories = []
+        trajectories_cont = []
+        for _ in np.arange(nb_trajectories):
+            nb_steps = 0
+            trajectorY = []
+            trajectorY_cont = []
+            env.reset()
+            env.set_random_state()
+            state, region = env.get_init_state()
+            is_done = False
+            while nb_steps < max_steps and not is_done:
+                action_choice = np.random.choice(pi.shape[1], p=pi[region])
+                state, next_state, reward = env.step(action_choice)
+                region = env.state2region(state)
+                next_region = env.state2region(next_state)
+                is_done = env.is_done()                    
+                trajectorY.append([action_choice, region, next_region, reward])
+                terminated = env.is_terminated()
+                truncated = env.is_truncated()
+                trajectorY_cont.append([state, action_choice, next_state, reward, terminated, truncated])
+                region = next_region
+                nb_steps += 1
+            trajectories_cont.append(trajectorY_cont)
+            trajectories.append(trajectorY)
+        batch_traj = [val for sublist in trajectories for val in sublist]
+        return trajectories, batch_traj, trajectories_cont
+            
+    
+    def _count(self, data):
+        """
+        Counts the state-action pairs and state-action-triplets and stores them.
+        """
+        if self.episodic:
+            batch_trajectory = [val for sublist in data for val in sublist]
+        else:
+            batch_trajectory = data.copy()
+        self.count_state_action_state = defaultdict(int)
+        self.count_state_action = defaultdict(int)
+        for [action, state, next_state, _] in batch_trajectory:
+            self.count_state_action_state[(int(state), action, int(next_state))] += 1
+            self.count_state_action[(int(state), action)] += 1
+    
+    def _build_model(self):
+        """
+        Estimates the transition probabilities from the given data.
+        """
+        self.transition_model = {}
+
+        for (s, a, s_prime), count in self.count_state_action_state.items():
+            denom = self.count_state_action.get((s, a), 0)
+
+            if denom == 0:
+                continue  # Avoid division by zero; unseen (s,a) pairs are skipped
+
+            prob = count / denom
+            self.transition_model[(s, a, s_prime)] = prob
+            
+    def _tm_to_next_states(self):
+        structure = np.empty((self.nb_states, self.nb_actions), dtype=object)
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                structure[s, a] = []
+
+        # Populate from sparse transition model
+        for (s, a, s_prime), prob in self.transition_model.items():
+            if prob > 0:
+                structure[s, a].append(s_prime)
+        
+        # If a state has no successors in the data, just map to itself
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                if len(structure[s, a]) == 0:
+                    structure[s, a].append(s)
+                    
+        return structure
+    
+    def estimate_transitions(self):
+        count = 0
+        # Prepare the reduced matrix with empty lists
+        transition_matrix = np.empty((self.nb_states, self.nb_actions), dtype=object)
+        for s in range(self.nb_states):
+            for a in range(self.nb_actions):
+                if s == self.traps:
+                    transition_matrix[s, a] = [self.traps]
+                else:
+                    print(s, " = ", self.env.get_successor_states(s,a))
+                    transition_matrix[s, a] = list(self.env.get_successor_states(s,a))
+        self.transition_matrix = transition_matrix
+        
+    def discretize_data(self, data, predictor):
+        data_disc = []
+        for trajectory in data:
+            traj = []
+            for transition in trajectory:
+                s = transition[0]
+                a = transition[1]
+                ns = transition[2]
+                r = transition[3]
+                terminated = transition[4]
+                died = transition[5]
+                s_d = state2region(predictor, s, self.dimensions)
+                ns_d = state2region(predictor, ns, self.dimensions)
                 traj.append([a, s_d, ns_d, r])
             data_disc.append(traj)
         return data_disc

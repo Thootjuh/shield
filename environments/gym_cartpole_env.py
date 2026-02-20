@@ -90,9 +90,6 @@ class cartPole:
     def is_done(self):
         return self.terminated or self.truncated
     
-    def check_crashed(self):
-        return self.crashed
-    
     def get_reward_function(self):
         reward_function = defaultdict(float)
         for state in range(self.nb_states):

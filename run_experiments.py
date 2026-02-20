@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import RandomMDPsExperiment, GymCartPoleExperiment, GymCrashingMountainCar, GymMazeExperiment
+from experiment import RandomMDPsExperiment, GymCartPoleExperiment, GymCrashingMountainCar, GymMazeExperiment,GymLunarLanderExperiment
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
@@ -47,6 +47,9 @@ def run_experiment(seed):
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
     elif environment == 'maze':
         experiment = GymMazeExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+                                          machine_specific_experiment_directory=machine_specific_experiment_directory)
+    elif environment == 'lunar_lander':
+        experiment = GymLunarLanderExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
     else:
         print(f"COULD NOT FIND THE SPECIFIED ENVIRONMENT {environment}")

@@ -464,6 +464,78 @@ def remove_state_transitions(prism_mdp, states):
     
     return "\n".join(filtered_lines)
 
+def encodeLunarLander(transition_matrix, intervals, trap, goal):
+    actions = [
+        "Up",
+        "Down",
+        "Right",
+        "Left"
+    ]
+    
+    num_states, num_actions = transition_matrix.shape
+
+    # Initialize the PRISM MDP module 
+    prism_lines = ["mdp", "", "module Maze"]
+    
+    # Add statespace
+    prism_lines.append(f"    s : [0..{num_states - 1}];  // state")
+    
+    
+    # Add transitions
+    for state in range(num_states):
+        prism_lines.append(f"    // State {state}")
+        for action in range(num_actions):
+            # Extract possible next states
+            next_states = transition_matrix[state, action]
+            
+            # Remove invalid transitions (e.g., -1 to indicate no transition)
+            valid_next_states = [int(s) for s in next_states if s >= 0]
+            
+            # if len(valid_next_states):
+            #     # Uniform probability for each next state
+            #     # uniform_prob = 1 / len(valid_next_states)
+            if len(valid_next_states) == 1:
+                # print(valid_next_states, " ", len(valid_next_states), " 1")
+                default_interval = (1.0, 1.0)
+                probabilities = [
+                    f"[{default_interval[0]}," 
+                    f" {default_interval[1]}]"
+                    for next_state in valid_next_states
+                ]               
+            elif len(valid_next_states) > 1:
+                # print(valid_next_states, " ", len(valid_next_states), " >1")
+                default_interval = (4.999999999999449e-05, 0.9999999)
+                probabilities = [
+                    f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
+                    f" {intervals.get((state, action, next_state), default_interval)[1]}]"
+                    for next_state in valid_next_states
+                ]
+            else:
+                # If there is no transition, loop 
+                default_interval = (1.0, 1.0)
+                probabilities = [
+                    f"[{default_interval[0]}," 
+                    f" {default_interval[1]}]"
+                    for next_state in [state]
+                ]  
+                valid_next_states = [state]
+            # Create PRISM transition command
+            transitions = " + ".join(
+                f"{prob}:(s'={next_state})" for prob, next_state in zip(probabilities, valid_next_states)
+            )
+            action_label = actions[action]
+            prism_lines.append(f"    [{action_label}] s={state} -> {transitions};")
+        
+                
+    # End the module
+    
+    prism_lines.append("endmodule")
+    prism_lines.append(f"init s<={num_states} endinit")
+    prism_lines.append(f'label "trap" = s={trap[0]};')
+    prism_lines.append(f'label "goal" = s={goal[0]};')
+    # Return the PRISM MDP as a string
+    return "\n".join(prism_lines)
+
 def add_reach_label(prism_mdp, states):
     """
     Adds a label "reach" to specified states in a PRISM MDP module string.

@@ -71,10 +71,15 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method,
                         failure_count+=1
                     if nb_steps >= 200:
                         success_count+=1
-                if env_name=="cartpole":
-                    if reward<-1: 
+                if env_name=="grid":
+                    if reward<=-1: 
                         failure_count+=1
                     if reward > 0:
+                        success_count+=1
+                if env_name=="lunar_lander":
+                    if reward==-100: 
+                        failure_count+=1
+                    if reward == 100:
                         success_count+=1
                 total_nb_steps += nb_steps
                 current_reward, nb_steps = 0, 0

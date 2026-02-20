@@ -323,6 +323,7 @@ class MDP_model:
             save_path.mkdir(exist_ok=True)
             df_init.to_csv(save_path / f"df_epoch_-1.csv")
 
+        print("start splitter")
         (
             df_new,
             df_incoherences,
@@ -354,6 +355,7 @@ class MDP_model:
             stochastic=stochastic,
         )
 
+        print("end splitter")
         # store all training errors
         self.training_error = training_error
         self.incoherences = df_incoherences

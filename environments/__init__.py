@@ -1,5 +1,11 @@
 from gymnasium.envs.registration import register
 
+
+register(
+    id='CustomLander-v0',
+    entry_point='environments.lunar_lander:LunarLander',
+)
+
 register(
     id='CustomTaxi-v0',
     entry_point='environments.CrashingTaxiEnv:CustomTaxiEnv',

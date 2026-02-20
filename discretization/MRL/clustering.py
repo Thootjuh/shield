@@ -659,7 +659,6 @@ def splitter(
                     split_classifier_params,
                 )
                 split_scores.append(score)
-
             else:
                 if verbose:
                     print("Cluster splitted", c, "| Action causing contradiction:", a)
