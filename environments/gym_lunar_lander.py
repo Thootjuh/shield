@@ -62,42 +62,82 @@ class LunarLander:
         self.state = self.init
     
     
-    def set_random_state(self):
+    def set_random_state(self, max_attempts = 1000):
         """
-        Set the LunarLander environment to a random state
-        within the full observation space bounds.
+        Set the LunarLander environment to a random *physically plausible* state.
+
+        A state is considered plausible if:
+            - The lander body does NOT intersect the moon.
+            - Leg contact flags match actual geometric contact.
+            - If no leg contact, lander is not intersecting terrain.
+
+        No physics stepping is performed.
 
         Parameters
         ----------
         env : LunarLander
             Environment instance (must already be reset).
+        max_attempts : int
+            Maximum number of rejection attempts.
 
         Returns
         -------
         state : np.ndarray
-            The sampled state that was set.
+            The sampled physically plausible state.
+
+        Raises
+        ------
+        RuntimeError if no valid state found.
         """
 
-        # Make sure env has been initialized
-        assert self.env.lander is not None, "Call env.reset() before setting state."
+        assert self.env.lander is not None, "Call env.reset() first."
 
-        low = [-1.0, -2.5, -10, -10, -2*np.pi, -10, 0, 0 ]
-        high = [1.0, 2.5, 10, 10, 2*np.pi, 10, 0, 0 ]
+        low = self.env.observation_space.low
+        high = self.env.observation_space.high
 
-        # Sample uniformly within bounds
-        state = np.random.uniform(low, high)
+        W = 600 / 30.0
+        H = 400 / 30.0
+        helipad_y = self.env.helipad_y
+        LEG_DOWN = 18
+        SCALE = 30.0
 
-        # Leg contacts must be binary
-        state[6] = 1.0 if state[6] >= 0.5 else 0.0
-        state[7] = 1.0 if state[7] >= 0.5 else 0.0
+        for _ in range(max_attempts):
 
-        # Set the environment state
-        self.env.set_state(state)
+            # Sample candidate
+            state = np.random.uniform(low, high)
 
-        self.state = state
-        print("WE SELECTED THE FOLLOWING RANDOM STATE:")
-        print(self.state)
-        print("THANK YOU FOR YOUR ATTENTION TO THIS MATTER")
+            # Make leg contacts binary
+            state[6] = 1.0 if state[6] >= 0.5 else 0.0
+            state[7] = 1.0 if state[7] >= 0.5 else 0.0
+
+            # Convert normalized observation -> world pose
+            pos_x = state[0] * (W / 2) + (W / 2)
+            pos_y = state[1] * (H / 2) + (helipad_y + LEG_DOWN / SCALE)
+            angle = float(state[4])
+
+            position = (pos_x, pos_y)
+
+            # --- 1) Body must not intersect terrain ---
+            if self.env.lander_body_overlaps_moon(position, angle):
+                continue
+
+            # --- 2) Check leg contact consistency ---
+            legs_touch = self.env.lander_legs_overlap_moon(position, angle)
+
+            if state[6] == 0.0 and state[7] == 0.0:
+                # If no contact flags, legs must NOT touch
+                if legs_touch:
+                    continue
+            else:
+                # If any contact flag is 1, legs must touch
+                if not legs_touch:
+                    continue
+
+            # Passed all geometric checks → plausible
+            self.env.set_state(state)
+            return state
+
+        raise RuntimeError("Could not sample a physically plausible state.")
     def partition_states(self):
         # Non-terminal region definitions for LunarLander
         # (coarse discretization example; adjust as needed)
