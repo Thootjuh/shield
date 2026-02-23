@@ -12,7 +12,6 @@ class WorstCaseRMDP(BatchRLAlgorithm):
         """
         self.intervals = intervals
         super().__init__(pi_b, gamma, nb_states, nb_actions, data, R, episodic, zero_unseen, max_nb_it, checks, speed_up_dict, estimate_baseline)
-        print("starting RMDP")
         
     def build_worst_case_model(self):
         """

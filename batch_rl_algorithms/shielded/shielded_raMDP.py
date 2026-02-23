@@ -78,6 +78,7 @@ class Shield_RaMDP(shieldedBatchRLAlgorithm):
                 if (s, a) not in self.count_state_action:
                     self.R_state_action[s, a] = min_reward
         self.R_state_action[~self.allowed] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
+
        
     def _policy_improvement(self):
         """

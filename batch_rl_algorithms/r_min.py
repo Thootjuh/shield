@@ -44,7 +44,6 @@ class RMin(BatchRLAlgorithm):
         super().__init__(pi_b=pi_b, gamma=gamma, nb_states=nb_states, nb_actions=nb_actions, data=data, R=R,
                          zero_unseen=zero_unseen, max_nb_it=max_nb_it, episodic=episodic, checks=checks,
                          speed_up_dict=speed_up_dict, estimate_baseline=estimate_baseline)
-        print("Starting R-MIN")
 
     def _initial_calculations(self):
         """

@@ -56,7 +56,6 @@ class DUIPI(BatchRLAlgorithm):
             self.r_min = min(R.values())
         else:
             self.r_min = np.min(R)
-        print("Starting DUIPI")
 
     def _initial_calculations(self):
         """
@@ -161,6 +160,7 @@ class DUIPI(BatchRLAlgorithm):
             var1 = (self.gamma ** 2) * (prob ** 2) * self.variance_v[s_prime]
             var2 = (r_term ** 2) * self.variance_P[s, a, s_prime]
             var3 = (prob ** 2) * self.variance_R[s, a, s_prime]
+
             self.variance_q[s, a] += var1 + var2 + var3
 
         # Replace any NaNs or infs due to numerical issues
@@ -172,7 +172,7 @@ class DUIPI(BatchRLAlgorithm):
         q_uncertainty_and_mask_corrected = self.q - self.xi * np.sqrt(self.variance_q)
         # The extra modification to avoid unobserved state-action pairs
         q_uncertainty_and_mask_corrected[~self.mask] = min(self.r_min * 1 / (1 - self.gamma), -1*self.r_min * 1 / (1 - self.gamma))
-        # q_uncertainty_and_mask_corrected[~self.mask] = -np.inf
+
         best_action = np.argmax(q_uncertainty_and_mask_corrected, axis=1)
         for state in self.states:
             if len(self.q[state, self.mask[state]]) > 0:
