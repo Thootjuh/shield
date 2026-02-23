@@ -1026,7 +1026,9 @@ class GymLunarLanderExperiment(Experiment):
                   f' {self.epsilons_baseline}')
             
             print("creating Baseline Policy")
-            self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
+            self.pi_b_obj = LunarLanderPolicy(self.env, epsilon=epsilon_baseline)
+            self.pi_b = self.pi_b_obj.pi
+            
             # self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
             #                                                             self._policy_evaluation_exact(self.pi_b)]
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
@@ -1038,7 +1040,7 @@ class GymLunarLanderExperiment(Experiment):
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
                 # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
-                data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
+                data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b, self.pi_b_obj)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
                 
                 self.data_df = trajToDF(self.data_cont, self.dimensions, 1)
@@ -1057,7 +1059,7 @@ class GymLunarLanderExperiment(Experiment):
                     pfeatures=self.dimensions,
                     h = -1,
                     gamma = 1,
-                    max_k = 1000,
+                    max_k = 250,
                     distance_threshold=None,
                     th = 10,
                     eta = 25,
@@ -1092,6 +1094,7 @@ class GymLunarLanderExperiment(Experiment):
                         goal.append(state)
                 print("traps = ", traps)
                 print("goal = ", goal)
+                print(m.R_df)
 
                 # get structure transition function
                 self.structure = self.get_empty_structure(nb_states)
@@ -1143,7 +1146,7 @@ class GymLunarLanderExperiment(Experiment):
                 
                 print("Calculating Shield")  
                 # self.structure = self.build_transition_matrix()
-                self.shielder = ShieldLunarLander(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
+                self.shielder = ShieldLunarLander(self.structure, self.traps, self.goal, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
                 print("Running Algorithms")
@@ -1154,7 +1157,7 @@ class GymLunarLanderExperiment(Experiment):
                 self._run_spibb_dqn('SPIBB-DQN')
          
         
-    def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
+    def generate_batch(self, nb_trajectories, env, pi, policy_object, max_steps=1000):
         """
         Generates a data batch for an episodic MDP.
         :param nb_steps: number of steps in the data batch
@@ -1173,7 +1176,8 @@ class GymLunarLanderExperiment(Experiment):
             state, region = env.get_init_state()
             is_done = False
             while nb_steps < max_steps and not is_done:
-                action_choice = np.random.choice(pi.shape[1], p=pi[region])
+                # action_choice = np.random.choice(pi.shape[1], p=pi[region])
+                action_choice = policy_object.heuristic(state)
                 state, next_state, reward = env.step(action_choice)
                 region = env.state2region(state)
                 next_region = env.state2region(next_state)

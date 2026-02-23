@@ -186,6 +186,6 @@ def state2region(state, partition, c_tuple):
         region_idx = [c_tuple[tuple(c)] for c in region_centers]
         return region_idx
     except:
-        print("state:", state, "centers", region_centers)
+        # print("state:", state, "centers", region_centers)
         # print('ERROR: state',state,'does not belong to any region')
         return None

@@ -358,6 +358,52 @@ class LunarLander(gym.Env, EzPickle):
             self.lander.linearVelocity = orig_linear_velocity
             self.lander.angularVelocity = orig_angular_velocity
             self.lander.awake = orig_awake
+            
+            
+    def lander_legs_overlap_moon(self, position, angle):
+        """
+        Pure geometric check: do either of the lander legs intersect the moon terrain
+        at (position, angle)?
+
+        The environment state is restored after the call.
+        """
+
+        # --- Save original state ---
+        orig_position = self.lander.position.copy()
+        orig_angle = self.lander.angle
+        orig_linear_velocity = self.lander.linearVelocity.copy()
+        orig_angular_velocity = self.lander.angularVelocity
+        orig_awake = self.lander.awake
+
+        try:
+            # Temporarily move lander
+            self.lander.position = position
+            self.lander.angle = angle
+            self.lander.transform = (position, angle)
+
+            # Legs are attached via joints; moving lander updates their transforms
+            for leg in self.legs:
+                leg_fixture = leg.fixtures[0]
+                for moon_fixture in self.moon.fixtures:
+                    if Box2D.b2TestOverlap(
+                        leg_fixture.shape,
+                        0,
+                        moon_fixture.shape,
+                        0,
+                        leg.transform,
+                        self.moon.transform,
+                    ):
+                        return True
+
+            return False
+
+        finally:
+            # Restore original state
+            self.lander.transform = (orig_position, orig_angle)
+            self.lander.linearVelocity = orig_linear_velocity
+            self.lander.angularVelocity = orig_angular_velocity
+            self.lander.awake = orig_awake
+            
     def set_state(self, state):
         """
         Set the environment to a given state.
@@ -753,7 +799,6 @@ class LunarLander(gym.Env, EzPickle):
             reward = -100
         if not self.lander.awake:
             terminated = True
-            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA WE HAD A SUCCESSSSSS!!!AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
             reward = +100
 
         if self.render_mode == "human":

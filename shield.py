@@ -252,10 +252,10 @@ class Shield:
                 self.shield[state][action] = max(min(1.0, 1-value), 0.0)
         # print(self.shield)
         # Clean up temporary files
-        os.remove(model_file)  
-        os.remove(prop_file)   
-        os.remove(trans_file)
-        os.remove(results_file)   
+        # os.remove(model_file)  
+        # os.remove(prop_file)   
+        # os.remove(trans_file)
+        # os.remove(results_file)   
         end_total_time = time.time()
         print("Total time needed to create the Shield:", end_total_time - start_total_time) 
     def printShield(self):

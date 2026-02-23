@@ -531,10 +531,18 @@ def encodeLunarLander(transition_matrix, intervals, trap, goal):
     
     prism_lines.append("endmodule")
     prism_lines.append(f"init s<={num_states} endinit")
-    prism_lines.append(f'label "trap" = s={trap[0]};')
-    prism_lines.append(f'label "goal" = s={goal[0]};')
-    # Return the PRISM MDP as a string
-    return "\n".join(prism_lines)
+
+    # Add trap label
+    if trap:
+        trap_condition = " | ".join(f"(s={t})" for t in trap)
+        prism_lines.append(f'label "crash" = {trap_condition};')
+
+    # Add goal label
+    if goal:
+        goal_condition = " | ".join(f"(s={g})" for g in goal)
+        prism_lines.append(f'label "goal" = {goal_condition};')
+        # Return the PRISM MDP as a string
+        return "\n".join(prism_lines)
 
 def add_reach_label(prism_mdp, states):
     """
