@@ -26,7 +26,8 @@ def read_data_from_directory(directory_path):
     Returns:
         pd.DataFrame: Combined DataFrame with all CSV data, with renamed columns for consistency.
     """
-    csv_files = glob.glob(os.path.join(directory_path, "*.csv"))
+    csv_files = glob.glob(os.path.join(directory_path, "**/*.csv"), recursive=True)
+    print(csv_files)
     combined_data = pd.DataFrame()
 
     for file in csv_files:
@@ -137,6 +138,7 @@ def plot_all_methods_cvar(data, env_name, ax):
         color_map[base_method] = base_color
     
     for method in sorted_methods:
+        if "_point" in method: continue
         method_data = grouped_data[grouped_data['method'] == method]
         x = method_data['length_trajectory']
         y = method_data['method_perf_mean']
@@ -218,6 +220,7 @@ def plot_all_methods_avg(data, env_name, ax):
         color_map[base_method] = base_color
     
     for method in sorted_methods:
+        if "_point" in method: continue
         method_data = grouped_data[grouped_data['method'] == method]
         x = method_data['length_trajectory']
         y = method_data['method_perf_mean']
@@ -252,7 +255,8 @@ def plot_all_methods_avg(data, env_name, ax):
     ax.set_ylabel('Avg. Performance')
     ax.set_title(f'{env_name}')
     ax.grid(True)
-def plot_results(subdirs, environments, plot_func, title, filename_prefix):
+
+def plot_results_old(subdirs, environments, plot_func, title, filename_prefix):
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     axes = axes.flatten()
 
@@ -295,8 +299,10 @@ def plot_all_methods(data, env_name, ax, plot_x_axis=True):
     grouped_data = grouped_data.method_perf.mean().reset_index()
     
     sorted_methods = sorted(grouped_data['method'].unique(), key=lambda x: (x.replace('shield-', ''), 'shield-' in x))
+    
+    print(sorted_methods)
 
-    color_methods = [m for m in sorted_methods if m != 'shielded_baseline']
+    color_methods = [m for m in sorted_methods if not 'shielded_baseline' in m]
     unshielded = [m for m in color_methods if not m.startswith('shield-')]
     shielded = [m for m in color_methods if m.startswith('shield-')]
     shielded_dict = {m.replace('shield-', ''): m for m in shielded}
@@ -306,6 +312,11 @@ def plot_all_methods(data, env_name, ax, plot_x_axis=True):
         if method in shielded_dict:
             color_methods.append(shielded_dict[method])
     
+    # print(unshielded, shielded_dict)
+    # exit()
+    # print(color_methods)
+    # exit()
+    
     cmap = COLORMAP
     colors = [cmap(1), cmap(0), cmap(3), cmap(2)]
     color_map = {}
@@ -314,6 +325,7 @@ def plot_all_methods(data, env_name, ax, plot_x_axis=True):
         color_map[base_method] = base_color
     
     for method in sorted_methods:
+        if "_point" in method: continue
         if method == 'shielded_baseline':
             method_data = grouped_data[grouped_data['method'] == method]
             ax.plot(method_data['length_trajectory'], method_data['method_perf'],
@@ -369,7 +381,7 @@ def export_legend(legend, filename="./out/legend", expand=[-5,-5,5,5]):
     bbox  = legend.get_window_extent()
     bbox = bbox.from_extents(*(bbox.extents + np.array(expand)))
     bbox = bbox.transformed(fig.dpi_scale_trans.inverted())
-    # fig.savefig(f"{filename}.pdf", format='pdf', dpi="figure", bbox_inches=bbox)
+    fig.savefig(f"{filename}.pdf", format='pdf', dpi="figure", bbox_inches=bbox)
     fig.savefig(f"{filename}.tex", format='pgf', dpi="figure", bbox_inches=bbox)
 
 def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_legend = True):
@@ -413,12 +425,13 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
                 plot_func(data, environments[idx], ax)
                 plt.tight_layout()
                 # plt.savefig(f"./out/{filename_prefix}-{idx}.png", format='png', bbox_inches='tight', pad_inches=0.0)
-                # plt.savefig(f"./out/{filename_prefix}-{idx}.pdf", format='pdf', bbox_inches='tight', pad_inches=0)
+                plt.savefig(f"./out/{filename_prefix}-{idx}.pdf", format='pdf', bbox_inches='tight', pad_inches=0)
                 plt.savefig(f"./out/{filename_prefix}-{idx}.tex", format='pgf', bbox_inches='tight', pad_inches=0.0)
                 
         mapper = {
                 'duipi_bayesian' : 'DUIPI', 'shield-duipi_bayesian' : 'Shielded-DUIPI', 
                 'spibb' : 'SPIBB', 'shield-spibb' : 'Shielded-SPIBB', 
+                'mo_spibb' : 'MO-SPIBB',
                 'shielded_baseline' : 'Shielded Baseline', 
                 'optimal policy': 'Optimal', 
                 'baseline policy': 'Baseline'
@@ -518,6 +531,7 @@ def main(parent_directory):
         print("Error: Expected exactly 4 subdirectories in the provided parent directory.")
         return
 
+    print(subdirs)
     
     for func, filename, export_legend in zip([plot_all_methods, plot_all_methods_avg, plot_all_methods_cvar],["results_grid_plot", "avg", "cvar"], [True, False, False]):
         plot_results(
