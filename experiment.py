@@ -813,10 +813,11 @@ class Experiment:
 
 class SimplifiedPacmanExperiment(Experiment):
     fixed_params_exp_columns = ['seed', 'gamma', 'width', 'height', 'lag_p', 'ghost_opt_chance', 'pi_rand_perf', 'pi_star_perf']   
-    variable_params_exp_columns = ['iteration', 'epsilon_baseline', 'pi_b_perf', 'nb_trajectories'] 
+    variable_params_exp_columns = ['iteration', 'epsilon_baseline', 'pi_b_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'nb_trajectories'] 
     
     def _set_env_params(self):
         self.episodic = True
+        self.env_name = self.experiment_config['META']['env_name']
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         self.lag = float(self.experiment_config['ENV_PARAMETERS']['LAG'])
         self.ghost_opt_chance = float(self.experiment_config['ENV_PARAMETERS']['GHOST_OPT_CHANCE'])
@@ -856,7 +857,8 @@ class SimplifiedPacmanExperiment(Experiment):
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
         # pi_rand_perf = 0
-
+        self.prop = "Pmax=? [!\"eaten\"U\"goal\"]"
+        self.avoid_prop = "Pmax=? [G !\"eaten\"]"
         self.fixed_params_exp_list.append(pi_rand_perf)
         
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
@@ -868,14 +870,14 @@ class SimplifiedPacmanExperiment(Experiment):
         self.fixed_params_exp_list.append(pi_star_perf)
         
         pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
-        pi_b_perf = self._policy_evaluation_exact(pi_b)
+        self.pi_b_perf = self._policy_evaluation_exact(pi_b)
+        self.pi_b_succ_rate, self.pi_b_avoid_rate = self.policy_evaluation_success_rate(pi_b)
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
 
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
-        self.env_name = self.experiment_config['META']['env_name']
-        self.prop = "Pmax=? [!\"eaten\"U\"goal\"]"
-        self.avoid_prop = "Pmax=? [G !\"eaten\"]"
+        
+
         
     def generate_batch(self, trajectories, nb_trajectories, env, pi, max_steps=2500):
         """
@@ -914,7 +916,7 @@ class SimplifiedPacmanExperiment(Experiment):
             
             self.pi_b = PacmanBaselinePolicy(env=self.env, epsilon=epsilon_baseline).pi
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
-                                                                        self._policy_evaluation_exact(self.pi_b)]
+                                                                        self.pi_b_perf, self.pi_b_succ_rate, self.pi_b_avoid_rate]
             trajectories = []
             for nb_trajectories in self.nb_trajectories_list:
                 print(
@@ -1299,7 +1301,7 @@ class WetChickenExperiment(Experiment):
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.lengths_trajectory = ast.literal_eval(self.experiment_config['BASELINE']['lengths_trajectory'])
         if self.baseline_method == 'heuristic':
-            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'threshold', 'pi_b_perf', 'pi_b_succ_rate', 'pi_b_avoid_rate', 'length_trajectory']
+            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'threshold', 'pi_b_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'length_trajectory']
         else:
             self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'threshold', 'pi_b_perf',
@@ -1432,7 +1434,7 @@ class RandomMDPsExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'nb_states', 'nb_actions', 'nb_next_state_transition']
     variable_params_exp_columns = ['iteration', 'softmax_target_perf_ratio',  'baseline_target_perf_ratio',
-                                   'threshold', 'baseline_perf', 'baseline_succ_rate', 'baseline_avoid_rate', 'pi_rand_perf', 'pi_star_perf','nb_trajectories']
+                                   'threshold', 'baseline_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'pi_rand_perf', 'pi_star_perf','nb_trajectories']
 
     def _set_env_params(self):
         """
