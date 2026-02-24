@@ -33,8 +33,11 @@ def read_data_from_directory(directory_path):
     for file in csv_files:
         print(f"Reading file: {file}")
         data = pd.read_csv(file)
-        data = data.rename(columns={'baseline_perf': 'pi_b_perf'})
         data = data.rename(columns={'nb_trajectories': 'length_trajectory'})
+        data = data.rename(columns={'baseline_succ_rate': 'baseline_success_rate'})
+        data = data.rename(columns={'pi_b_succ_rate': 'baseline_success_rate'})
+        data = data.rename(columns={'pi_b_avoid_rate': 'baseline_avoid_rate'})
+        data = data.rename(columns={'baseline_perf': 'pi_b_perf'})
         combined_data = pd.concat([combined_data, data], ignore_index=True)
     return combined_data
 
@@ -48,7 +51,7 @@ def extract_data(data):
     Returns:
         pd.DataFrame: Filtered DataFrame with selected columns only.
     """
-    relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time', 'pi_b_perf', 'pi_star_perf']]
+    relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time', 'pi_b_perf', 'pi_star_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'method_succ_rate', 'method_avoid_rate']]
     return relevant_data_new
 
 def group_by_methods(data):
@@ -383,7 +386,258 @@ def export_legend(legend, filename="./out/legend", expand=[-5,-5,5,5]):
     bbox = bbox.transformed(fig.dpi_scale_trans.inverted())
     fig.savefig(f"{filename}.pdf", format='pdf', dpi="figure", bbox_inches=bbox)
     fig.savefig(f"{filename}.tex", format='pgf', dpi="figure", bbox_inches=bbox)
+    
 
+def plot_all_methods_success(data, env_name, ax, plot_x_axis=True):
+    grouped_data = data.groupby(['method', 'length_trajectory']) \
+                       .method_succ_rate.mean().reset_index()
+
+    sorted_methods = sorted(
+        grouped_data['method'].unique(),
+        key=lambda x: (x.replace('shield-', ''), 'shield-' in x)
+    )
+
+    color_methods = [m for m in sorted_methods if 'shielded_baseline' not in m]
+    unshielded = [m for m in color_methods if not m.startswith('shield-')]
+    shielded = [m for m in color_methods if m.startswith('shield-')]
+    shielded_dict = {m.replace('shield-', ''): m for m in shielded}
+
+    color_methods = []
+    for method in sorted(unshielded):
+        color_methods.append(method)
+        if method in shielded_dict:
+            color_methods.append(shielded_dict[method])
+
+    cmap = COLORMAP
+    colors = [cmap(1), cmap(0), cmap(3), cmap(2)]
+    color_map = {m: colors[i] for i, m in enumerate(color_methods)}
+
+    for method in sorted_methods:
+        if "_point" in method:
+            continue
+
+        method_data = grouped_data[grouped_data['method'] == method]
+
+        if method == 'shielded_baseline':
+            ax.plot(
+                method_data['length_trajectory'],
+                method_data['method_succ_rate'],
+                linestyle='--',
+                linewidth=BASELINES_LINESIZE,
+                color=SHIELDB_CLR,
+                label=method
+            )
+        else:
+            marker = get_marker(method)
+            color = color_map[method]
+
+            ax.plot(
+                method_data['length_trajectory'],
+                method_data['method_succ_rate'],
+                linestyle='-',
+                marker=marker,
+                markersize=8,
+                color=color,
+                label=method
+            )
+
+    if 'baseline_success_rate' in data.columns:
+        grouped = data.groupby('length_trajectory')['baseline_success_rate'] \
+                      .mean().reset_index()
+
+        ax.plot(
+            grouped['length_trajectory'],
+            grouped['baseline_success_rate'],
+            linestyle='dashdot',
+            linewidth=BASELINES_LINESIZE,
+            color=BASELIN_CLR,
+            label='baseline policy'
+        )
+
+    ax.set_xscale('log')
+    ax.set_xlabel('Dataset Size')
+    if plot_x_axis:
+        ax.set_ylabel('Success')
+    ax.set_title(f'{env_name}')
+    ax.grid(True)
+
+def plot_all_methods_avoid(data, env_name, ax, plot_x_axis=True):
+    grouped_data = data.groupby(['method', 'length_trajectory']) \
+                       .method_avoid_rate.mean().reset_index()
+
+    sorted_methods = sorted(
+        grouped_data['method'].unique(),
+        key=lambda x: (x.replace('shield-', ''), 'shield-' in x)
+    )
+
+    color_methods = [m for m in sorted_methods if 'shielded_baseline' not in m]
+    unshielded = [m for m in color_methods if not m.startswith('shield-')]
+    shielded = [m for m in color_methods if m.startswith('shield-')]
+    shielded_dict = {m.replace('shield-', ''): m for m in shielded}
+
+    color_methods = []
+    for method in sorted(unshielded):
+        color_methods.append(method)
+        if method in shielded_dict:
+            color_methods.append(shielded_dict[method])
+
+    cmap = COLORMAP
+    colors = [cmap(1), cmap(0), cmap(3), cmap(2)]
+    color_map = {m: colors[i] for i, m in enumerate(color_methods)}
+
+    for method in sorted_methods:
+        if "_point" in method:
+            continue
+
+        method_data = grouped_data[grouped_data['method'] == method]
+
+        if method == 'shielded_baseline':
+            ax.plot(
+                method_data['length_trajectory'],
+                method_data['method_avoid_rate'],
+                linestyle='--',
+                linewidth=BASELINES_LINESIZE,
+                color=SHIELDB_CLR,
+                label=method
+            )
+        else:
+            marker = get_marker(method)
+            color = color_map[method]
+
+            ax.plot(
+                method_data['length_trajectory'],
+                method_data['method_avoid_rate'],
+                linestyle='-',
+                marker=marker,
+                markersize=8,
+                color=color,
+                label=method
+            )
+
+    if 'baseline_avoid_rate' in data.columns:
+        grouped = data.groupby('length_trajectory')['baseline_avoid_rate'] \
+                      .mean().reset_index()
+
+        ax.plot(
+            grouped['length_trajectory'],
+            grouped['baseline_avoid_rate'],
+            linestyle='dashdot',
+            linewidth=BASELINES_LINESIZE,
+            color=BASELIN_CLR,
+            label='baseline policy'
+        )
+
+    ax.set_xscale('log')
+    ax.set_xlabel('Dataset Size')
+    if plot_x_axis:
+        ax.set_ylabel('Avoid')
+    ax.set_title(f'{env_name}')
+    ax.grid(True)
+
+def plot_all_methods_safety(data, env_name, ax, plot_x_axis=True):
+
+    grouped_data = data.groupby(['method', 'length_trajectory']).agg(
+        method_succ_rate=('method_succ_rate', 'mean'),
+        method_avoid_rate=('method_avoid_rate', 'mean')
+    ).reset_index()
+
+    sorted_methods = sorted(
+        grouped_data['method'].unique(),
+        key=lambda x: (x.replace('shield-', ''), 'shield-' in x)
+    )
+
+    color_methods = [m for m in sorted_methods if 'shielded_baseline' not in m]
+    unshielded = [m for m in color_methods if not m.startswith('shield-')]
+    shielded = [m for m in color_methods if m.startswith('shield-')]
+    shielded_dict = {m.replace('shield-', ''): m for m in shielded}
+
+    color_methods = []
+    for method in sorted(unshielded):
+        color_methods.append(method)
+        if method in shielded_dict:
+            color_methods.append(shielded_dict[method])
+
+    cmap = COLORMAP
+    colors = [cmap(1), cmap(0), cmap(3), cmap(2)]
+    color_map = {m: colors[i] for i, m in enumerate(color_methods)}
+
+    for method in sorted_methods:
+        if "_point" in method:
+            continue
+
+        method_data = grouped_data[grouped_data['method'] == method]
+
+        if method == 'shielded_baseline':
+            ax.plot(
+                method_data['length_trajectory'],
+                method_data['method_succ_rate'],
+                linestyle='-',
+                linewidth=BASELINES_LINESIZE,
+                color=SHIELDB_CLR,
+                label='shielded_baseline'
+            )
+
+            ax.plot(
+                method_data['length_trajectory'],
+                method_data['method_avoid_rate'],
+                linestyle='--',
+                linewidth=BASELINES_LINESIZE,
+                color=SHIELDB_CLR
+            )
+
+        else:
+            marker = get_marker(method)
+            color = color_map[method]
+
+            ax.plot(
+                method_data['length_trajectory'],
+                method_data['method_succ_rate'],
+                linestyle='-',
+                marker=marker,
+                markersize=8,
+                color=color,
+                label=method
+            )
+
+            ax.plot(
+                method_data['length_trajectory'],
+                method_data['method_avoid_rate'],
+                linestyle='--',
+                marker=marker,
+                markersize=8,
+                color=color
+            )
+
+    if 'baseline_success_rate' in data.columns:
+        baseline_grouped = data.groupby('length_trajectory').agg(
+            baseline_success_rate=('baseline_success_rate', 'mean'),
+            baseline_avoid_rate=('baseline_avoid_rate', 'mean')
+        ).reset_index()
+
+        ax.plot(
+            baseline_grouped['length_trajectory'],
+            baseline_grouped['baseline_success_rate'],
+            linestyle='-',
+            linewidth=BASELINES_LINESIZE,
+            color=BASELIN_CLR,
+            label='baseline policy'
+        )
+
+        ax.plot(
+            baseline_grouped['length_trajectory'],
+            baseline_grouped['baseline_avoid_rate'],
+            linestyle='--',
+            linewidth=BASELINES_LINESIZE,
+            color=BASELIN_CLR
+        )
+
+    ax.set_xscale('log')
+    ax.set_xlabel('Dataset Size')
+    if plot_x_axis:
+        ax.set_ylabel('Safety')
+    ax.set_title(f'{env_name}')
+    ax.grid(True)
+    
 def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_legend = True):
     """
     Plots performance curves (mean, CVaR, or all) for multiple methods across 
@@ -452,6 +706,9 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
             # print("LABELS: ", labels)
             handle_idxs = [0, 2, 4, 6, 8, 9, 10]
             # handles = np.array(handles)[handle_idxs].tolist()
+            if filename_prefix == "safety_grid_plot":
+                lavg = matplotlib.lines.Line2D([0], [0], linestyle='solid', color='black')
+                lvar = matplotlib.lines.Line2D([0], [0], linestyle='dashed', color='black')
             if save_legend:
                 print("HANDLES:", handles)
                 print("LABELS: ", labels)
@@ -473,10 +730,16 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
                 
                 # labels.insert(-3, "")
                 # handles.insert(-3, red_patch)
-                labels.insert(-3, "Average")
-                handles.insert(-3, lavg)
-                labels.insert(-3, "1%-CVAR")
-                handles.insert(-3, lvar)
+                if filename_prefix == "safety_grid_plot":
+                    labels.insert(-3, "Success")
+                    handles.insert(-3, lavg)
+                    labels.insert(-3, "Avoid")
+                    handles.insert(-3, lvar)
+                else:
+                    labels.insert(-3, "Average")
+                    handles.insert(-3, lavg)
+                    labels.insert(-3, "1%-CVAR")
+                    handles.insert(-3, lvar)
                 
                 
                 labels.insert(0, 'Methods')
@@ -537,6 +800,31 @@ def main(parent_directory):
         plot_results(
             subdirs, environments, func,
             title="Method performance plotted against dataset size",
+            filename_prefix=filename,
+            save_legend=export_legend
+        )
+    for func, filename, export_legend in zip(
+        [
+            plot_all_methods_success,
+            plot_all_methods_avoid,
+            plot_all_methods_safety
+        ],
+        [
+            "success",
+            "avoid",
+            "safety_grid_plot"
+        ],
+        [
+            False,
+            False,
+            True
+        ]
+    ):
+        plot_results(
+            subdirs,
+            environments,
+            func,
+            title="Safety metrics plotted against dataset size",
             filename_prefix=filename,
             save_legend=export_legend
         )
