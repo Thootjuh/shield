@@ -4,7 +4,7 @@ import tempfile
 import os
 import time
 import numpy as np
-from IntervalMDPBuilder import IntervalMDPBuilderPacman, IntervalMDPBuilderRandomMDP, IntervalMDPBuilderAirplane, IntervalMDPBuilderSlipperyGridworld, IntervalMDPBuilderWetChicken, IntervalMDPBuilderPrism, IntervalMDPBuilderTaxi, IntervalMDPBuilderFrozenLake
+from IntervalMDPBuilder import IntervalMDPBuilderPacman, IntervalMDPBuilderRandomMDP, IntervalMDPBuilderAirplane, IntervalMDPBuilderSlipperyGridworld, IntervalMDPBuilderWetChicken, IntervalMDPBuilderPrism, IntervalMDPBuilderTaxi, IntervalMDPBuilderFrozenLake, IntervalMDPBuilderLunarLander
 from PrismEncoder import encodeCartPole, encodeCrashingMountainCar, encodeMaze, encodeLunarLander
 import pycarl
 import subprocess
@@ -124,7 +124,9 @@ class Shield:
         
 
         print("Total time needed to create the Shield:", end_total_time - start_total_time) 
-            
+        
+
+        
     def calculateShieldPrism(self, prism_txt, prop, export_dir="./shield", java_mem=8):
         """
         Compute per-state-action property satisfaction probabilities using PRISM,
@@ -154,15 +156,14 @@ class Shield:
             f.write(filter)
             prop_file = f.name
     
-        trans_file = os.path.join(export_dir, "transitions.txt")
+        # trans_file = os.path.join(export_dir, "transitions.txt")
         results_file = os.path.join(export_dir, "state_values.txt")
 
         
         # Run PRISM
         cmd = (
-            f"{prism_executable} -javamaxmem {java_mem}g "
+            f"{prism_executable} -explicit -sparse -javamaxmem {java_mem}g "
             f"{model_file} {prop_file} "
-            f"-exporttrans {trans_file} "
             f"| awk '/Results \\(including zeros\\) for filter true:/ {{flag=1; next}} "
             f"flag && /^Range of values/ {{exit}} flag {{print}}' "
             f"> {results_file}"
@@ -186,43 +187,52 @@ class Shield:
         subprocess.Popen(cmd, shell=True).wait()
 
         # Parse state values
-        state_values = {}
-        pattern = re.compile(r'^(\d+):\([^)]*\)=(\S+)$')
+        # state_values = {}
+        # pattern = re.compile(r'^(\d+):\([^)]*\)=(\S+)$')
+        # with open(results_file, "r") as f:
+        #     for line in f:
+        #         line = line.strip()
+        #         if not line or line.startswith("#"):
+        #             continue
+        #         match = pattern.match(line)
+        #         if match:
+        #             state = int(match.group(1))
+        #             val = float(match.group(2))
+        #             state_values[state] = val  
+        state_values = defaultdict(float)
+
         with open(results_file, "r") as f:
             for line in f:
                 line = line.strip()
-                if not line or line.startswith("#"):
+                if not line:
                     continue
-                match = pattern.match(line)
-                if match:
-                    state = int(match.group(1))
-                    val = float(match.group(2))
-                    state_values[state] = val  
+
+                # Split at '='
+                left, value = line.split("=")
+                value = float(value)
+
+                # Extract state between parentheses
+                state = int(left.split("(")[1].split(")")[0])
+
+                state_values[state] = value
                     
                        
         # Parse transitions
         transition_probs = {}
-        with open(trans_file, "r") as f:
-            lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+
+        for (s, a, s_next), (lower, upper) in self.intervals.items():
+            transition_probs.setdefault((s, a), {})[s_next] = {
+                "lower": lower,
+                "upper": upper
+            }
             
-        trans_pattern = re.compile(r'^(\d+)\s+(\d+)\s+(\d+)\s+\[([^\]]+)\]\s+(\S+)$')
-        for idx, line in enumerate(lines[1:], start=2):
-            m = trans_pattern.match(line)
-            if not m:
-                print(f"Warning: could not parse transition line #{idx}: {repr(line)}")
-                continue
-
-            s = int(m.group(1))
-            a = int(m.group(2))
-            s_next = int(m.group(3))
-            bounds = m.group(4).split(",")
-            try:
-                lower, upper = float(bounds[0]), float(bounds[1])
-            except Exception:
-                print(f"Warning: bad bounds on line #{idx}: {repr(bounds)}")
-                continue
-
-            transition_probs.setdefault((s, a), {})[s_next] = {"lower": lower, "upper": upper}
+        # Ensure every (state, action) has at least one transition
+        for state in range(self.num_states):
+            for action in range(self.num_actions):
+                if (state, action) not in transition_probs or len(transition_probs[(state, action)]) == 0:
+                    transition_probs[(state, action)] = {
+                        state: {"lower": 1.0, "upper": 1.0}
+                    }
         
         # Fill self.shield with computed state-action values
         for state in range(self.num_states):
@@ -237,7 +247,7 @@ class Shield:
                 #get the worst next state and add mass untill we reach upper
                 while total_mass < 1 and len(remaining_states) >= 1:
                     # get the worst next state
-                    worst_next_state = min(remaining_states, key=lambda i: state_values[i])
+                    worst_next_state = min(remaining_states, key=lambda i: state_values.get(i, 0.0))
                     remaining_states = [state for state in remaining_states if state != worst_next_state]
                     # add mass untill we reach max_prob or total_mass = 1
                     bounds = trans[worst_next_state]
@@ -248,16 +258,16 @@ class Shield:
                 
                 value = 0  
                 for next_state, trans_prob in worst_case_transitions.items():                        
-                    value += trans_prob*state_values[next_state]
+                    value += trans_prob*state_values.get(next_state, 0.0)
                 self.shield[state][action] = max(min(1.0, 1-value), 0.0)
         # print(self.shield)
         # Clean up temporary files
-        # os.remove(model_file)  
-        # os.remove(prop_file)   
-        # os.remove(trans_file)
-        # os.remove(results_file)   
+        os.remove(model_file)  
+        os.remove(prop_file)   
+        os.remove(results_file)   
         end_total_time = time.time()
-        print("Total time needed to create the Shield:", end_total_time - start_total_time) 
+        print("Total time needed to create the Shield:", end_total_time - start_total_time)
+
     def printShield(self):
         """
         print the shield
@@ -378,7 +388,7 @@ class ShieldCartpole(Shield):
         # prop = "Pmax=? [!\"trap\" U \"goal\"]"
         # prop = "Pmax=? [!\"goal\"U\"trap\"]"
         # prop = "Pmaxmin=? [  G<=5 !\"trap\" ]"
-        prop = "Pmax=? [  F<4 \"trap\" ]"
+        prop = "Pmax=? [  F<5 \"trap\" ]"
         # prop1 = "Pmax=? [  F \"trap\" ]"
         
         # Is it possible to reach the goal
@@ -386,8 +396,14 @@ class ShieldCartpole(Shield):
         # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
         # super().calculateShieldInterval(prop, self.model_builder.build_model())
+        # super().calculateShieldPrismOld(self.prism_text, prop)
+        # self.shield = 1-self.shield
+        # print("THIS IS THE OLD SHIELD!!")
+        # self.printShield()
+        # self.shield = np.full((self.num_states, self.num_actions), -1, dtype=np.float64)
         super().calculateShieldPrism(self.prism_text, prop)
         self.shield = 1-self.shield
+        # self.printShield()
         
     def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.05):
         """
@@ -455,7 +471,8 @@ class ShieldLunarLander(Shield):
             the range of possible transition probabilities due to uncertainty.
         """
         # self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps) 
-        self.prism_text = encodeLunarLander(transition_matrix, intervals, traps, goal)
+        self.prism_text = encodeLunarLander(transition_matrix, intervals, traps, goal, init)
+        # self.model_builder = IntervalMDPBuilderLunarLander(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         
     def calculateShield(self):
@@ -471,6 +488,7 @@ class ShieldLunarLander(Shield):
         # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
         # super().calculateShieldInterval(prop, self.model_builder.build_model())
+        # super().calulateShieldPrism()
         super().calculateShieldPrism(self.prism_text, prop)
         self.shield = self.shield
         

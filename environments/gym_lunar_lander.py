@@ -12,10 +12,7 @@ class RewardDict(Mapping):
         self.nb_states = nb_states
         self.terminal_idx = terminal_idx
         self.reward_per_next = reward_per_next
-        
-
             
-
     def __getitem__(self, key):
         state, next_state = key
 
@@ -44,16 +41,19 @@ class LunarLander:
         # self.goal = [0.0, 0.0, 0.0, 0.0]
         self.partition_states()
         
-        self.traps = [self.nb_states-1]
+        self.traps = [self.nb_states - 1]
         self.goal = []
-        for s in range(self.nb_states-1):
-            if s % 100 == 0:
-                print(s)
-            reward = self.get_reward_for_cell(s)
+
+        get_reward = self.get_reward_for_cell   # local binding (faster)
+        append_goal = self.goal.append
+        append_trap = self.traps.append
+
+        for s in range(self.nb_states - 1):
+            reward = get_reward(s)
             if reward == 100:
-                self.goal.append(s)
+                append_goal(s)
             elif reward == -100:
-                self.traps.append(s)
+                append_trap(s)
 
     def reset(self):
         # The self.env.reset function also resets the overall environment, which is not what we want. 

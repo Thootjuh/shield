@@ -15,7 +15,8 @@ def infer_action(state, env, policy):
 def infer_action_DQN(state, ai):
     action, _, _, _ = ai.inference(state)
     return int(action)
-def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None, env_name="cartpole"):
+
+def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None, env_name="cartpole", number_of_steps_per_episode=250):
     """ Evaluate the baseline number_of_epochs times for number_of_steps steps.
 
     Args:
@@ -37,7 +38,7 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method,
         last_state = env.get_state()
         term, start_time = False, time.time()
         rewards, all_nb_steps, current_reward, nb_steps, total_nb_steps = [], [], 0, 0, 0
-        while total_nb_steps < number_of_steps:
+        while total_nb_steps < number_of_steps and nb_steps<number_of_steps_per_episode:
             # print(f"epoch {epoch}, step {nb_steps}")
             if not term:
                 if disc_method == 'mrl':

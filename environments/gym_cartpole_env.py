@@ -5,8 +5,27 @@ import environments
 import random
 import discretization.grid.partition as prt
 from collections import defaultdict
+from collections.abc import Mapping
 
+class RewardDict(Mapping):
+    def __init__(self, nb_states, terminal_idx, reward_per_next):
+        self.nb_states = nb_states
+        self.terminal_idx = terminal_idx
+        self.reward_per_next = reward_per_next
+            
+    def __getitem__(self, key):
+        state, next_state = key
 
+        if next_state == self.terminal_idx:
+            return 0
+
+        return self.reward_per_next.get(next_state, 0.0)
+
+    def __iter__(self):
+        raise RuntimeError("Full iteration over N^2 reward table is infeasible.")
+
+    def __len__(self):
+        return self.nb_states * self.nb_states
 class cartPole:
     def __init__(self):
         self.env = gym.make("CartPole-v0")
@@ -26,8 +45,8 @@ class cartPole:
     
     def partition_states(self):
         # Non-terminal region definitions
-        nrPerDim = [6, 6, 4, 6]
-        # nrPerDim = [10, 10, 10, 10]
+        # nrPerDim = [6, 6, 4, 6]
+        nrPerDim = [20, 20, 10, 20]
         regionWidth = [
             (2.4*2)/nrPerDim[0],    # cart position ∈ [-2.4, 2.4]
             (6.0)/nrPerDim[1],      # cart velocity ∈ [-3, 3]
@@ -91,15 +110,16 @@ class cartPole:
         return self.terminated or self.truncated
     
     def get_reward_function(self):
-        reward_function = defaultdict(float)
-        for state in range(self.nb_states):
-            for next_state in range(self.nb_states):
-                # if next_state != self.partition["terminal_idx"]:
-                reward_function[(state, next_state)] = 1
-            # reward_function[(state, self.partition["terminal_idx"])] = 0
-        # R[:, nb_states-1] = FALL_REWARD
-        # reward_function = {key: value for key, value in reward_function.items() if value != 0.0}
-        return reward_function
+        reward_per_next = {}
+
+        for next_state in range(self.nb_states - 1):
+            reward_per_next[next_state] = 1
+
+        return RewardDict(
+            nb_states=self.nb_states,
+            terminal_idx=self.partition["terminal_idx"],
+            reward_per_next=reward_per_next,
+        )
     
     def get_transition_function(self):
         return self.transition_model

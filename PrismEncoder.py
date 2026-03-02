@@ -464,7 +464,7 @@ def remove_state_transitions(prism_mdp, states):
     
     return "\n".join(filtered_lines)
 
-def encodeLunarLander(transition_matrix, intervals, trap, goal):
+def encodeLunarLander(transition_matrix, intervals, trap, goal, init):
     actions = [
         "Up",
         "Down",
@@ -474,76 +474,144 @@ def encodeLunarLander(transition_matrix, intervals, trap, goal):
     
     num_states, num_actions = transition_matrix.shape
 
-    # Initialize the PRISM MDP module 
     prism_lines = ["mdp", "", "module Maze"]
     
-    # Add statespace
+    # Add state space
     prism_lines.append(f"    s : [0..{num_states - 1}];  // state")
-    
-    
+
+    # Track states that have at least one real successor
+    valid_initial_states = set()
+
     # Add transitions
     for state in range(num_states):
         prism_lines.append(f"    // State {state}")
+        state_has_successor = False
+
         for action in range(num_actions):
-            # Extract possible next states
+
             next_states = transition_matrix[state, action]
-            
-            # Remove invalid transitions (e.g., -1 to indicate no transition)
             valid_next_states = [int(s) for s in next_states if s >= 0]
-            
-            # if len(valid_next_states):
-            #     # Uniform probability for each next state
-            #     # uniform_prob = 1 / len(valid_next_states)
+
             if len(valid_next_states) == 1:
-                # print(valid_next_states, " ", len(valid_next_states), " 1")
+                if valid_next_states[0] != state:
+                    state_has_successor = True
                 default_interval = (1.0, 1.0)
                 probabilities = [
-                    f"[{default_interval[0]}," 
-                    f" {default_interval[1]}]"
-                    for next_state in valid_next_states
-                ]               
+                    f"[{default_interval[0]}, {default_interval[1]}]"
+                    for _ in valid_next_states
+                ]
+
             elif len(valid_next_states) > 1:
-                # print(valid_next_states, " ", len(valid_next_states), " >1")
+                state_has_successor = True
                 default_interval = (4.999999999999449e-05, 0.9999999)
                 probabilities = [
-                    f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
-                    f" {intervals.get((state, action, next_state), default_interval)[1]}]"
+                    f"[{intervals.get((state, action, next_state), default_interval)[0]}, "
+                    f"{intervals.get((state, action, next_state), default_interval)[1]}]"
                     for next_state in valid_next_states
                 ]
+
             else:
-                # If there is no transition, loop 
+                # No transition = self-loop
+                print("haha ", state)
                 default_interval = (1.0, 1.0)
-                probabilities = [
-                    f"[{default_interval[0]}," 
-                    f" {default_interval[1]}]"
-                    for next_state in [state]
-                ]  
                 valid_next_states = [state]
-            # Create PRISM transition command
+                probabilities = [
+                    f"[{default_interval[0]}, {default_interval[1]}]"
+                ]
+
             transitions = " + ".join(
-                f"{prob}:(s'={next_state})" for prob, next_state in zip(probabilities, valid_next_states)
+                f"{prob}:(s'={next_state})"
+                for prob, next_state in zip(probabilities, valid_next_states)
             )
+
             action_label = actions[action]
-            prism_lines.append(f"    [{action_label}] s={state} -> {transitions};")
-        
-                
-    # End the module
-    
+            prism_lines.append(
+                f"    [{action_label}] s={state} -> {transitions};"
+            )
+
+        if state_has_successor:
+            valid_initial_states.add(state)
+
     prism_lines.append("endmodule")
-    prism_lines.append(f"init s<={num_states} endinit")
 
-    # Add trap label
+    # Initial states = all states with at least one successor
+    if valid_initial_states:
+        init_condition = " | ".join(f"(s={s})" for s in sorted(valid_initial_states))
+        prism_lines.append(f"init {init_condition} endinit")
+
+    # Trap label
     if trap:
-        trap_condition = " | ".join(f"(s={t})" for t in trap)
-        prism_lines.append(f'label "crash" = {trap_condition};')
+        add_label(prism_lines, "crash", trap)
 
-    # Add goal label
+    # Goal label
     if goal:
-        goal_condition = " | ".join(f"(s={g})" for g in goal)
-        prism_lines.append(f'label "goal" = {goal_condition};')
-        # Return the PRISM MDP as a string
-        return "\n".join(prism_lines)
+        add_label(prism_lines, "goal", goal)
+    else:
+        prism_lines.append('label "goal" = false;')
 
+    return "\n".join(prism_lines)
+    
+def states_to_ranges(states):
+    """
+    Convert a list of integers into a list of (start, end) ranges.
+    Example: [1,2,3,7,8,10] -> [(1,3), (7,8), (10,10)]
+    """
+    if not states:
+        return []
+
+    states = sorted(set(states))
+    ranges = []
+
+    start = prev = states[0]
+
+    for s in states[1:]:
+        if s == prev + 1:
+            prev = s
+        else:
+            ranges.append((start, prev))
+            start = prev = s
+    ranges.append((start, prev))
+
+    return ranges
+
+
+def build_range_expression(ranges, chunk_size=500):
+    """
+    Build a PRISM-safe expression using ranges and chunking.
+    """
+
+    # Convert ranges into PRISM fragments
+    fragments = []
+    for start, end in ranges:
+        if start == end:
+            fragments.append(f"(s={start})")
+        else:
+            fragments.append(f"(s >= {start} & s <= {end})")
+
+    if not fragments:
+        return None
+
+    # If small enough, just join directly
+    if len(fragments) <= chunk_size:
+        return " | ".join(fragments)
+
+    # Otherwise, chunk into balanced subexpressions
+    chunks = [
+        " | ".join(fragments[i:i+chunk_size])
+        for i in range(0, len(fragments), chunk_size)
+    ]
+
+    return " | ".join(f"({chunk})" for chunk in chunks)
+
+def add_label(prism_lines, label_name, states):
+    if not states:
+        return
+
+    ranges = states_to_ranges(states)
+    expression = build_range_expression(ranges)
+
+    prism_lines.append(f'label "{label_name}" = {expression};')
+    
 def add_reach_label(prism_mdp, states):
     """
     Adds a label "reach" to specified states in a PRISM MDP module string.

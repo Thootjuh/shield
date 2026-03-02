@@ -35,14 +35,6 @@ def trajToDF(trajectories, num_features, standard_reward="test"):
             # print("r = ", r)
             transition_count+=1
             risk = r
-            # if died == True:
-            #     rows.append([trajectory_count, transition_count]
-            #             + [val for val in s] +
-            #             [a, risk])
-            #     transition_count+=1
-            #     rows.append([trajectory_count, transition_count]
-            #             + [val for val in n_s] +
-            #             [a, 0])
             
             rows.append([trajectory_count, transition_count]
                             + [val for val in s] +
@@ -50,7 +42,7 @@ def trajToDF(trajectories, num_features, standard_reward="test"):
             
             r = transition[3]
         # Add one more entry for the final state  
-        if transition[4]: # If an end state is reached, add it
+        if transition[4] or transition[5]: # If an end state is reached, add it
             transition_count+=1
             rows.append([trajectory_count, transition_count]
                     + [val for val in n_s] +
@@ -117,3 +109,7 @@ def state2region(predictor, state, num_features):
     new_df = pd.DataFrame(rows, columns=columns)
     region = predictor.predict(new_df)
     return region[0]
+
+def state2region_fast(predictor, state):
+    state_array = np.asarray(state).reshape(1, -1)
+    return predictor.predict(state_array)[0]

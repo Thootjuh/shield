@@ -41,10 +41,11 @@ class shieldedBatchRLAlgorithm(BatchRLAlgorithm):
         self.max_nb_it = max_nb_it
         self.pi = self.pi_b.copy()
         self.q = np.zeros([nb_states, nb_actions])
-        if isinstance(R, dict):
-            self.R_state_state = R
-        else:
+        if isinstance(R, np.ndarray):
             self.R_state_state = self.reward_function_to_dict(R)
+        else:
+            self.R_state_state = R
+            
         self.checks = checks
         self.speed_up_dict = speed_up_dict
         self.shield_actions()

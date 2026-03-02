@@ -52,7 +52,7 @@ from PACIntervalEstimator import PACIntervalEstimator
 from evaluate_cartpole import evaluate_policy
 from discretization.grid.define_imdp import imdp_builder
 
-from discretization.MRL.helper_functions import trajToDF, state2region
+from discretization.MRL.helper_functions import trajToDF, state2region, state2region_fast
 from discretization.MRL.model import MDP_model
 from discretization.MRL.testing import predict_cluster
 from discretization.MRL_scratch.mrl_scratch import MRL_scratch
@@ -726,13 +726,7 @@ class GymCartPoleExperiment(Experiment):
                 # get structure transition function
                 self.structure = self.get_empty_structure(nb_states)
                 self.structure = self.add_trans_from_data(self.structure, d_data)
-                
-                # # with open("data_d.txt", "w") as f:
-                # #     for item in d_data:
-                # #         f.write(item)
-                # #         f.write("\n")
-                # # print(d_data)
-                
+                                
                 # Calculate Shield                
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
@@ -754,35 +748,35 @@ class GymCartPoleExperiment(Experiment):
                 
                 
                 # ----------------------------- GRID ---------------------------------
-                self.discretization_method = 'grid'
-                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
-                print("The baseline has length:", len(self.pi_b))
-                self.nb_states = self.env.get_nb_states()
-                self.data = data_grid
-                self.R_state_state = self.env.get_reward_function()
+                # self.discretization_method = 'grid'
+                # self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
+                # print("The baseline has length:", len(self.pi_b))
+                # self.nb_states = self.env.get_nb_states()
+                # self.data = data_grid
+                # self.R_state_state = self.env.get_reward_function()
                 
-                print("Estimating Intervals")            
-                self._count(self.data)
-                self._build_model()
-                self.structure = self._tm_to_next_states()
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
-                self.estimator.calculate_intervals()
-                self.intervals = self.estimator.get_intervals()   
-                # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
-                # self.intervals = self.estimator.get_intervals()
+                # print("Estimating Intervals")            
+                # self._count(self.data)
+                # self._build_model()
+                # self.structure = self._tm_to_next_states()
+                # self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                # self.estimator.calculate_intervals()
+                # self.intervals = self.estimator.get_intervals()   
+                # # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
+                # # self.intervals = self.estimator.get_intervals()
                 
                 
-                print("Calculating Shield")  
-                # self.structure = self.build_transition_matrix()
-                self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
-                self.shielder.calculateShield()
-                # self.shielder.printShield()
-                print("Running Algorithms")
-                self._run_algorithms()
-                # ----------------------------- SPIBB-DQN ----------------------------------
-                self.discretization_method = 'SPIBB-DQN'
-                self.data = self.data_cont
-                self._run_spibb_dqn('SPIBB-DQN')
+                # print("Calculating Shield")  
+                # # self.structure = self.build_transition_matrix()
+                # self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
+                # self.shielder.calculateShield()
+                # # self.shielder.printShield()
+                # print("Running Algorithms")
+                # self._run_algorithms()
+                # # ----------------------------- SPIBB-DQN ----------------------------------
+                # self.discretization_method = 'SPIBB-DQN'
+                # self.data = self.data_cont
+                # self._run_spibb_dqn('SPIBB-DQN')
          
         
     def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
@@ -1019,7 +1013,7 @@ class GymLunarLanderExperiment(Experiment):
 
         self.initial_state = self.env.get_init_state()
         
-        self.R_state_state = self.env.get_reward_function()
+        self.R_state_state_grid = self.env.get_reward_function()
         
         for epsilon_baseline in self.epsilons_baseline:
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
@@ -1042,7 +1036,7 @@ class GymLunarLanderExperiment(Experiment):
                 # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
                 data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b, self.pi_b_obj)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
-                
+                self.write_trajectories_to_txt(self.data_cont, "data_traj.txt")
                 self.data_df = trajToDF(self.data_cont, self.dimensions, 1)
                 self.data_df.to_csv("data_set.csv", index=False)
                 print(len(self.data_df.index))
@@ -1059,14 +1053,14 @@ class GymLunarLanderExperiment(Experiment):
                     pfeatures=self.dimensions,
                     h = -1,
                     gamma = 1,
-                    max_k = 250,
+                    max_k = 100,
                     distance_threshold=None,
                     th = 10,
                     eta = 25,
                     precision_thresh = -1, #1e-14
                     classification = 'DecisionTreeClassifier',
-                    split_classifier_params = {'random_state':0, 'max_depth':10},
-                    clustering = 'Agglomerative',
+                    split_classifier_params = {'random_state':0, 'max_depth':5},
+                    clustering = 'KMeans',
                     n_clusters = 10,
                     random_state = 0,
                     plot=True,
@@ -1076,8 +1070,14 @@ class GymLunarLanderExperiment(Experiment):
                 
                 # discretize data
                 self.predictor = predict_cluster(m.df_trained, self.dimensions)
-                d_data = self.discretize_data(self.data_cont, self.predictor)
+                # d_data = self.discretize_data(self.data_cont, self.predictor)
+                d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
                 
+                tfile = open('data_df_trained.txt', 'a')
+                tfile.write(m.df_trained.to_string())
+                tfile.close()
+                
+                self.write_discrete_data_to_txt(d_data, "data_d.txt")
                 nb_states = m.df_trained["CLUSTER"].nunique()
                 print("nb states = ", nb_states)                
                 # get discrete reward function
@@ -1088,9 +1088,9 @@ class GymLunarLanderExperiment(Experiment):
                 for state in range(len(self.R_state_state)):
                     r = m.R_df[state]
                     self.R_state_state[:, state] = r
-                    if r == -100:
+                    if r <= -95:
                         traps.append(state)
-                    if r == 100:
+                    if r >= 95:
                         goal.append(state)
                 print("traps = ", traps)
                 print("goal = ", goal)
@@ -1099,11 +1099,7 @@ class GymLunarLanderExperiment(Experiment):
                 # get structure transition function
                 self.structure = self.get_empty_structure(nb_states)
                 self.structure = self.add_trans_from_data(self.structure, d_data)
-                # # with open("data_d.txt", "w") as f:
-                # #     for item in d_data:
-                # #         f.write(item)
-                # #         f.write("\n")
-                # # print(d_data)
+
                 
                 # Calculate Shield                
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
@@ -1131,7 +1127,7 @@ class GymLunarLanderExperiment(Experiment):
                 print("The baseline has length:", len(self.pi_b))
                 self.nb_states = self.env.get_nb_states()
                 self.data = data_grid
-                self.R_state_state = self.env.get_reward_function()
+                self.R_state_state = self.R_state_state_grid
                 
                 print("Estimating Intervals")            
                 self._count(self.data)
@@ -1146,18 +1142,73 @@ class GymLunarLanderExperiment(Experiment):
                 
                 print("Calculating Shield")  
                 # self.structure = self.build_transition_matrix()
-                self.shielder = ShieldLunarLander(self.structure, self.traps, self.goal, self.intervals, self.initial_state)
+                self.shielder = ShieldLunarLander(self.structure, self.traps, self.goal, self.intervals, self.initial_state[1])
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
                 print("Running Algorithms")
                 self._run_algorithms()
                 # ----------------------------- SPIBB-DQN ----------------------------------
+                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
                 self.discretization_method = 'SPIBB-DQN'
                 self.data = self.data_cont
                 self._run_spibb_dqn('SPIBB-DQN')
-         
+                
+    def write_discrete_data_to_txt(self, data_disc, filename="discrete_trajectories.txt"):
+        """
+        Writes discretized trajectories to a text file.
+
+        Format per step:
+        State_region: <s>, Action: <a>, Next_state_region: <ns>, Reward: <r>
+        """
+
+        with open(filename, "w") as f:
+            for traj_idx, trajectory in enumerate(data_disc):
+                f.write(f"Trajectory {traj_idx}\n")
+                f.write("-" * 50 + "\n")
+
+                for step_idx, transition in enumerate(trajectory):
+                    action, state_region, next_state_region, reward = transition
+
+                    line = (
+                        f"Step {step_idx} | "
+                        f"State_region: {state_region}, "
+                        f"Action: {action}, "
+                        f"Next_state_region: {next_state_region}, "
+                        f"Reward: {reward}\n"
+                    )
+
+                    f.write(line)
+
+                f.write("\n")
+    def write_trajectories_to_txt(self, trajectories_cont, filename="trajectories.txt"):
+        """
+        Writes continuous trajectories to a text file.
+
+        Each step will be written as:
+        State: <state>, Action: <action>, Next_state: <next_state>, Reward: <reward>, Terminated: <terminated>, Truncated: <truncated>
+        """
+
+        with open(filename, "w") as f:
+            for traj_idx, trajectory in enumerate(trajectories_cont):
+                f.write(f"Trajectory {traj_idx}\n")
+                f.write("-" * 60 + "\n")
+
+                for step_idx, step in enumerate(trajectory):
+                    state, action, next_state, reward, terminated, truncated = step
+
+                    f.write(
+                        f"Step {step_idx} | "
+                        f"State: {state}, "
+                        f"Action: {action}, "
+                        f"Next_state: {next_state}, "
+                        f"Reward: {reward}, "
+                        f"Terminated: {terminated}, "
+                        f"Truncated: {truncated}\n"
+                    )
+
+                f.write("\n")     
         
-    def generate_batch(self, nb_trajectories, env, pi, policy_object, max_steps=1000):
+    def generate_batch(self, nb_trajectories, env, pi, policy_object, max_steps=250):
         """
         Generates a data batch for an episodic MDP.
         :param nb_steps: number of steps in the data batch
@@ -1167,6 +1218,8 @@ class GymLunarLanderExperiment(Experiment):
         """
         trajectories = []
         trajectories_cont = []
+        
+
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
@@ -1175,7 +1228,8 @@ class GymLunarLanderExperiment(Experiment):
             env.set_random_state()
             state, region = env.get_init_state()
             is_done = False
-            while nb_steps < max_steps and not is_done:
+            reached_max_it = False
+            while not reached_max_it and not is_done:
                 # action_choice = np.random.choice(pi.shape[1], p=pi[region])
                 action_choice = policy_object.heuristic(state)
                 state, next_state, reward = env.step(action_choice)
@@ -1185,9 +1239,13 @@ class GymLunarLanderExperiment(Experiment):
                 trajectorY.append([action_choice, region, next_region, reward])
                 terminated = env.is_terminated()
                 truncated = env.is_truncated()
+                nb_steps += 1
+                if not nb_steps < max_steps:
+                    reached_max_it = True
+                    truncated = True
                 trajectorY_cont.append([state, action_choice, next_state, reward, terminated, truncated])
                 region = next_region
-                nb_steps += 1
+            # print("traj has length", len(trajectorY))
             trajectories_cont.append(trajectorY_cont)
             trajectories.append(trajectorY)
         batch_traj = [val for sublist in trajectories for val in sublist]
@@ -1254,22 +1312,95 @@ class GymLunarLanderExperiment(Experiment):
                     print(s, " = ", self.env.get_successor_states(s,a))
                     transition_matrix[s, a] = list(self.env.get_successor_states(s,a))
         self.transition_matrix = transition_matrix
-        
-    def discretize_data(self, data, predictor):
+
+    def discretize_data_from_df(self, data, df):
+        """
+        Discretizes trajectories using cluster assignments directly from a dataframe.
+
+        Parameters
+        ----------
+        data : list
+            trajectories_cont produced by generate_batch
+            [state, action, next_state, reward, terminated, truncated]
+
+        df : pandas.DataFrame
+            dataframe containing FEATURE_0..FEATURE_7, CLUSTER, NEXT_CLUSTER
+
+        Returns
+        -------
+        data_disc : list
+            discretized trajectories in the form
+            [action, state_region, next_state_region, reward]
+        """
+
+        feature_cols = [f"FEATURE_{i}" for i in range(8)]
+
+        # Build lookup dictionaries
+        state_to_cluster = {
+            tuple(row[feature_cols].values): row["CLUSTER"]
+            for _, row in df.iterrows()
+        }
+
+        state_to_next_cluster = {
+            tuple(row[feature_cols].values): row["NEXT_CLUSTER"]
+            for _, row in df.iterrows()
+        }
+
         data_disc = []
+
         for trajectory in data:
             traj = []
             for transition in trajectory:
-                s = transition[0]
-                a = transition[1]
-                ns = transition[2]
-                r = transition[3]
-                terminated = transition[4]
-                died = transition[5]
-                s_d = state2region(predictor, s, self.dimensions)
-                ns_d = state2region(predictor, ns, self.dimensions)
-                traj.append([a, s_d, ns_d, r])
+                s, a, ns, r, terminated, truncated = transition
+
+                s_key = tuple(s)
+                ns_key = tuple(ns)
+
+                s_region = state_to_cluster.get(s_key)
+                ns_region = state_to_cluster.get(ns_key)
+
+                if s_region is None or ns_region is None:
+                    raise ValueError(f"State {s_key} and next_state = {ns_key} not found in dataframe lookup.")
+
+                traj.append([a, s_region, ns_region, r])
             data_disc.append(traj)
+            
+
+        return data_disc
+
+    def discretize_data(self, data, predictor):
+        all_states = []
+        all_next_states = []
+        structure = []  # to rebuild trajectories later
+
+        # Step 1: Collect everything
+        for trajectory in data:
+            traj_info = []
+            for transition in trajectory:
+                s, a, ns, r, terminated, died = transition
+                all_states.append(s)
+                all_next_states.append(ns)
+                traj_info.append((a, r))
+            structure.append(traj_info)
+
+        # Step 2: Predict ALL at once
+        all_states = np.asarray(all_states)
+        all_next_states = np.asarray(all_next_states)
+
+        s_regions = predictor.predict(all_states)
+        ns_regions = predictor.predict(all_next_states)
+
+        # Step 3: Rebuild dataset
+        data_disc = []
+        idx = 0
+
+        for traj_info in structure:
+            traj = []
+            for (a, r) in traj_info:
+                traj.append([a, s_regions[idx], ns_regions[idx], r])
+                idx += 1
+            data_disc.append(traj)
+
         return data_disc
                              
     def get_empty_structure(self, nb_states):
@@ -1561,6 +1692,7 @@ class GymMazeExperiment(Experiment):
         trajectories = []
         trajectories_cont = []
         env.reset()
+        reached_max_it = False
         for _ in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
@@ -1569,7 +1701,7 @@ class GymMazeExperiment(Experiment):
             region = env.state2region(state)
             is_done = False
             # print(state)
-            while nb_steps < max_steps and not is_done:
+            while not reached_max_it and not is_done:
                 # print("AAAAA")
                 action_choice = np.random.choice(pi.shape[1], p=pi[region])
                 state, next_state, reward = env.step(action_choice)
@@ -1583,9 +1715,14 @@ class GymMazeExperiment(Experiment):
                 trajectorY.append([action_choice, region, next_region, reward])
                 terminated = env.is_terminated()
                 truncated = env.is_truncated()
+                nb_steps += 1
+                if nb_steps < max_steps:
+                    reached_max_it = True
+                    truncated = True
                 trajectorY_cont.append([state, action_choice, next_state, reward, terminated, truncated])
                 region = next_region
-                nb_steps += 1
+                
+
             trajectories_cont.append(trajectorY_cont)
             trajectories.append(trajectorY)
             env.reset()
