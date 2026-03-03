@@ -301,6 +301,7 @@ class Experiment:
                 t_1 = time.time()
                 duipi_perf = self._policy_evaluation_exact(duipi.pi)
                 duipi_succ_rate, duipi_avoid_rate = self.policy_evaluation_success_rate(duipi.pi)
+                duipi_perf_no_neg = self._policy_evaluation_exact_no_neg(duipi.pi)
                 if bayesian:
                     name_addition = '_bayesian'
                 else:
@@ -313,11 +314,11 @@ class Experiment:
                 run_time = t_1 - t_0
                 if self.safety_deltas:
                     self.results.append(
-                        self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time, self.safety_deltas[i],
+                        self.to_append + [method, hyperparam, method_perf, duipi_perf_no_neg, method_succ_rate, method_avoid_rate, run_time, self.safety_deltas[i],
                                           duipi.v[self.initial_state] - xi * np.sqrt(
                                               duipi.variance_v[self.initial_state])])
                 else:
-                    self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, run_time])
+                    self.results.append(self.to_append + [method, hyperparam, method_perf, duipi_perf_no_neg, method_succ_rate, method_avoid_rate, run_time])
                     
     def _run_duipi_shielded(self, key):
         """
@@ -340,6 +341,7 @@ class Experiment:
                 t_1 = time.time()
                 duipi_perf = self._policy_evaluation_exact(duipi.pi)
                 duipi_succ_rate, duipi_avoid_rate = self.policy_evaluation_success_rate(duipi.pi)
+                duipi_perf_no_neg = self._policy_evaluation_exact_no_neg(duipi.pi)
                 if bayesian:
                     name_addition = '_bayesian'
                 else:
@@ -352,11 +354,11 @@ class Experiment:
                 run_time = t_1 - t_0
                 if self.safety_deltas:
                     self.results.append(
-                        self.to_append + [method, hyperparam, method_perf, method_succ_rate, method_avoid_rate, run_time, self.safety_deltas[i],
+                        self.to_append + [method, hyperparam, method_perf, duipi_perf_no_neg, method_succ_rate, method_avoid_rate, run_time, self.safety_deltas[i],
                                           duipi.v[self.initial_state] - xi * np.sqrt(
                                               duipi.variance_v[self.initial_state])])
                 else:
-                    self.results.append(self.to_append + [method, hyperparam, method_perf, method_succ_rate, run_time])
+                    self.results.append(self.to_append + [method, hyperparam, method_perf, duipi_perf_no_neg, method_succ_rate, method_avoid_rate, run_time])
     def _run_spibb_shielded(self, key, suffix=""):
         """
         Runs SPIBB or Lower-SPIBB for one data set, with all hyper-parameters.
