@@ -16,7 +16,7 @@ def infer_action_DQN(state, ai):
     action, _, _, _ = ai.inference(state)
     return int(action)
 
-def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None, env_name="cartpole", number_of_steps_per_episode=250):
+def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None, env_name="cartpole"):
     """ Evaluate the baseline number_of_epochs times for number_of_steps steps.
 
     Args:
@@ -31,60 +31,63 @@ def evaluate_policy(env, policy, number_of_steps, number_of_epochs, disc_method,
     success_count = 0
     failure_count = 0
     all_rewards = []
-    for epoch in range(number_of_epochs):
+    for episode in range(number_of_episodes):
         # if epoch % 10 == 0: 
         #     print("Starting epoch {}".format(epoch), flush=True)
         env.reset()
         last_state = env.get_state()
         term, start_time = False, time.time()
-        rewards, all_nb_steps, current_reward, nb_steps, total_nb_steps = [], [], 0, 0, 0
-        while total_nb_steps < number_of_steps and nb_steps<number_of_steps_per_episode:
+        rewards, current_reward, nb_steps = [], 0, 0
+        while nb_steps<max_nb_steps_per_episode and not term:
             # print(f"epoch {epoch}, step {nb_steps}")
-            if not term:
-                if disc_method == 'mrl':
-                    action = infer_action_mrl(last_state, predictor, policy, dimensions)
-                    # if nb_steps == 0 and epoch == 0:
-                    #     print(type(action))
-                    #     print(action)
-                elif disc_method == 'grid':
-                    action = infer_action(last_state, env, policy)
-                    # if nb_steps == 0 and epoch == 0:
-                    #     print(type(action))
-                    #     print(action)
-                elif disc_method == 'SPIBB-DQN':
-                    action = infer_action_DQN(last_state, ai)
-                    # if nb_steps == 0 and epoch == 0:
-                        # print(type(action))
-                        # print(action)
-                _, _, reward = env.step(action)
-                term = env.is_done()
-                last_state = env.get_state()
-                current_reward += reward
-                nb_steps += 1
-            else:
-                env.reset()
-                last_state = env.get_state()
-                rewards.append(current_reward)
-                all_nb_steps.append(nb_steps)
-                episode_count+=1
-                if env_name=="cartpole":
-                    if nb_steps < 50: 
-                        failure_count+=1
-                    if nb_steps >= 200:
-                        success_count+=1
-                if env_name=="grid":
-                    if reward<=-1: 
-                        failure_count+=1
-                    if reward > 0:
-                        success_count+=1
-                if env_name=="lunar_lander":
-                    if reward==-100: 
-                        failure_count+=1
-                    if reward == 100:
-                        success_count+=1
-                total_nb_steps += nb_steps
-                current_reward, nb_steps = 0, 0
-                term = False
-
-        all_rewards.append(np.mean(rewards))
-    return np.mean(all_rewards), (success_count/episode_count), (failure_count/episode_count)
+            if disc_method == 'mrl':
+                action = infer_action_mrl(last_state, predictor, policy, dimensions)
+                # if nb_steps == 0 and epoch == 0:
+                #     print(type(action))
+                #     print(action)
+            elif disc_method == 'grid':
+                action = infer_action(last_state, env, policy)
+                # if nb_steps == 0 and epoch == 0:
+                #     print(type(action))
+                #     print(action)
+            elif disc_method == 'SPIBB-DQN':
+                action = infer_action_DQN(last_state, ai)
+                # if nb_steps == 0 and epoch == 0:
+                    # print(type(action))
+                    # print(action)
+            _, _, reward = env.step(action)
+            term = env.is_done()
+            last_state = env.get_state()
+            current_reward += reward
+            nb_steps += 1
+        
+        rewards.append(current_reward)
+        # print("number of steps in episode = ", nb_steps, ", total episode reward = ", current_reward, ", ended with reward ", reward)
+        episode_count+=1
+        if env_name=="cartpole":
+            # print("A")
+            if nb_steps < 50: 
+                failure_count+=1
+            if nb_steps >= 200:
+                success_count+=1
+        elif env_name=="grid":
+            # print("B")
+            if reward<=-1: 
+                failure_count+=1
+            if reward > 0:
+                success_count+=1
+        elif env_name=="lunar_lander":
+            # print("C")
+            if reward==-100: 
+                # print("failure")
+                failure_count+=1
+            if reward == 100:
+                # print("succass")
+                success_count+=1
+        all_rewards.append(current_reward)
+        current_reward, nb_steps = 0, 0
+        # print("after the episode, the total reward is now:", np.mean(all_rewards))
+    # print("success count = ", success_count)
+    # print("failure count = ", failure_count)
+    # print("episode count = ", episode_count)
+    return np.mean(all_rewards), success_count/episode_count, failure_count/episode_count

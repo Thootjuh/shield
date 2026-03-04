@@ -239,9 +239,9 @@ class Experiment:
         pi_b_s.fit()
         t_1 = time.time()
         if self.discretization_method=='mrl':
-            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
         elif self.discretization_method=='grid':
-            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 1, 500, self.discretization_method)
+            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, env_name=self.env_name)
         
         # basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
         method = pi_b_s.NAME + "_" + self.discretization_method
@@ -266,9 +266,9 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
             elif self.discretization_method=='grid':
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250,  self.discretization_method, env_name=self.env_name)
             
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
@@ -292,9 +292,9 @@ class Experiment:
             print("trained policy")
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
             elif self.discretization_method=='grid':
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 1, 100, self.discretization_method)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, env_name=self.env_name)
             print("evaluated policy")
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method = spibb.NAME + "_" + self.discretization_method
@@ -310,7 +310,7 @@ class Experiment:
             t_0 = time.time()
             spibb.learn(passes_on_dataset = 25)
             t_1 = time.time()
-            spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 1, 100, self.discretization_method, ai=spibb.ai)
+            spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 100, 250, self.discretization_method, ai=spibb.ai, env_name=self.env_name)
             spibb_perf_old = spibb.evaluate_policy(1, 100)
             print(spibb_perf, " =?= ", spibb_perf_old)
             method = 'spibb_dqn'
@@ -595,6 +595,7 @@ class GymCartPoleExperiment(Experiment):
         """
         self.episodic = True
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
+        self.env_name = str(self.experiment_config['META']['env_name'])
         
         print("start env")
         self.env = cartPole()
@@ -984,6 +985,7 @@ class GymLunarLanderExperiment(Experiment):
         """
         Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
         """
+        self.env_name = str(self.experiment_config['META']['env_name'])
         self.episodic = True
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         
@@ -1022,11 +1024,13 @@ class GymLunarLanderExperiment(Experiment):
             print("creating Baseline Policy")
             self.pi_b_obj = LunarLanderPolicy(self.env, epsilon=epsilon_baseline)
             self.pi_b = self.pi_b_obj.pi
-            
+            pi_b_grid_perf, pi_b_grid_succ_rate, pi_b_grid_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250,  'grid', env_name=self.env_name)
+            print(f'baseline performance: {pi_b_grid_perf}, baseline succ rate: {pi_b_grid_succ_rate}, baseline avoid rate: {pi_b_grid_avoid_rate}')
             # self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
             #                                                             self._policy_evaluation_exact(self.pi_b)]
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
-                                                                        0]
+                                                                        pi_b_grid_perf]
+            
             for nb_trajectories in self.nb_trajectories_list:
                 print(
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
