@@ -823,7 +823,7 @@ class SimplifiedPacmanExperiment(Experiment):
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         self.lag = float(self.experiment_config['ENV_PARAMETERS']['LAG'])
         self.ghost_opt_chance = float(self.experiment_config['ENV_PARAMETERS']['GHOST_OPT_CHANCE'])
-        self.env = pacmanSimplified(self.lag, self.ghost_opt_chance)
+        self.env = pacmanSimplified(self.lag)
         self.width = self.env.width
         self.height = self.env.height
         
@@ -866,14 +866,14 @@ class SimplifiedPacmanExperiment(Experiment):
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()    
-            
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
         # pi_star_perf = 7.7
         self.fixed_params_exp_list.append(pi_star_perf)
         
-        pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
-        self.pi_b_perf = self._policy_evaluation_exact(pi_b)
-        self.pi_b_succ_rate, self.pi_b_avoid_rate = self.policy_evaluation_success_rate(pi_b)
+        # pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
+        # self.pi_b_perf = self._policy_evaluation_exact(pi_b)
+        # print("pi_b_perf = ", self.pi_b_perf)
+        # self.pi_b_succ_rate, self.pi_b_avoid_rate = self.policy_evaluation_success_rate(pi_b)
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
 
@@ -917,6 +917,8 @@ class SimplifiedPacmanExperiment(Experiment):
                   f' {self.epsilons_baseline}')
             
             self.pi_b = PacmanBaselinePolicy(env=self.env, epsilon=epsilon_baseline).pi
+            self.pi_b_perf = self._policy_evaluation_exact(self.pi_b)
+            self.pi_b_succ_rate, self.pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         self.pi_b_perf, self.pi_b_succ_rate, self.pi_b_avoid_rate]
             trajectories = []
@@ -2183,8 +2185,6 @@ def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
       r: rewards, array of shape [num_states x num_actions]
       p_sparse: dictionary {(s, a, s'): p(s'|s,a)} with only non-zero transitions
       gamma: discount factor
-      num_states: number of states
-      num_actions: number of actions
 
     Returns:
       v: 1D array with updated state values
@@ -2205,12 +2205,16 @@ def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
     # Solve (I - gamma * P_pi) * v = r_pi
     A = identity(num_states, format='csr') - gamma * P_pi.tocsr()
     v, info = bicgstab(A, r_pi, atol=1e-6)
+    if info != 0: # bicgstab sometimes fails with deterministic policies. If it fails to converge, use spsolve instead, which is slower but does not have this issue
+        v = spsolve(A, r_pi)
+
     # Compute Q-values
     q = np.zeros((num_states, num_actions))
     for (s, a, s_prime), prob in p_sparse.items():
         q[s, a] += prob * v[s_prime]
     q = r + gamma * q
-    return v, q, dict(p_pi_sparse)
+    
+    return v, q
 
 def policy_evaluation_exact_dense(pi, r, p, gamma):
     """

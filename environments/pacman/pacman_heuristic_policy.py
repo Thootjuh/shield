@@ -89,11 +89,3 @@ class GhostAvoidingBaselinePolicy:
                     pi[state, a] = 1 / len(valid_actions)
 
         self.pi = (1 - self.epsilon) * pi + self.epsilon * self.pi
-
-            
-            
-
-                
-            
-            
-            

@@ -8,10 +8,10 @@ ACTION_TRANSLATOR = [
 ]
 
 GOAL_REWARD = 10
-EATEN_REWARD = -1
+EATEN_REWARD = -10
 
 class pacmanSimplified:
-    def __init__(self, lag_chance, opt_chance):
+    def __init__(self, lag_chance):
         self.lag_chance = lag_chance
         self.width = 7
         self.height = 7
@@ -142,13 +142,11 @@ class pacmanSimplified:
         
         # Reached Goal
         if x == self.goal[0] and y == self.goal[1]:
-            return True
-        
+            return True 
         # Eaten
         if x == self._state[1][0] and y == self._state[1][1]:
             return True
-        
-        # Eaten
+                # Eaten
         if x == self._state[2][0] and y == self._state[2][1]:
             return True
         
@@ -174,7 +172,6 @@ class pacmanSimplified:
     def is_valid_move(self, x, y, action):
         # Get the movement offset from the ACTION_TRANSLATOR
         dx, dy = ACTION_TRANSLATOR[action]
-
         # Compute the new position
         x_hat = x + dx
         y_hat = y + dy
@@ -242,7 +239,6 @@ class pacmanSimplified:
         self._state[2][1] = ghost_y_hat
         return old_state, self.state_to_int(), self.get_reward()
     
-    
     def get_reward_function(self):
         reward_dict = defaultdict(float)
         reward_dict_no_neg = defaultdict(float)
@@ -252,6 +248,7 @@ class pacmanSimplified:
                 reward_dict[(state, next_state)] = reward
                 if reward > 0:
                     reward_dict_no_neg[(state, next_state)] = reward
+                
 
         return reward_dict, reward_dict_no_neg
     
@@ -261,10 +258,7 @@ class pacmanSimplified:
             reward = self.get_reward_from_int(next_state)
             if reward < 0:
                 cost_dict[(state, next_state)] = 10
-
         return cost_dict
-    
-    
     
     def in_wall(self, x,y,gx1,gy1,gx2,gy2):
         if (x,y) in self.walls:
@@ -317,5 +311,8 @@ class pacmanSimplified:
                                 next_state = self.encode_int(x, y, next_g1_state[0], next_g1_state[1], next_g2_state[0], next_g2_state[1])
                                 transition_dict[(state, action, next_state)] += self.lag_chance * (1/(len(possible_g1_actions)*len(possible_g2_actions)))
 
+        for (state, action, next_state), value in transition_dict.items():
+            if value == 0.0:
+                print("dict contains non-zero value")
         self.transition_function = transition_dict
         return transition_dict
