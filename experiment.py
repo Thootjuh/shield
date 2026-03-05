@@ -1008,6 +1008,7 @@ class GymLunarLanderExperiment(Experiment):
         print("start env")
         self.env = LunarLander()
         print("get values")
+        self.R_state_state_grid = self.env.get_reward_function() # make sure this runs before get_traps and get_goal_states
         self.nb_states = self.env.get_nb_states()
         self.nb_actions = self.env.get_nb_actions()
         self.traps = self.env.get_traps()
@@ -1015,7 +1016,7 @@ class GymLunarLanderExperiment(Experiment):
 
         self.initial_state = self.env.get_init_state()
         
-        self.R_state_state_grid = self.env.get_reward_function()
+        
         
         for epsilon_baseline in self.epsilons_baseline:
             print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
@@ -1040,9 +1041,12 @@ class GymLunarLanderExperiment(Experiment):
                 # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
                 data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b, self.pi_b_obj)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
-                self.write_trajectories_to_txt(self.data_cont, "data_traj.txt")
+                
+                # self.write_trajectories_to_txt(self.data_cont, "data_traj.txt")
+                
+                print("gathered data, transforming it into a dataframe")
                 self.data_df = trajToDF(self.data_cont, self.dimensions, 1)
-                self.data_df.to_csv("data_set.csv", index=False)
+                # self.data_df.to_csv("data_set.csv", index=False)
                 print(len(self.data_df.index))
                 
 
@@ -1075,13 +1079,16 @@ class GymLunarLanderExperiment(Experiment):
                 # discretize data
                 self.predictor = predict_cluster(m.df_trained, self.dimensions)
                 # d_data = self.discretize_data(self.data_cont, self.predictor)
+                print("start discretization")
+                tb = time.time()
                 d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
+                ta = time.time()
+                print("time for discretization = ", ta-tb)
+                # tfile = open('data_df_trained.txt', 'a')
+                # tfile.write(m.df_trained.to_string())
+                # tfile.close()
                 
-                tfile = open('data_df_trained.txt', 'a')
-                tfile.write(m.df_trained.to_string())
-                tfile.close()
-                
-                self.write_discrete_data_to_txt(d_data, "data_d.txt")
+                # self.write_discrete_data_to_txt(d_data, "data_d.txt")
                 nb_states = m.df_trained["CLUSTER"].nunique()
                 print("nb states = ", nb_states)                
                 # get discrete reward function
@@ -1089,6 +1096,7 @@ class GymLunarLanderExperiment(Experiment):
                 #TODO fix this for this environment, also maybe write some stuff so that this does not have te be done manually
                 traps = []
                 goal = []
+                print(m.R_df)
                 for state in range(len(self.R_state_state)):
                     r = m.R_df[state]
                     self.R_state_state[:, state] = r
@@ -1098,12 +1106,11 @@ class GymLunarLanderExperiment(Experiment):
                         goal.append(state)
                 print("traps = ", traps)
                 print("goal = ", goal)
-                print(m.R_df)
 
                 # get structure transition function
                 self.structure = self.get_empty_structure(nb_states)
                 self.structure = self.add_trans_from_data(self.structure, d_data)
-
+                print("found structure")
                 
                 # Calculate Shield                
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
@@ -1339,36 +1346,30 @@ class GymLunarLanderExperiment(Experiment):
 
         feature_cols = [f"FEATURE_{i}" for i in range(8)]
 
-        # Build lookup dictionaries
-        state_to_cluster = {
-            tuple(row[feature_cols].values): row["CLUSTER"]
-            for _, row in df.iterrows()
-        }
+        # --- build lookup dictionary much faster ---
+        features = df[feature_cols].to_numpy()
+        clusters = df["CLUSTER"].to_numpy()
 
-        state_to_next_cluster = {
-            tuple(row[feature_cols].values): row["NEXT_CLUSTER"]
-            for _, row in df.iterrows()
-        }
+        state_to_cluster = {tuple(features[i]): clusters[i] for i in range(len(features))}
 
         data_disc = []
 
         for trajectory in data:
             traj = []
-            for transition in trajectory:
-                s, a, ns, r, terminated, truncated = transition
 
-                s_key = tuple(s)
-                ns_key = tuple(ns)
+            for s, a, ns, r, terminated, truncated in trajectory:
 
-                s_region = state_to_cluster.get(s_key)
-                ns_region = state_to_cluster.get(ns_key)
+                s_region = state_to_cluster.get(tuple(s))
+                ns_region = state_to_cluster.get(tuple(ns))
 
                 if s_region is None or ns_region is None:
-                    raise ValueError(f"State {s_key} and next_state = {ns_key} not found in dataframe lookup.")
+                    raise ValueError(
+                        f"State {tuple(s)} and next_state {tuple(ns)} not found in lookup."
+                    )
 
                 traj.append([a, s_region, ns_region, r])
+
             data_disc.append(traj)
-            
 
         return data_disc
 

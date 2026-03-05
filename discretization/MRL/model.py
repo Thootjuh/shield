@@ -360,7 +360,7 @@ class MDP_model:
         self.training_error = training_error
         self.incoherences = df_incoherences
         self.split_scores = split_scores
-
+        print("stored training errors")
         # storing trained dataset and predict_cluster function, depending on
         # whether optimization was selected
         # incoherence and precision thresholds were already applied
@@ -372,10 +372,12 @@ class MDP_model:
         else:
             self.df_trained = df_new
             self.opt_k = self.training_error["Clusters"].max()
-            
+        
         self.df_new = df_new
+        print("set the new df") 
         self.create_model(stochastic=stochastic)
-        self.df_trained.to_csv("data_set_trained.csv", index=False)
+        print("created the model")
+        # self.df_trained.to_csv("data_set_trained.csv", index=False)
         
     def create_model(self, stochastic):
         """

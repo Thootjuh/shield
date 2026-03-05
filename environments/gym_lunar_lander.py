@@ -44,16 +44,7 @@ class LunarLander:
         self.traps = [self.nb_states - 1]
         self.goal = []
 
-        get_reward = self.get_reward_for_cell   # local binding (faster)
-        append_goal = self.goal.append
-        append_trap = self.traps.append
 
-        for s in range(self.nb_states - 1):
-            reward = get_reward(s)
-            if reward == 100:
-                append_goal(s)
-            elif reward == -100:
-                append_trap(s)
 
     def reset(self):
         # The self.env.reset function also resets the overall environment, which is not what we want. 
@@ -453,11 +444,17 @@ class LunarLander:
     
     def get_reward_function(self):
         reward_per_next = {}
-
+        self.traps = [self.nb_states - 1]
+        self.goal = []
+        
         for next_state in range(self.nb_states - 1):
             reward = self.get_reward_for_cell(next_state)
             if reward != 0:
                 reward_per_next[next_state] = reward
+                if reward == -100:
+                    self.traps.append(next_state)
+                elif reward == 100:
+                    self.goal.append(next_state)
 
         return RewardDict(
             nb_states=self.nb_states,
