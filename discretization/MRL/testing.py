@@ -247,106 +247,107 @@ def add_sink(P_df_noend, cs, R_df):
 
 
 def training_value_error(
-    df_new,  # Output of algorithm
-    gamma=1,  # discount factor
-    relative=False,  # Output Raw error or RMSE ie ((\hat{v}-v)/v)^2
-    h=5,  # Length of forecast. The error is computed on v_h = \sum_{t=h}^H v_t
-    # if h = -1, we forecast the whole path
-    eval_samples=None,  # Number of samples to evaluate. If None, evaluate on all
+    df_new,
+    gamma=1,
+    relative=False,
+    h=5,
+    eval_samples=None,
     num_sims=20,
     stochastic=False,
-):  # Length of forecast. The error is computed on v_h = \sum_{t=h}^H v_t
-    # if h = -1, we forecast the whole path
-    E_v = 0
+):
+
     P_df, R_df = get_MDP(df_new)
-    df2 = df_new.reset_index()
-    df2 = df2.groupby(["ID"]).first()
-    N_train = df2.shape[0]
 
-    # default evals are the N_train paths, but can specify sampling a certain number of paths
-    eval_ids = list(range(N_train))
-    if eval_samples:
-        eval_ids = np.random.default_rng().choice(
-            N_train, size=eval_samples, replace=False
-        )
+    # --- convert dataframe columns to numpy ---
+    ID = df_new["ID"].to_numpy()
+    ACTION = df_new["ACTION"].to_numpy()
+    CLUSTER = df_new["CLUSTER"].to_numpy()
+    RISK = df_new["RISK"].to_numpy()
 
-    for i in eval_ids:
-        index = df2["index"].iloc[i]
-        # initializing first state for each ID
+    N = len(ID)
 
+    # --- trajectory boundaries ---
+    done = np.where(ID[:-1] != ID[1:])[0]
+    done = np.append(done, N - 1)
+
+    starts = np.insert(done[:-1] + 1, 0, 0)
+    ends = done
+
+    N_train = len(starts)
+
+    # --- evaluation subset ---
+    if eval_samples is None:
+        eval_ids = np.arange(N_train)
+    else:
+        rng = np.random.default_rng()
+        eval_ids = rng.choice(N_train, size=eval_samples, replace=False)
+
+    # --- convert MDP tables ---
+    P = {(s, a): P_df.loc[s, a].values[0] for s, a in P_df.index}
+    R = R_df.squeeze().to_dict()
+
+    E_v = 0.0
+
+    for idx in eval_ids:
+
+        start = starts[idx]
+        end = ends[idx]
+
+        # --- compute start time depending on horizon ---
         if h == -1:
-            t = 0
-
+            t0 = start
         else:
-            H = -1
-            # Computing Horizon H of ID i
-            while True:
-                H += 1
-                # tells us if this is the end of a path
-                try:
-                    df_new["ID"].loc[index + H + 1]
-                except:
-                    break
-                if df_new["ID"].loc[index + H] != df_new["ID"].loc[index + H + 1]:
-                    break
-            t = H - h
+            H = end - start
+            t0 = start + max(H - h, 0)
 
-        v_true = 0
+        # --- true value ---
+        v_true = 0.0
+        g = 1.0
+
+        for t in range(t0, end + 1):
+            v_true += g * RISK[t]
+            g *= gamma
+
+        # --- simulations ---
+        sims = 1 if not stochastic else num_sims
         v_estims = []
-        s = df_new["CLUSTER"].loc[index + t]
-        a = df_new["ACTION"].loc[index + t]
 
-        # only need 1 sim if we are not using stochastic
-        if not stochastic:
-            num_sims = 1
+        for _ in range(sims):
 
-        # average error of num_sims
-        for i in range(num_sims):
+            s = CLUSTER[t0]
+            a = ACTION[t0]
 
-            v_estim = 0
-            t = 0
+            v_estim = 0.0
+            g = 1.0
 
-            # predicting path of each ID
+            t = t0
+
             while True:
 
-                # only calculate v_true on the first iteration
-                if i == 0:
-                    v_true = gamma * v_true + df_new["RISK"].loc[index + t]
-                v_estim = gamma * v_estim + R_df.loc[s]
+                v_estim += g * R.get(s, 0)
+                g *= gamma
 
-                # this tells us if the path is over
-                try:
-                    df_new["ID"].loc[index + t + 1]
-                except:
-                    break
-                if df_new["ID"].loc[index + t] != df_new["ID"].loc[index + t + 1]:
+                if t == end:
                     break
 
-                try:
-                    if not stochastic:
-                        s = P_df.loc[s, a].values[0]
-                    else:
-                        s = sim_next_cluster(P_df, s, a)
-                # error raises in case we never saw a given transition in the data
-                # except ValueError
-                except:
-                    pass
-                    # print('WARNING: In training value evaluation, trying to predict next state from state',s,'taking action',a,', but this transition is never seen in the data. Data point:',i,t)
+                if stochastic:
+                    s = sim_next_cluster(P_df, s, a)
+                else:
+                    s = P.get((s, a), s)
 
                 t += 1
-                a = df_new["ACTION"].loc[index + t]
-
-            # add the calculations from this iteration
-            if relative:
-                E_v = E_v + ((v_true - v_estim) / v_true) ** 2
-            else:
-                E_v = E_v + (v_true - v_estim) ** 2
+                a = ACTION[t]
 
             v_estims.append(v_estim)
 
         v_estim = sum(v_estims) / len(v_estims)
 
-    E_v = E_v / N_train
+        if relative:
+            E_v += ((v_true - v_estim) / v_true) ** 2
+        else:
+            E_v += (v_true - v_estim) ** 2
+
+    E_v /= N_train
     return np.sqrt(E_v)
 
 
