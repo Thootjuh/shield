@@ -369,7 +369,7 @@ def export_legend(legend, filename="./out/legend", expand=[-5,-5,5,5]):
     bbox  = legend.get_window_extent()
     bbox = bbox.from_extents(*(bbox.extents + np.array(expand)))
     bbox = bbox.transformed(fig.dpi_scale_trans.inverted())
-    # fig.savefig(f"{filename}.pdf", format='pdf', dpi="figure", bbox_inches=bbox)
+    fig.savefig(f"{filename}.pdf", format='pdf', dpi="figure", bbox_inches=bbox)
     fig.savefig(f"{filename}.tex", format='pgf', dpi="figure", bbox_inches=bbox)
 
 def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_legend = True):
@@ -413,7 +413,7 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
                 plot_func(data, environments[idx], ax)
                 plt.tight_layout()
                 # plt.savefig(f"./out/{filename_prefix}-{idx}.png", format='png', bbox_inches='tight', pad_inches=0.0)
-                # plt.savefig(f"./out/{filename_prefix}-{idx}.pdf", format='pdf', bbox_inches='tight', pad_inches=0)
+                plt.savefig(f"./out/{filename_prefix}-{idx}.pdf", format='pdf', bbox_inches='tight', pad_inches=0)
                 plt.savefig(f"./out/{filename_prefix}-{idx}.tex", format='pgf', bbox_inches='tight', pad_inches=0.0)
                 
         mapper = {
@@ -489,7 +489,7 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
             # plt.subplots_adjust(hspace=0.4, wspace=0.3, bottom=0.23)
             plt.tight_layout()
             # plt.savefig(f"./out/{filename_prefix}.png", format='png')
-            # plt.savefig(f"./out/{filename_prefix}.pdf", format='pdf')
+            plt.savefig(f"./out/{filename_prefix}.pdf", format='pdf')
             plt.savefig(f"./out/{filename_prefix}.tex", format='pgf')
             
             if save_legend:
