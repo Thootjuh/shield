@@ -62,17 +62,21 @@ def plot_data(data, filename):
     plt.savefig(filename)
     plt.show()
 
-def plot_positive_data(data, filename):
+def plot_succ_rate(data, filename):
     grouped_data = data.groupby(['method', 'length_trajectory'])
-    data = grouped_data.success_rate.mean().reset_index()
+    data_succ_rate = grouped_data.success_rate.mean().reset_index()
+    # data_avoid_rate = grouped_data.failure_rate.mean().reset_index()
     # Plot average performance against length_trajectory for each method
     plt.figure(figsize=(12, 8))
-    for method in data['method'].unique():
-        method_data = data[data['method'] == method]
-        plt.plot(method_data['length_trajectory'], method_data['success_rate'], label=method)
+    for method in data_succ_rate['method'].unique():
+        method_data = data_succ_rate[data_succ_rate['method'] == method]
+        label = method+"_success_rate"
+        plt.plot(method_data['length_trajectory'], method_data['success_rate'], label=label)
+        # method_data = data_avoid_rate[data_avoid_rate['method'] == method]
+        # label = method+"_failure_rate"
+        # plt.plot(method_data['length_trajectory'], method_data['failure_rate'], label=label)
 
     # Set plot labels and legend
-    plt.ylim(bottom=0)
     plt.xlabel('Length Trajectory')
     plt.ylabel('Probability of satisfying the specification')
     plt.title('Success probability vs. Length Trajectory')
@@ -80,102 +84,26 @@ def plot_positive_data(data, filename):
     plt.grid(True)
     plt.savefig(filename)
     plt.show()
+    
 
-def plot_data_interval(data, filename):
+def plot_failure_rate(data, filename):
     grouped_data = data.groupby(['method', 'length_trajectory'])
-    
-    # Calculate mean, lower, and upper bounds of the 90% confidence interval
-    summary = grouped_data['success_rate'].agg(
-        mean='mean',
-        lower=lambda x: np.percentile(x, 10),  # Lower 5th percentile
-        upper=lambda x: np.percentile(x, 90) # Upper 95th percentile
-    ).reset_index()
-    
-    # Plot average performance with confidence intervals
+    # data_succ_rate = grouped_data.success_rate.mean().reset_index()
+    data_avoid_rate = grouped_data.failure_rate.mean().reset_index()
+    # Plot average performance against length_trajectory for each method
     plt.figure(figsize=(12, 8))
-    for method in summary['method'].unique():
-        method_data = summary[summary['method'] == method]
-        plt.plot(
-            method_data['length_trajectory'], 
-            method_data['mean'], 
-            label=method
-        )
-        plt.fill_between(
-            method_data['length_trajectory'], 
-            method_data['lower'], 
-            method_data['upper'], 
-            alpha=0.2
-        )
+    for method in data_avoid_rate['method'].unique():
+        # method_data = data_succ_rate[data_succ_rate['method'] == method]
+        # label = method+"_success_rate"
+        # plt.plot(method_data['length_trajectory'], method_data['success_rate'], label=label)
+        method_data = data_avoid_rate[data_avoid_rate['method'] == method]
+        label = method+"_failure_rate"
+        plt.plot(method_data['length_trajectory'], method_data['failure_rate'], label=label)
 
     # Set plot labels and legend
     plt.xlabel('Length Trajectory')
     plt.ylabel('Probability of satisfying the specification')
     plt.title('Success probability vs. Length Trajectory')
-    plt.legend(title='Method')
-    plt.grid(True)
-    plt.savefig(filename)
-    plt.show()
-
-def plot_positive_data_interval(data, filename):
-    grouped_data = data.groupby(['method', 'length_trajectory'])
-    
-    # Calculate mean, lower, and upper bounds of the 90% confidence interval
-    summary = grouped_data['success_rate'].agg(
-        mean='mean',
-        lower=lambda x: np.percentile(x, 10),  # Lower 5th percentile
-        upper=lambda x: np.percentile(x, 90) # Upper 95th percentile
-    ).reset_index()
-    
-    # Plot average performance with confidence intervals
-    plt.figure(figsize=(12, 8))
-    for method in summary['method'].unique():
-        method_data = summary[summary['method'] == method]
-        plt.plot(
-            method_data['length_trajectory'], 
-            method_data['mean'], 
-            label=method
-        )
-        plt.fill_between(
-            method_data['length_trajectory'], 
-            method_data['lower'], 
-            method_data['upper'], 
-            alpha=0.2
-        )
-
-    # Set plot labels and legend
-    plt.ylim(bottom=0)  # Ensure y-axis starts at 0
-    plt.xlabel('Length Trajectory')
-    plt.ylabel('Probability of satisfying the specification')
-    plt.title('Success probability vs. Length Trajectory')
-    plt.legend(title='Method')
-    plt.grid(True)
-    plt.savefig(filename)
-    plt.show()
-    
-def calculate_cvar(data, alpha=0.01):
-    # Calculate CVaR for each method and trajectory
-    cvar_results = []
-    for method in data['method'].unique():
-            method_data = data[data['method'] == method]
-            for traj in method_data['length_trajectory'].unique():
-                traj_data = method_data[method_data['length_trajectory'] == traj]['success_rate']
-                if len(traj_data) > 0:
-                    threshold = np.percentile(traj_data, alpha * 100)  # Find the 1% threshold
-                    cvar = traj_data[traj_data <= threshold].mean()  # Calculate the mean of the bottom 1%
-                    cvar_results.append({'method': method, 'length_trajectory': traj, 'cvar': cvar})
-    return pd.DataFrame(cvar_results)
-
-def plot_cvar(cvar_data, filename):
-   # Plot CVaR against trajectory for each method
-    plt.figure(figsize=(12, 8))
-    for method in cvar_data['method'].unique():
-        method_data = cvar_data[cvar_data['method'] == method]
-        plt.plot(method_data['length_trajectory'], method_data['cvar'], label=method)
-
-    # Set plot labels and legend
-    plt.xlabel('Length Trajectory')
-    plt.ylabel('1% Cvar Probability of satisfying the specification')
-    plt.title('Cvar Success probability vs. Length Trajectory')
     plt.legend(title='Method')
     plt.grid(True)
     plt.savefig(filename)
@@ -189,9 +117,6 @@ else:
     directory_path = "/internship/code/results/wet_chicken/shield/wet_chicken_results/"
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
-plot_data(data, 'Results.png')
-plot_positive_data(data, 'Results_positive.png')
-plot_data_interval(data, 'Results_interval.png')
-plot_positive_data_interval(data, 'Results_positive_Interval.png')
-cvar = calculate_cvar(data)
-plot_cvar(cvar, "Results_CVAR")
+plot_data(data, 'results_succ_fail_rate.png')
+plot_succ_rate(data, 'results_succ_rate.png')
+plot_failure_rate(data, 'results_fail_rate.png')

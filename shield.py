@@ -162,7 +162,7 @@ class Shield:
         
         # Run PRISM
         cmd = (
-            f"{prism_executable} -explicit -sparse -javamaxmem {java_mem}g "
+            f"{prism_executable} -explicit -sparse -gs -javamaxmem {java_mem}g "
             f"{model_file} {prop_file} "
             f"| awk '/Results \\(including zeros\\) for filter true:/ {{flag=1; next}} "
             f"flag && /^Range of values/ {{exit}} flag {{print}}' "
@@ -201,18 +201,18 @@ class Shield:
         #             state_values[state] = val  
         state_values = defaultdict(float)
 
+        pattern = re.compile(r"^\d+:\((\d+)\)=([0-9eE+\-.]+)$")
+
         with open(results_file, "r") as f:
             for line in f:
                 line = line.strip()
-                if not line:
+
+                match = pattern.match(line)
+                if not match:
                     continue
 
-                # Split at '='
-                left, value = line.split("=")
-                value = float(value)
-
-                # Extract state between parentheses
-                state = int(left.split("(")[1].split(")")[0])
+                state = int(match.group(1))
+                value = float(match.group(2))
 
                 state_values[state] = value
                     
@@ -471,7 +471,9 @@ class ShieldLunarLander(Shield):
             the range of possible transition probabilities due to uncertainty.
         """
         # self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps) 
+        print("start encoding")
         self.prism_text = encodeLunarLander(transition_matrix, intervals, traps, goal, init)
+        print("end encoding")
         # self.model_builder = IntervalMDPBuilderLunarLander(transition_matrix, intervals, goal, traps)
         super().__init__(transition_matrix, traps, goal, intervals)
         

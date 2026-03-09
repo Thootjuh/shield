@@ -60,6 +60,7 @@ class BatchRLAlgorithm:
         if estimate_baseline:
             self.pi_b = self.estimate_baseline()
             self.pi = self.pi_b.copy()
+            np.savetxt("estimated_baseline.txt", self.pi)
         self._initial_calculations()
 
             

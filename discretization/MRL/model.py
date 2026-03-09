@@ -367,6 +367,7 @@ class MDP_model:
         # within splitter to find best_df and opt_k
         if optimize:
             self.df_trained = best_df
+            print("df_trained = ", self.df_trained["CLUSTER"].nunique())
             # k = self.training_error['Clusters'].iloc[self.training_error['Error'].idxmin()]
             self.opt_k = opt_k
         else:

@@ -1,4 +1,5 @@
 import numpy as np
+from collections import deque
 
 def encodeMDP(transition_matrix):
     """
@@ -512,7 +513,6 @@ def encodeLunarLander(transition_matrix, intervals, trap, goal, init):
 
             else:
                 # No transition = self-loop
-                print("haha ", state)
                 default_interval = (1.0, 1.0)
                 valid_next_states = [state]
                 probabilities = [
@@ -535,6 +535,7 @@ def encodeLunarLander(transition_matrix, intervals, trap, goal, init):
     prism_lines.append("endmodule")
 
     # Initial states = all states with at least one successor
+    valid_initial_states = compute_initial_states(transition_matrix, valid_initial_states)
     if valid_initial_states:
         init_condition = " | ".join(f"(s={s})" for s in sorted(valid_initial_states))
         prism_lines.append(f"init {init_condition} endinit")
@@ -550,6 +551,83 @@ def encodeLunarLander(transition_matrix, intervals, trap, goal, init):
         prism_lines.append('label "goal" = false;')
 
     return "\n".join(prism_lines)
+
+def compute_initial_states(transition_matrix, relevant_states):
+    """
+    Compute minimal set of initial states such that every relevant state
+    is reachable from at least one initial state.
+
+    Parameters
+    ----------
+    transition_matrix : np.ndarray (num_states, num_actions)
+        Each entry contains a list/array of next states.
+
+    relevant_states : set[int]
+        States with outgoing transitions to a different state.
+
+    Returns
+    -------
+    list[int]
+        Selected initial states
+    """
+
+    num_actions = transition_matrix.shape[1]
+
+    relevant_states = set(relevant_states)
+
+    # Fast membership lookup
+    is_relevant = [False] * transition_matrix.shape[0]
+    for s in relevant_states:
+        is_relevant[s] = True
+
+    # Precompute adjacency only for relevant states
+    adj = {}
+    out_degree = {}
+
+    for s in relevant_states:
+        succ = []
+        count = 0
+
+        for a in range(num_actions):
+            for ns in transition_matrix[s, a]:
+                if ns >= 0 and ns != s and is_relevant[ns]:
+                    succ.append(ns)
+                    count += 1
+
+        adj[s] = succ
+        out_degree[s] = count
+
+    # Sort states by descending outgoing transitions
+    states_sorted = sorted(relevant_states, key=lambda s: out_degree[s], reverse=True)
+
+    visited = set()
+    initial_states = []
+
+    for s in states_sorted:
+
+        if s in visited:
+            continue
+
+        # select as initial state
+        initial_states.append(s)
+
+        # BFS/DFS reachability
+        queue = deque([s])
+        visited.add(s)
+
+        while queue:
+            u = queue.popleft()
+
+            for v in adj[u]:
+                if v not in visited:
+                    visited.add(v)
+                    queue.append(v)
+
+    # select states without relevant predecessors
+    print("total relevant states = ", len(relevant_states))
+    print("The total number of initial states in therefore = ",len(initial_states))
+
+    return sorted(initial_states)
     
 def states_to_ranges(states):
     """

@@ -85,7 +85,7 @@ class Experiment:
     fixed_params_exp_list = None
     fixed_params_exp_columns = None
     variable_params_exp_columns = None
-    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'run_time', 'nb_states', 'success_rate', 'failure_rate']
+    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'run_time', 'nb_states', 'success_rate', 'failure_rate', 'predicted_perf']
 
     def __init__(self, experiment_config, seed, nb_iterations, machine_specific_experiment_directory):
         """
@@ -214,7 +214,8 @@ class Experiment:
         """
         if self.speed_up:
             self._compute_speed_up_dict()
-        # self._run_shielded_baseline()
+        self._run_shielded_baseline()
+        self._run_baseline()
         for key in self.algorithms_dict.keys():
             print(key)
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
@@ -230,7 +231,17 @@ class Experiment:
             else:
                 print("KEY NOT FOUND")
             
-
+    def _run_baseline(self):
+        if self.discretization_method=='grid':
+            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, env_name=self.env_name)
+        elif self.discretization_method=='mrl':
+            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
+        method = "baseline_" + self.discretization_method
+        method_perf_pred = policy_evaluation_exact(self.pi_b,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
+        hyperparam = None
+        run_time = 0.0
+        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, pi_b_succ_rate, pi_b_avoid_rate, method_perf_pred])
+        
     def _run_shielded_baseline(self):
         pi_b_s = shieldedBaseline(pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
                                             nb_actions=self.nb_actions, data=self.data, R=self.R_state_state,
@@ -239,16 +250,16 @@ class Experiment:
         pi_b_s.fit()
         t_1 = time.time()
         if self.discretization_method=='mrl':
-            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
+            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
         elif self.discretization_method=='grid':
-            basic_rl_perf = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, env_name=self.env_name)
+            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, env_name=self.env_name)
         
-        # basic_rl_perf = self._policy_evaluation_exact(pi_b_s.pi)
+        method_perf_pred = policy_evaluation_exact(pi_b_s.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
         method = pi_b_s.NAME + "_" + self.discretization_method
         method_perf = basic_rl_perf
         hyperparam = None
         run_time = t_1 - t_0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states])
+        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, pi_b_succ_rate, pi_b_avoid_rate, method_perf_pred])
     
     def _run_spibb_shielded(self, key):
         """
@@ -269,13 +280,13 @@ class Experiment:
                 spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
             elif self.discretization_method=='grid':
                 spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250,  self.discretization_method, env_name=self.env_name)
-            
+            method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
             write_policy_to_file(spibb.pi, "policy_shielded.txt")
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate, method_perf_pred])
                   
     def _run_spibb(self, key):
         """
@@ -297,12 +308,13 @@ class Experiment:
                 spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, env_name=self.env_name)
             print("evaluated policy")
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
+            method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
             write_policy_to_file(spibb.pi, "policy.txt")
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate, method_perf_pred])
     
     def _run_spibb_dqn(self, key):
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
@@ -317,7 +329,7 @@ class Experiment:
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate, 0])
             
     def _run_soft_spibb(self, key):
         """
@@ -394,8 +406,21 @@ class Experiment:
         """
         return policy_evaluation_exact(pi, self.R_state_action, self.P, self.gamma)[0][self.initial_state]
     
+    def array_to_dict(self, arr):
+        sparse_dict = {}
+
+        # Iterate over the 2D array and add non-zero elements to the dictionary
+        for i in range(arr.shape[0]):
+            for j in range(arr.shape[1]):
+                    if arr[i, j] != 0:
+                        sparse_dict[(i, j)] = arr[i, j]
+        return sparse_dict
+    
     def compute_r_state_action(self, P, R):
         if isinstance(P, dict):
+            print(type(R))
+            if isinstance(R, np.ndarray):
+                R = self.array_to_dict(R)
             return self.compute_r_state_action_sparse(P, R)
         return self.compute_r_state_action_dense(P, R)
     
@@ -1011,10 +1036,10 @@ class GymLunarLanderExperiment(Experiment):
         self.R_state_state_grid = self.env.get_reward_function() # make sure this runs before get_traps and get_goal_states
         self.nb_states = self.env.get_nb_states()
         self.nb_actions = self.env.get_nb_actions()
-        self.traps = self.env.get_traps()
-        self.goal = self.env.get_goal_state()
+        self.traps = [self.env.get_traps()]
+        self.goal = [self.env.get_goal_state()]
 
-        self.initial_state = self.env.get_init_state()
+        self.initial_state_cont, self.initial_state = self.env.get_init_state()
         
         
         
@@ -1025,12 +1050,11 @@ class GymLunarLanderExperiment(Experiment):
             print("creating Baseline Policy")
             self.pi_b_obj = LunarLanderPolicy(self.env, epsilon=epsilon_baseline)
             self.pi_b = self.pi_b_obj.pi
-            pi_b_grid_perf, pi_b_grid_succ_rate, pi_b_grid_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250,  'grid', env_name=self.env_name)
-            print(f'baseline performance: {pi_b_grid_perf}, baseline succ rate: {pi_b_grid_succ_rate}, baseline avoid rate: {pi_b_grid_avoid_rate}')
+
             # self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
             #                                                             self._policy_evaluation_exact(self.pi_b)]
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
-                                                                        pi_b_grid_perf]
+                                                                        0]
             
             for nb_trajectories in self.nb_trajectories_list:
                 print(
@@ -1039,6 +1063,8 @@ class GymLunarLanderExperiment(Experiment):
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
                 # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
+                print("The traps are: ", self.traps)
+                print("The goals are: ", self.goal)
                 data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b, self.pi_b_obj)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
                 
@@ -1061,11 +1087,11 @@ class GymLunarLanderExperiment(Experiment):
                     pfeatures=self.dimensions,
                     h = -1,
                     gamma = 1,
-                    max_k = 100,
+                    max_k = 200,
                     distance_threshold=None,
                     th = 10,
                     eta = 25,
-                    precision_thresh = -1, #1e-14
+                    precision_thresh = 1e-14,
                     classification = 'DecisionTreeClassifier',
                     split_classifier_params = {'random_state':0, 'max_depth':5},
                     clustering = 'KMeans',
@@ -1082,6 +1108,7 @@ class GymLunarLanderExperiment(Experiment):
                 print("start discretization")
                 tb = time.time()
                 d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
+                self.data = d_data
                 ta = time.time()
                 print("time for discretization = ", ta-tb)
                 # tfile = open('data_df_trained.txt', 'a')
@@ -1090,6 +1117,7 @@ class GymLunarLanderExperiment(Experiment):
                 
                 # self.write_discrete_data_to_txt(d_data, "data_d.txt")
                 nb_states = m.df_trained["CLUSTER"].nunique()
+                self.nb_states = nb_states
                 print("nb states = ", nb_states)                
                 # get discrete reward function
                 self.R_state_state = np.zeros((nb_states, nb_states))
@@ -1106,10 +1134,14 @@ class GymLunarLanderExperiment(Experiment):
                         goal.append(state)
                 print("traps = ", traps)
                 print("goal = ", goal)
+                self.initial_state = d_data[0][0][1]
 
                 # get structure transition function
                 self.structure = self.get_empty_structure(nb_states)
                 self.structure = self.add_trans_from_data(self.structure, d_data)
+                self._count(d_data)
+                self._build_model()
+                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
                 print("found structure")
                 
                 # Calculate Shield                
@@ -1124,9 +1156,7 @@ class GymLunarLanderExperiment(Experiment):
                 # self.shielder.printShield()
                 
                 # # Run the algoirhtm
-                self.nb_states = nb_states
-                self.data = d_data
-                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states)
+                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states, d_data)
 
                 print("Running Algorithms")
                 self._run_algorithms()
@@ -1135,6 +1165,7 @@ class GymLunarLanderExperiment(Experiment):
                 # ----------------------------- GRID ---------------------------------
                 self.discretization_method = 'grid'
                 self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
+                self.initial_state_cont, self.initial_state = self.env.get_init_state()
                 print("The baseline has length:", len(self.pi_b))
                 self.nb_states = self.env.get_nb_states()
                 self.data = data_grid
@@ -1143,6 +1174,7 @@ class GymLunarLanderExperiment(Experiment):
                 print("Estimating Intervals")            
                 self._count(self.data)
                 self._build_model()
+                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
                 self.structure = self._tm_to_next_states()
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
@@ -1153,7 +1185,7 @@ class GymLunarLanderExperiment(Experiment):
                 
                 print("Calculating Shield")  
                 # self.structure = self.build_transition_matrix()
-                self.shielder = ShieldLunarLander(self.structure, self.traps, self.goal, self.intervals, self.initial_state[1])
+                self.shielder = ShieldLunarLander(self.structure, self.traps, self.goal, self.intervals, self.initial_state)
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
                 print("Running Algorithms")
@@ -1246,10 +1278,16 @@ class GymLunarLanderExperiment(Experiment):
                 state, next_state, reward = env.step(action_choice)
                 region = env.state2region(state)
                 next_region = env.state2region(next_state)
+                if reward == -100:
+                    next_region = env.get_traps()
+                elif reward == 100:
+                    next_region  = env.get_goal_state()
                 is_done = env.is_done()                    
                 trajectorY.append([action_choice, region, next_region, reward])
                 terminated = env.is_terminated()
                 truncated = env.is_truncated()
+                # if terminated:
+                #     print(f"terminated on region = {region}, action = {action_choice}, next region = {next_region}, reward = {reward}")
                 nb_steps += 1
                 if not nb_steps < max_steps:
                     reached_max_it = True
@@ -1358,7 +1396,6 @@ class GymLunarLanderExperiment(Experiment):
             traj = []
 
             for s, a, ns, r, terminated, truncated in trajectory:
-
                 s_region = state_to_cluster.get(tuple(s))
                 ns_region = state_to_cluster.get(tuple(ns))
 
@@ -1413,7 +1450,7 @@ class GymLunarLanderExperiment(Experiment):
         
         for state in range(nb_states):
             for action in range(self.nb_actions):
-                empty_structure[state, action] = np.array([])
+                empty_structure[state, action] = np.array([], dtype=int)
                 
         return empty_structure            
     def add_trans_from_data(self,structure, data):
@@ -1426,7 +1463,7 @@ class GymLunarLanderExperiment(Experiment):
                 ns=transition[2]
                 poss_next = structure[s,a]
                 if not ns in poss_next:
-                    poss_next = np.append(poss_next, [ns])
+                    poss_next = np.append(poss_next, [int(ns)])
                     structure[s][a] = poss_next
         return structure  
     
@@ -2284,8 +2321,6 @@ def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
       r: rewards, array of shape [num_states x num_actions]
       p_sparse: dictionary {(s, a, s'): p(s'|s,a)} with only non-zero transitions
       gamma: discount factor
-      num_states: number of states
-      num_actions: number of actions
 
     Returns:
       v: 1D array with updated state values
@@ -2306,14 +2341,16 @@ def policy_evaluation_exact_sparse(pi, r, p_sparse, gamma):
     # Solve (I - gamma * P_pi) * v = r_pi
     A = identity(num_states, format='csr') - gamma * P_pi.tocsr()
     v, info = bicgstab(A, r_pi, atol=1e-6)
-    if info != 0:
-        print("Warning: Iterative solver did not converge")
+    if info != 0: # bicgstab sometimes fails with deterministic policies. If it fails to converge, use spsolve instead, which is slower but does not have this issue
+        v = spsolve(A, r_pi)
+
     # Compute Q-values
     q = np.zeros((num_states, num_actions))
     for (s, a, s_prime), prob in p_sparse.items():
         q[s, a] += prob * v[s_prime]
     q = r + gamma * q
-    return v, q, dict(p_pi_sparse)
+    
+    return v, q
 
 def policy_evaluation_exact_dense(pi, r, p, gamma):
     """
@@ -2326,7 +2363,7 @@ def policy_evaluation_exact_dense(pi, r, p, gamma):
     Return:
       v: 1D array with updated state values
     """
-    # Rewards according to policy: Hadamard product and row-wise sum 
+    # Rewards according to policy: Hadamard product and row-wise sum
     r_pi = np.einsum('ij,ij->i', pi, r)
 
     # Policy-weighted transitions:

@@ -804,13 +804,14 @@ def splitter(
             if verbose:
                 print("Optimal # of clusters reached")
             break
-
+    print("best_df = ", best_df["CLUSTER"].nunique())
+    print("new_df = ", df_new["CLUSTER"].nunique())
     # in the case that threshold prevents any values from passing, use backup
     if opt_k == None:
         opt_k = backup_opt_k
         best_df = backup_df
         min_error = backup_min_error
-
+    
     # plotting functions
     # Plotting accuracy and value R2
     its = np.arange(k + 1, nc + 1)

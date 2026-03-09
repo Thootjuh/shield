@@ -8,14 +8,17 @@ from collections import defaultdict
 from collections.abc import Mapping
 
 class RewardDict(Mapping):
-    def __init__(self, nb_states, terminal_idx, reward_per_next):
+    def __init__(self, nb_states, terminal_idx, goal_idx, reward_per_next):
         self.nb_states = nb_states
         self.terminal_idx = terminal_idx
+        self.goal_idx = goal_idx
         self.reward_per_next = reward_per_next
             
     def __getitem__(self, key):
         state, next_state = key
 
+        if next_state == self.goal_idx:
+            return 100
         if next_state == self.terminal_idx:
             return -100
 
@@ -158,8 +161,8 @@ class LunarLander:
     def partition_states(self):
         # Non-terminal region definitions for LunarLander
         # (coarse discretization example; adjust as needed)
-        nrPerDim = [8, 8, 4, 4, 4, 4, 2, 2]
-
+        nrPerDim = [8, 8, 4, 4, 8, 2, 2, 2]
+        # nrPerDim = [8, 8, 6, 6, 8, 2, 2, 2]
         # Approximate observation bounds used for partitioning
         regionWidth = [
             2.0 / nrPerDim[0],        # x position ∈ [-1.0, 1.0]
@@ -193,18 +196,22 @@ class LunarLander:
         self.partition = partition
         self.nb_states = len(partition["center"])
         
-        # Add one extra region for terminal states
+        # Add one extra region for trap states and one for goal states
         terminal_region_idx = len(partition["center"])
         partition["terminal_idx"] = terminal_region_idx
         
+        terminal_region_idx = len(partition["center"])+1
+        partition["goal_idx"] = terminal_region_idx
+        
         self.partition = partition
-        self.nb_states = len(partition["center"]) + 1
+        self.nb_states = len(partition["center"]) + 2
         
     def state2region(self, state):
         idx = prt.state2region(state, self.partition, self.partition['c_tuple'])
         if idx == None:
             return self.partition["terminal_idx"]
         return idx[0]
+    
     
     def step(self, action):
         old_state = self.state
@@ -317,75 +324,21 @@ class LunarLander:
 
         return in_x and in_y
     
-    def get_reward_for_cell_transition(self, prev_cell, cell):
-
-        # Terminal rewards already handled
-        if self.cell_contains_crash(cell):
-            return -100
-
-        if self.cell_contains_goal(cell):
-            return 100
-
-        # Out-of-bounds in x-direction
-        if abs(self.partition["center"][cell][0]) >= 1.0:
-            return -100
-
-        # ---- Shaping reward at cell center ----
-
-        center = self.partition["center"][cell]
-
-        x = center[0]
-        y = center[1]
-        vx = center[2]
-        vy = center[3]
-        angle = center[4]
-        left_leg = center[6]
-        right_leg = center[7]
-
-        shaping = (
-            -100.0 * np.sqrt(x * x + y * y)
-            -100.0 * np.sqrt(vx * vx + vy * vy)
-            -100.0 * abs(angle)
-            +10.0 * left_leg
-            +10.0 * right_leg
-        )
-
-        prev_center = self.partition["center"][prev_cell]
-
-        prev_shaping = (
-            -100.0 * np.sqrt(prev_center[0]**2 + prev_center[1]**2)
-            -100.0 * np.sqrt(prev_center[2]**2 + prev_center[3]**2)
-            -100.0 * abs(prev_center[4])
-            +10.0 * prev_center[6]
-            +10.0 * prev_center[7]
-        )
-        reward = shaping - prev_shaping
-        # ----- Engine penalty approximation -----
-        # delta_vy = center[3] - prev_center[3]
-
-        # if delta_vy > 0:
-        #     main_engine_power = min(1.0, abs(delta_vy))
-        # else:
-        #     main_engine_power = 0.0
-
-        # delta_ang_vel = center[5] - prev_center[5]
-
-        # if abs(delta_ang_vel) > 0:
-        #     side_engine_power = min(1.0, abs(delta_ang_vel))
-        # else:
-        #     side_engine_power = 0.0
-
-        # reward -= 0.30 * main_engine_power
-        # reward -= 0.03 * side_engine_power
-        return reward
     
     def get_reward_for_cell(self, cell):
 
-        # Terminal rewards already handled
-        if self.cell_contains_crash(cell):
+        # if self.cell_contains_goal(cell):
+        #     return 100
+        
+        # if self.cell_contains_crash(cell):
+        #     return -100
+                
+        if cell == self.get_traps():
+            print("set reward for trap")
             return -100
-
-        if self.cell_contains_goal(cell):
+        
+        if cell == self.get_goal_state():
+            print("set reward for goal")
             return 100
 
         # Out-of-bounds in x-direction
@@ -413,52 +366,26 @@ class LunarLander:
         )
 
         return shaping
-    
-    def get_reward_function_slow(self):
-        reward_function = defaultdict(float)
-        for next_state in range(self.nb_states-1):
-            if next_state % 100 == 0:
-                print(next_state)
-            if self.cell_contains_crash(next_state):
-                print("A")
-                for state in range(self.nb_states):
-                    reward_function[(state, next_state)]=-100 # -100 reward for crashing
-            elif self.cell_contains_goal(next_state):
-                print("B")
-                for state in range(self.nb_states):
-                    reward_function[(state, next_state)]=100 # +100 reward for landing
-            elif abs(self.partition["center"][next_state][0]) >= 1.0:
-                print("C")
-                print(self.partition["center"][next_state])
-                for state in range(self.nb_states):
-                    reward_function[(state, next_state)]=-100 # -100 reward for out of frame
-            else: # Else, the reward depends on both the current and next state
-                print("D")
-                for state in range(self.nb_states):
-                    reward = self.get_reward_for_cell_transition(state, next_state)
-                    if reward != 0:
-                        reward_function[(state, next_state)]=reward
-            reward_function[(next_state, self.partition["terminal_idx"])] = -100 # negative reward for transitioning to any terminal state
 
-        return reward_function
     
     def get_reward_function(self):
         reward_per_next = {}
-        self.traps = [self.nb_states - 1]
-        self.goal = []
+        # self.traps = [self.nb_states - 1]
+        # self.goal = []
         
-        for next_state in range(self.nb_states - 1):
+        for next_state in range(self.nb_states):
             reward = self.get_reward_for_cell(next_state)
             if reward != 0:
                 reward_per_next[next_state] = reward
-                if reward == -100:
-                    self.traps.append(next_state)
-                elif reward == 100:
-                    self.goal.append(next_state)
+                # if reward == -100:
+                #     self.traps.append(next_state)
+                # elif reward == 100:
+                #     self.goal.append(next_state)
 
         return RewardDict(
             nb_states=self.nb_states,
             terminal_idx=self.partition["terminal_idx"],
+            goal_idx=self.partition["goal_idx"],
             reward_per_next=reward_per_next,
         )
     
@@ -474,11 +401,17 @@ class LunarLander:
     def get_nb_states(self):
         return self.nb_states
     
+    # def get_traps(self):
+    #     return self.traps
+    
     def get_traps(self):
-        return self.traps
+        return self.partition["terminal_idx"]
             
+    # def get_goal_state(self):
+        # return self.goal
+    
     def get_goal_state(self):
-        return self.goal
+        return self.partition["goal_idx"]
     
     def get_init_state(self):
         return self.init, self.state2region(self.init)
@@ -548,23 +481,33 @@ class LunarLanderPolicy:
         return a
     
     def compute_baseline(self):
-        pi_h = np.zeros((self.nb_states, self.nb_actions))
-        for state in range(self.nb_states-1):
+        pi_h = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
+        for state in range(self.nb_states-2):
             center = self.env.partition["center"][state]
             action = self.heuristic(center)
+            pi_h[state][:] = 0.0
             pi_h[state][action] = 1.0
 
-        pi_h[-1][:] = 1/len(pi_h[0])
+        # pi_h[-1][:] = 1/len(pi_h[0])
         self.pi = (1 - self.epsilon) * pi_h + self.epsilon * self.pi
         
-        for state in range(len(self.pi)):
-            if sum(self.pi[state]) != 1:
-                print(f"error in state {state}")
-                print("You f'ed it, this is not 1: ", self.pi[state])
-                print(f"The heuristic policy value here is {pi_h[state]}")
+        np.savetxt("real_baseline.txt", self.pi)
                 
-    def compute_baseline_size(self, nb_states):
-        pi_b = np.ones((nb_states, self.nb_actions)) / self.nb_actions
+    def compute_baseline_size(self, nb_states, data):
+        pi_r = np.ones((nb_states, self.nb_actions)) / self.nb_actions
+        
+        pi_selected = np.zeros((nb_states, self.nb_actions))
+        for traj in data:
+            for trans in traj:
+                state = trans[1]
+                action = trans[0]
+                pi_selected[state][action]+=1
+        
+        best_actions = np.argmax(pi_selected, axis=1)
+        pi_deterministic = np.zeros_like(pi_selected, dtype=float)
+        pi_deterministic[np.arange(pi_selected.shape[0]), best_actions] = 1.0
+        
+        pi_b = (1 - self.epsilon) * pi_deterministic + self.epsilon * pi_r
         return pi_b
     
     
