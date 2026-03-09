@@ -53,6 +53,47 @@ class Shield:
             probs (list[float]): calculated probability of each state leading to a violation of the property
             transition_probs(dict[int, pycarl.Interval]): probability interval
         """
+        tm = model.transition_matrix
+
+        mecs = stormpy.storage.MaximalEndComponentDecomposition_interval(model)
+
+        print("Total MECs:", mecs.size)
+
+        for mec_index, mec in enumerate(mecs):
+            mec_entries = list(mec)
+            states = [state for state, _ in mec_entries]
+
+            # skip trivial MECs
+            if len(states) <= 1:
+                continue
+
+            state_set = set(states)
+
+            print("\n==============================")
+            print("Non-trivial MEC", mec_index)
+            print("Number of states:", len(states))
+            print("States:", states)
+
+            for state, actions in mec_entries:
+                print("\n State", state)
+                print("  actions in MEC:", list(actions))
+
+                start = tm.get_row_group_start(state)
+                end = tm.get_row_group_end(state)
+
+                print("  total actions in model:", end - start)
+
+                for row in range(start, end):
+                    print("   Action row:", row)
+
+                    for entry in tm.get_row(row):
+                        target = entry.column
+                        interval = entry.value()
+
+                        loc = "inside MEC" if target in state_set else "LEAVES MEC"
+
+                        print("     ->", target, "interval:", interval, loc)
+                
         properties = stormpy.parse_properties(prop)
         env = stormpy.Environment()
         env.solver_environment.minmax_solver_environment.method = stormpy.MinMaxMethod.value_iteration
@@ -162,7 +203,7 @@ class Shield:
         
         # Run PRISM
         cmd = (
-            f"{prism_executable} -explicit -sparse -gs -javamaxmem {java_mem}g "
+            f"{prism_executable} -explicit -sparse -gs epsilon 1e-4 -javamaxmem {java_mem}g "
             f"{model_file} {prop_file} "
             f"| awk '/Results \\(including zeros\\) for filter true:/ {{flag=1; next}} "
             f"flag && /^Range of values/ {{exit}} flag {{print}}' "
@@ -473,8 +514,9 @@ class ShieldLunarLander(Shield):
         # self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps) 
         print("start encoding")
         self.prism_text = encodeLunarLander(transition_matrix, intervals, traps, goal, init)
-        print("end encoding")
         # self.model_builder = IntervalMDPBuilderLunarLander(transition_matrix, intervals, goal, traps)
+        print("end encoding")
+
         super().__init__(transition_matrix, traps, goal, intervals)
         
     def calculateShield(self):

@@ -92,22 +92,37 @@ class IntervalMDPBuilderRandomMDP(IntervalMDPBuilder):
  
 class IntervalMDPBuilderLunarLander(IntervalMDPBuilder):
     def build_model(self):
+        EPSILON_VALUE = 1e-10
         builder = stormpy.IntervalSparseMatrixBuilder(rows=0, columns=0, entries=0, force_dimensions=False, has_custom_row_grouping=True, row_groups=0)
         
         counter = 0    
         # Add the model
         for state in range(self.num_states):
             builder.new_row_group(counter)
+
             for action in range(self.num_actions):
+
+                # make terminal states absorbing
+                if state in self.traps or state in self.goal:
+                    builder.add_next_value(counter, state, pycarl.Interval(1,1))
+                    counter += 1
+                    continue
+
                 next_states = self.transitions[state][action]
-                # check if state is a terminal state. If so, only add a transition to itself
-                if(len(next_states) > 0):
+                if len(next_states) > 0:
+                    if all(elem not in next_states for elem in self.traps) and all(elem not in next_states for elem in self.traps): # STORM IMDP solver does not support end component elimination, so we make sure every state has at least a small chance of transitioning to a terminal state
+                        builder.add_next_value(counter, self.traps[0], pycarl.Interval(EPSILON_VALUE,EPSILON_VALUE))
                     for next_state in next_states:
                         bounds = self.intervals[(state, action, next_state)]
-                        builder.add_next_value(counter, next_state, pycarl.Interval(bounds[0], bounds[1]))
+                        builder.add_next_value(
+                            counter,
+                            next_state,
+                            pycarl.Interval(max(bounds[0]-EPSILON_VALUE, EPSILON_VALUE), max(bounds[1]-EPSILON_VALUE, EPSILON_VALUE))
+                        )
                 else:
-                      builder.add_next_value(counter, state, pycarl.Interval(1, 1))  
-                counter+=1
+                    builder.add_next_value(counter, self.traps[0], pycarl.Interval(1,1))
+
+                counter += 1
                 
         transition_matrix = builder.build()
         state_labels = self.set_state_labels()

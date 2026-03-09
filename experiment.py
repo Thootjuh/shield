@@ -233,9 +233,9 @@ class Experiment:
             
     def _run_baseline(self):
         if self.discretization_method=='grid':
-            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, env_name=self.env_name)
+            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env)
         elif self.discretization_method=='mrl':
-            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
+            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="baseline_mrl.gif",render_env=self.render_env)
         method = "baseline_" + self.discretization_method
         method_perf_pred = policy_evaluation_exact(self.pi_b,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
         hyperparam = None
@@ -250,9 +250,9 @@ class Experiment:
         pi_b_s.fit()
         t_1 = time.time()
         if self.discretization_method=='mrl':
-            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
+            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_mrl.gif",render_env=self.render_env)
         elif self.discretization_method=='grid':
-            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, env_name=self.env_name)
+            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_grid.gif",render_env=self.render_env)
         
         method_perf_pred = policy_evaluation_exact(pi_b_s.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
         method = pi_b_s.NAME + "_" + self.discretization_method
@@ -277,9 +277,9 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_mrl.gif",render_env=self.render_env)
             elif self.discretization_method=='grid':
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250,  self.discretization_method, env_name=self.env_name)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250,  self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_grid.gif",render_env=self.render_env)
             method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
@@ -303,9 +303,9 @@ class Experiment:
             print("trained policy")
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="spibb_mrl.gif",render_env=self.render_env)
             elif self.discretization_method=='grid':
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, env_name=self.env_name)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env)
             print("evaluated policy")
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
@@ -322,7 +322,7 @@ class Experiment:
             t_0 = time.time()
             spibb.learn(passes_on_dataset = 25)
             t_1 = time.time()
-            spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 100, 250, self.discretization_method, ai=spibb.ai, env_name=self.env_name)
+            spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 100, 250, self.discretization_method, ai=spibb.ai, env_name=self.env_name, generate_gif=True, gif_name="dqn.gif",render_env=self.render_env)
             spibb_perf_old = spibb.evaluate_policy(1, 100)
             print(spibb_perf, " =?= ", spibb_perf_old)
             method = 'spibb_dqn'
@@ -1031,7 +1031,9 @@ class GymLunarLanderExperiment(Experiment):
         
     def _run_one_iteration(self):
         print("start env")
-        self.env = LunarLander()
+        seed = np.random.randint(0, 1_000_000)
+        self.env = LunarLander(seed=seed)
+        self.render_env = LunarLander(seed=seed, render_mode=True)
         print("get values")
         self.R_state_state_grid = self.env.get_reward_function() # make sure this runs before get_traps and get_goal_states
         self.nb_states = self.env.get_nb_states()
@@ -1050,7 +1052,7 @@ class GymLunarLanderExperiment(Experiment):
             print("creating Baseline Policy")
             self.pi_b_obj = LunarLanderPolicy(self.env, epsilon=epsilon_baseline)
             self.pi_b = self.pi_b_obj.pi
-
+            self.epsilon = epsilon_baseline
             # self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
             #                                                             self._policy_evaluation_exact(self.pi_b)]
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
@@ -1263,7 +1265,7 @@ class GymLunarLanderExperiment(Experiment):
         trajectories_cont = []
         
 
-        for _ in np.arange(nb_trajectories):
+        for traj_count in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
             trajectorY_cont = []
@@ -1273,8 +1275,11 @@ class GymLunarLanderExperiment(Experiment):
             is_done = False
             reached_max_it = False
             while not reached_max_it and not is_done:
-                # action_choice = np.random.choice(pi.shape[1], p=pi[region])
-                action_choice = policy_object.heuristic(state)
+                # action_choice = policy_object.heuristic(state)
+                if np.random.rand() < self.epsilon:
+                    action_choice = np.random.choice(pi.shape[1], p=pi[region])  # random action
+                else:
+                    action_choice = policy_object.heuristic(state)  # heuristic action
                 state, next_state, reward = env.step(action_choice)
                 region = env.state2region(state)
                 next_region = env.state2region(next_state)
@@ -1341,11 +1346,19 @@ class GymLunarLanderExperiment(Experiment):
             if prob > 0:
                 structure[s, a].append(s_prime)
         
-        # If a state has no successors in the data, just map to itself
+        # If a state has no successors in the data, just map to itself and the crash state
         for s in range(self.nb_states):
+            has_outgoing_transition = False
             for a in range(self.nb_actions):
                 if len(structure[s, a]) == 0:
                     structure[s, a].append(s)
+                else:
+                    has_outgoing_transition = True
+            # if not has_outgoing_transition:
+                # for a in range(self.nb_actions):
+                    # structure[s, a].append(self.traps[0])
+                    
+                    
                     
         return structure
     

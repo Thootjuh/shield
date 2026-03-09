@@ -31,11 +31,16 @@ class RewardDict(Mapping):
         return self.nb_states * self.nb_states
 class LunarLander:
     
-    def __init__(self):
-        env = gym.make("CustomLander-v0", continuous=False, gravity=-10.0,
+    def __init__(self, seed, render_mode=False):
+        if render_mode:
+            env = gym.make("CustomLander-v0", continuous=False, gravity=-10.0,
+               enable_wind=False, wind_power=15.0, turbulence_power=1.5, render_mode="rgb_array")
+        else:
+            env = gym.make("CustomLander-v0", continuous=False, gravity=-10.0,
                enable_wind=False, wind_power=15.0, turbulence_power=1.5)
+        
         self.env = env.env.env
-        observation, _ = self.env.reset()
+        observation, _ = self.env.reset(seed=seed)
         self.init = observation
         self.state = observation
         self.state_shape = [8]
@@ -415,6 +420,8 @@ class LunarLander:
     
     def get_init_state(self):
         return self.init, self.state2region(self.init)
+    
+
     
     
 class LunarLanderPolicy:

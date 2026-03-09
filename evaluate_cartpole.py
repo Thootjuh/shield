@@ -3,6 +3,8 @@
 import numpy as np
 import time
 from discretization.MRL.helper_functions import state2region
+import imageio
+import os
 
 def infer_action_mrl(state, predictor, policy, dimensions):
     region = state2region(predictor, state, dimensions)
@@ -16,7 +18,7 @@ def infer_action_DQN(state, ai):
     action, _, _, _ = ai.inference(state)
     return int(action)
 
-def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None, env_name="cartpole"):
+def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None, env_name="cartpole", generate_gif=False, gif_name="agent.gif", render_env=None):
     """ Evaluate the baseline number_of_epochs times for number_of_steps steps.
 
     Args:
@@ -31,11 +33,32 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  
     success_count = 0
     failure_count = 0
     all_rewards = []
+
+    frames = []
+
+    if generate_gif:
+        os.makedirs("gifs", exist_ok=True)
+        gif_path = os.path.join("gifs", gif_name)
+
     for episode in range(number_of_episodes):
         # if epoch % 10 == 0: 
         #     print("Starting epoch {}".format(epoch), flush=True)
-        env.reset()
-        last_state = env.get_state()
+
+        # choose which environment to run
+        if generate_gif and episode == 0 and render_env is not None:
+            current_env = render_env
+        else:
+            current_env = env
+
+
+        current_env.reset()
+        last_state = current_env.get_state()
+
+        if generate_gif and episode == 0 and render_env is not None:
+            frame = current_env.env.render()
+            if frame is not None:
+                frames.append(frame)
+
         term, start_time = False, time.time()
         rewards, current_reward, nb_steps = [], 0, 0
         while nb_steps<max_nb_steps_per_episode and not term:
@@ -46,7 +69,7 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  
                 #     print(type(action))
                 #     print(action)
             elif disc_method == 'grid':
-                action = infer_action(last_state, env, policy)
+                action = infer_action(last_state, current_env, policy)
                 # if nb_steps == 0 and epoch == 0:
                 #     print(type(action))
                 #     print(action)
@@ -55,9 +78,15 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  
                 # if nb_steps == 0 and epoch == 0:
                     # print(type(action))
                     # print(action)
-            _, _, reward = env.step(action)
-            term = env.is_done()
-            last_state = env.get_state()
+            _, _, reward = current_env.step(action)
+            term = current_env.is_done()
+            last_state = current_env.get_state()
+
+            if generate_gif and episode == 0 and render_env is not None:
+                frame = current_env.env.render()
+                if frame is not None:
+                    frames.append(frame)
+
             current_reward += reward
             nb_steps += 1
         
@@ -87,7 +116,12 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  
         all_rewards.append(current_reward)
         current_reward, nb_steps = 0, 0
         # print("after the episode, the total reward is now:", np.mean(all_rewards))
+
+        if generate_gif and episode == 0 and len(frames) > 0:
+            imageio.mimsave(gif_path, frames, fps=30)
+
     # print("success count = ", success_count)
     # print("failure count = ", failure_count)
     # print("episode count = ", episode_count)
     return np.mean(all_rewards), success_count/episode_count, failure_count/episode_count
+

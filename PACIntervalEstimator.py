@@ -30,6 +30,59 @@ class PACIntervalEstimator:
         self.trajectories = trajectories
         self.count()
         self.state_action_state_pairs = self.calculate_intervals()
+        
+        issues = self.check_probability_consistency()
+        
+        if issues:
+            print("Inconsistent intervals detected:")
+            for issue in issues:
+                print(issue)
+        else:
+            print("All intervals satisfy probability constraints.")
+        
+        
+    def check_probability_consistency(self):
+        """
+        Checks whether the PAC intervals for each (state, action) pair are
+        consistent with probability simplex constraints.
+
+        Returns
+        -------
+        list
+            List of inconsistencies detected.
+        """
+        inconsistencies = []
+
+        for state in range(len(self.structure)):
+            for action in range(len(self.structure[state])):
+
+                successors = self.structure[state][action]
+
+                lower_sum = 0.0
+                upper_sum = 0.0
+
+                for next_state in successors:
+                    lower, upper = self.state_action_state_pairs[(state, action, next_state)]
+                    lower_sum += lower
+                    upper_sum += upper
+
+                if lower_sum > 1 + self.precision:
+                    inconsistencies.append({
+                        "type": "lower_sum_exceeds_1",
+                        "state": state,
+                        "action": action,
+                        "lower_sum": lower_sum
+                    })
+
+                if upper_sum < 1 - self.precision:
+                    inconsistencies.append({
+                        "type": "upper_sum_below_1",
+                        "state": state,
+                        "action": action,
+                        "upper_sum": upper_sum
+                    })
+
+        return inconsistencies
     
     def calculate_intervals(self):
         """
