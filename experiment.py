@@ -323,8 +323,6 @@ class Experiment:
             spibb.learn(passes_on_dataset = 25)
             t_1 = time.time()
             spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 100, 250, self.discretization_method, ai=spibb.ai, env_name=self.env_name, generate_gif=True, gif_name="dqn.gif",render_env=self.render_env)
-            spibb_perf_old = spibb.evaluate_policy(1, 100)
-            print(spibb_perf, " =?= ", spibb_perf_old)
             method = 'spibb_dqn'
             method_perf = spibb_perf
             hyperparam = N_wedge
@@ -624,6 +622,7 @@ class GymCartPoleExperiment(Experiment):
         
         print("start env")
         self.env = cartPole()
+        self.render_env = cartPole(True)
         print("get values")
         self.nb_states = self.env.get_nb_states()
         self.nb_actions = self.env.get_nb_actions()
@@ -632,7 +631,7 @@ class GymCartPoleExperiment(Experiment):
         self.traps = self.env.get_traps()
         self.goal = self.env.get_goal_state()
 
-        self.initial_state = self.env.get_init_state()
+        self.initial_state_cont, self.initial_state = self.env.get_init_state()
         
         # self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
@@ -736,8 +735,9 @@ class GymCartPoleExperiment(Experiment):
                 # discretize data
                 self.predictor = predict_cluster(m.df_trained, self.dimensions)
                 d_data = self.discretize_data(self.data_cont, self.predictor)
-                
+                self.data = d_data
                 nb_states = m.df_trained["CLUSTER"].nunique()
+                self.nb_states = nb_states
                 print("nb states = ", nb_states)                
                 # get discrete reward function
                 self.R_state_state = np.zeros((nb_states, nb_states))
@@ -752,7 +752,11 @@ class GymCartPoleExperiment(Experiment):
                 # get structure transition function
                 self.structure = self.get_empty_structure(nb_states)
                 self.structure = self.add_trans_from_data(self.structure, d_data)
-                                
+                self._count(d_data)
+                self._build_model()           
+                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
+                self.initial_state = d_data[0][0][1]
+                
                 # Calculate Shield                
                 self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
@@ -765,8 +769,6 @@ class GymCartPoleExperiment(Experiment):
                 # self.shielder.printShield()
                 
                 # # Run the algoirhtm
-                self.nb_states = nb_states
-                self.data = d_data
                 self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states)
 
                 print("Running Algorithms")
@@ -774,35 +776,38 @@ class GymCartPoleExperiment(Experiment):
                 
                 
                 # ----------------------------- GRID ---------------------------------
-                # self.discretization_method = 'grid'
-                # self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
-                # print("The baseline has length:", len(self.pi_b))
-                # self.nb_states = self.env.get_nb_states()
-                # self.data = data_grid
-                # self.R_state_state = self.env.get_reward_function()
+                self.discretization_method = 'grid'
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
+                self.initial_state_cont, self.initial_state = self.env.get_init_state()
+                print("The baseline has length:", len(self.pi_b))
+                self.nb_states = self.env.get_nb_states()
+                self.data = data_grid
+                self.R_state_state = self.env.get_reward_function()
                 
-                # print("Estimating Intervals")            
-                # self._count(self.data)
-                # self._build_model()
-                # self.structure = self._tm_to_next_states()
-                # self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
-                # self.estimator.calculate_intervals()
-                # self.intervals = self.estimator.get_intervals()   
-                # # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
-                # # self.intervals = self.estimator.get_intervals()
+                print("Estimating Intervals")            
+                self._count(self.data)
+                self._build_model()
+                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
+                self.structure = self._tm_to_next_states()
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()   
+                # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
+                # self.intervals = self.estimator.get_intervals()
                 
                 
-                # print("Calculating Shield")  
-                # # self.structure = self.build_transition_matrix()
-                # self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
-                # self.shielder.calculateShield()
-                # # self.shielder.printShield()
-                # print("Running Algorithms")
-                # self._run_algorithms()
-                # # ----------------------------- SPIBB-DQN ----------------------------------
-                # self.discretization_method = 'SPIBB-DQN'
-                # self.data = self.data_cont
-                # self._run_spibb_dqn('SPIBB-DQN')
+                print("Calculating Shield")  
+                # self.structure = self.build_transition_matrix()
+                self.shielder = ShieldCartpole(self.structure, [self.traps], self.goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
+                print("Running Algorithms")
+                self._run_algorithms()
+                # ----------------------------- SPIBB-DQN ----------------------------------
+                self.discretization_method = 'SPIBB-DQN'
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
+                self.data = self.data_cont
+                self._run_spibb_dqn('SPIBB-DQN')
          
         
     def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):

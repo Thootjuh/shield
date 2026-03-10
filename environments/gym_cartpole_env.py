@@ -26,9 +26,13 @@ class RewardDict(Mapping):
 
     def __len__(self):
         return self.nb_states * self.nb_states
+    
 class cartPole:
-    def __init__(self):
-        self.env = gym.make("CartPole-v0")
+    def __init__(self, render_mode=False):
+        if render_mode:
+            self.env = gym.make("CartPole-v0", render_mode="rgb_array")
+        else:
+            self.env = gym.make("CartPole-v0")
 
         # self.initial_calculations()
         observation, _ = self.env.reset()

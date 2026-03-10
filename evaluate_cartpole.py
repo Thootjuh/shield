@@ -37,8 +37,9 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  
     frames = []
 
     if generate_gif:
-        os.makedirs("gifs", exist_ok=True)
-        gif_path = os.path.join("gifs", gif_name)
+        gif_folder = os.path.join("gifs", env_name)
+        os.makedirs(gif_folder, exist_ok=True)
+        gif_path = os.path.join(gif_folder, gif_name)
 
     for episode in range(number_of_episodes):
         # if epoch % 10 == 0: 
