@@ -38,7 +38,7 @@ class LunarLander:
         else:
             env = gym.make("CustomLander-v0", continuous=False, gravity=-10.0,
                enable_wind=False, wind_power=15.0, turbulence_power=1.5)
-        
+        self.seed = seed
         self.env = env.env.env
         observation, _ = self.env.reset(seed=seed)
         self.init = observation
@@ -57,8 +57,8 @@ class LunarLander:
     def reset(self):
         # The self.env.reset function also resets the overall environment, which is not what we want. 
         # We probably have to rewrite the code to additionally have a reset_position function
-        self.env.set_state(self.init)
-        self.state = self.init
+        observation, _ = self.env.reset(seed=self.seed)
+        self.state = observation
     
     
     def set_random_state(self, max_attempts = 1000):
