@@ -233,9 +233,9 @@ class Experiment:
             
     def _run_baseline(self):
         if self.discretization_method=='grid':
-            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env)
+            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env)
         elif self.discretization_method=='mrl':
-            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="baseline_mrl.gif",render_env=self.render_env)
+            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="baseline_mrl.gif",render_env=self.render_env)
         method = "baseline_" + self.discretization_method
         method_perf_pred = policy_evaluation_exact(self.pi_b,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
         hyperparam = None
@@ -250,9 +250,9 @@ class Experiment:
         pi_b_s.fit()
         t_1 = time.time()
         if self.discretization_method=='mrl':
-            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_mrl.gif",render_env=self.render_env)
+            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_mrl.gif",render_env=self.render_env)
         elif self.discretization_method=='grid':
-            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_grid.gif",render_env=self.render_env)
+            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_grid.gif",render_env=self.render_env)
         
         method_perf_pred = policy_evaluation_exact(pi_b_s.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
         method = pi_b_s.NAME + "_" + self.discretization_method
@@ -277,9 +277,9 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_mrl.gif",render_env=self.render_env)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_mrl.gif",render_env=self.render_env)
             elif self.discretization_method=='grid':
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250,  self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_grid.gif",render_env=self.render_env)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 500,  self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_grid.gif",render_env=self.render_env)
             method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
@@ -303,9 +303,9 @@ class Experiment:
             print("trained policy")
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="spibb_mrl.gif",render_env=self.render_env)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="spibb_mrl.gif",render_env=self.render_env)
             elif self.discretization_method=='grid':
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 250, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env)
+                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env)
             print("evaluated policy")
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
@@ -322,7 +322,7 @@ class Experiment:
             t_0 = time.time()
             spibb.learn(passes_on_dataset = 25)
             t_1 = time.time()
-            spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 100, 250, self.discretization_method, ai=spibb.ai, env_name=self.env_name, generate_gif=True, gif_name="dqn.gif",render_env=self.render_env)
+            spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 100, 500, self.discretization_method, ai=spibb.ai, env_name=self.env_name, generate_gif=True, gif_name="dqn.gif",render_env=self.render_env)
             method = 'spibb_dqn'
             method_perf = spibb_perf
             hyperparam = N_wedge
@@ -1258,7 +1258,7 @@ class GymLunarLanderExperiment(Experiment):
 
                 f.write("\n")     
         
-    def generate_batch(self, nb_trajectories, env, pi, policy_object, max_steps=250):
+    def generate_batch(self, nb_trajectories, env, pi, policy_object, max_steps=500):
         """
         Generates a data batch for an episodic MDP.
         :param nb_steps: number of steps in the data batch
