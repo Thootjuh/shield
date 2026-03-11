@@ -1305,7 +1305,7 @@ class WetChickenExperiment(Experiment):
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.lengths_trajectory = ast.literal_eval(self.experiment_config['BASELINE']['lengths_trajectory'])
         if self.baseline_method == 'heuristic':
-            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'threshold', 'pi_b_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'length_trajectory']
+            self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'length_trajectory']
         else:
             self.learning_rates = ast.literal_eval(self.experiment_config['BASELINE']['learning_rates'])
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'threshold', 'pi_b_perf',
@@ -1321,35 +1321,33 @@ class WetChickenExperiment(Experiment):
         and then starts the computation for each algorithm.
         """
         # shield_thresholds = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
-        shield_thresholds = [0.2]
-        for theta in shield_thresholds:
-            for epsilon_baseline in self.epsilons_baseline:
-                print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
-                    f' {self.epsilons_baseline}')
-                if self.baseline_method == 'heuristic':
-                    self.pi_b = WetChickenBaselinePolicy(env=self.env, gamma=self.gamma, method=self.baseline_method,
-                                                        epsilon=epsilon_baseline).pi
-                    pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
-                    self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline, theta,
-                                                                            self._policy_evaluation_exact(self.pi_b), pi_b_succ_rate, pi_b_avoid_rate]
-                    for length_trajectory in self.lengths_trajectory:
-                        print(f'Starting with length_trajectory {length_trajectory} out of {self.lengths_trajectory}.')
-                        self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
-                        self.to_append = self.to_append_run_one_iteration + [length_trajectory]
-                        self.structure = self.reduce_transition_matrix(self.P)
-                        self.goal = self.find_closest_states(list(range(len(self.structure))), self.length)
-                        self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
-                        self.intervals = self.estimator.get_intervals()
-                        self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, theta)
-                        self.shielder.calculateShield()
-                        self._run_algorithms()
-                        
-                        self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
-                        self.intervals = self.estimator.get_intervals()
-                        self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, theta)
-                        self.shielder.calculateShield()
-                        self._run_shielded_baseline("_point")
-                        self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
+        for epsilon_baseline in self.epsilons_baseline:
+            print(f'Process with seed {self.seed} starting with epsilon_baseline {epsilon_baseline} out of'
+                f' {self.epsilons_baseline}')
+            if self.baseline_method == 'heuristic':
+                self.pi_b = WetChickenBaselinePolicy(env=self.env, gamma=self.gamma, method=self.baseline_method,
+                                                    epsilon=epsilon_baseline).pi
+                pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
+                self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
+                                                                        self._policy_evaluation_exact(self.pi_b), pi_b_succ_rate, pi_b_avoid_rate]
+                for length_trajectory in self.lengths_trajectory:
+                    print(f'Starting with length_trajectory {length_trajectory} out of {self.lengths_trajectory}.')
+                    self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
+                    self.to_append = self.to_append_run_one_iteration + [length_trajectory]
+                    self.structure = self.reduce_transition_matrix(self.P)
+                    self.goal = self.find_closest_states(list(range(len(self.structure))), self.length)
+                    self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                    self.intervals = self.estimator.get_intervals()
+                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, self.initial_state)
+                    self.shielder.calculateShield()
+                    self._run_algorithms()
+                    
+                    self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                    self.intervals = self.estimator.get_intervals()
+                    self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, self.initial_state)
+                    self.shielder.calculateShield()
+                    self._run_shielded_baseline("_point")
+                    self._run_spibb_shielded(key=Shield_SPIBB.NAME, suffix="_point")
 
     def generate_batch(self, nb_steps, env, pi):
         """
@@ -1429,7 +1427,8 @@ class WetChickenExperiment(Experiment):
         for state in states_list:
             x = state // length  # Calculate the x-coordinate (position along the river)
             
-            if x >= length-1:  # The boat falls off the waterfall if x > 4
+            if x >= length-1 and state != self.nb_states-1:  # The boat falls off the waterfall if x > 4
+                
                 falling_states.append(state)
         
         return falling_states
@@ -1490,9 +1489,13 @@ class RandomMDPsExperiment(Experiment):
                     self.garnet.generate_baseline_policy(self.gamma,
                                                         softmax_target_perf_ratio=softmax_target_perf_ratio,
                                                         baseline_target_perf_ratio=baseline_target_perf_ratio)
+                
+
                     
                 self.R_state_state = self.garnet.compute_reward()
                 self.R_state_state_no_neg = np.maximum(self.R_state_state, 0)
+                
+
                 if self.train_without_neg_values:
                     self.R_state_state_train = self.R_state_state_no_neg
                 else:
@@ -1513,6 +1516,10 @@ class RandomMDPsExperiment(Experiment):
                 pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
                 self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
                 self.R_state_action_no_neg = self.compute_r_state_action(self.P, self.R_state_state_no_neg)
+                pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                         data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
+                pi_star.fit()
+                self.pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
                 self.to_append_run_one_iteration += [theta, self.pi_b_perf, pi_b_succ_rate, pi_b_avoid_rate, self.pi_rand_perf, self.pi_star_perf]
                 
 

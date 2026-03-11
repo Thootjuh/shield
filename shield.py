@@ -2,7 +2,12 @@ import stormpy
 import time
 import numpy as np
 from IntervalMDPBuilder import IntervalMDPBuilderPacman, IntervalMDPBuilderRandomMDP, IntervalMDPBuilderAirplane, IntervalMDPBuilderSlipperyGridworld, IntervalMDPBuilderWetChicken, IntervalMDPBuilderPrism, IntervalMDPBuilderTaxi, IntervalMDPBuilderFrozenLake
- 
+import os
+import tempfile
+from PrismEncoder import encodeWetChicken
+import subprocess
+from collections import defaultdict
+import re
 class Shield:
     def __init__(self, transition_matrix, traps, goal, intervals, prop=None):
         """
@@ -114,7 +119,118 @@ class Shield:
 
         print("Total time needed to create the Shield:", end_total_time - start_total_time)     
                         
+    def calculateShieldPrism(self, prism_txt, prop, export_dir="./shield", java_mem=8):
+        """
+        Compute per-state-action property satisfaction probabilities using PRISM,
+        when the model is provided as a string.
+
+        Args:
+            prism_executable (str): path to prism executable
+            prism_txt (str): PRISM model contents as a string
+            prop (str): property string, e.g. 'Pmin=? [ F<4 "trap" ]'
+            export_dir (str): directory to store temporary export files
+            java_mem (int): Java memory limit in GB
+
+        Returns:
+            dict: nested dictionary { state -> { action -> value } }
+        """
+        start_total_time = time.time()
+        prism_executable="/internship/prism/prism/bin/prism"
         
+        os.makedirs(export_dir, exist_ok=True)
+
+        # Write the PRISM model string to a temporary file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".prism", delete=False, dir=export_dir) as tmp_file:
+            tmp_file.write(prism_txt)
+            model_file = tmp_file.name
+        with tempfile.NamedTemporaryFile("w", suffix=".pctl", delete=False, dir=export_dir) as f:
+            filter = f"filter(printall, {prop}, true)"
+            f.write(filter)
+            prop_file = f.name
+    
+        # trans_file = os.path.join(export_dir, "transitions.txt")
+        results_file = os.path.join(export_dir, "state_values.txt")
+
+        
+        # Run PRISM
+        cmd = (
+            f"{prism_executable} -javamaxmem {java_mem}g "
+            f"{model_file} {prop_file} "
+            f"| awk '/Results \\(including zeros\\) for filter true:/ {{flag=1; next}} "
+            f"flag && /^Range of values/ {{exit}} flag {{print}}' "
+            f"> {results_file}"
+        )
+        
+        subprocess.Popen(cmd, shell=True).wait()
+
+        state_values = defaultdict(float)
+
+        pattern = re.compile(r"^\d+:\((\d+)\)=([0-9eE+\-.]+)$")
+
+        with open(results_file, "r") as f:
+            for line in f:
+                line = line.strip()
+
+                match = pattern.match(line)
+                if not match:
+                    continue
+
+                state = int(match.group(1))
+                value = float(match.group(2))
+
+                state_values[state] = value
+                    
+                       
+        # Parse transitions
+        transition_probs = {}
+
+        for (s, a, s_next), (lower, upper) in self.intervals.items():
+            transition_probs.setdefault((s, a), {})[s_next] = {
+                "lower": lower,
+                "upper": upper
+            }
+            
+        # Ensure every (state, action) has at least one transition
+        for state in range(self.num_states):
+            for action in range(self.num_actions):
+                if (state, action) not in transition_probs or len(transition_probs[(state, action)]) == 0:
+                    transition_probs[(state, action)] = {
+                        state: {"lower": 1.0, "upper": 1.0}
+                    }
+        
+        # Fill self.shield with computed state-action values
+        for state in range(self.num_states):
+            for action in range(self.num_actions):
+                trans = transition_probs[(state, action)]
+                worst_case_transitions = {}
+                for next_state, trans_prob in trans.items():
+                    worst_case_transitions[next_state] = trans_prob["lower"]
+                remaining_states = list(worst_case_transitions.keys())
+                total_mass = sum(worst_case_transitions.values())
+                
+                #get the worst next state and add mass untill we reach upper
+                while total_mass < 1 and len(remaining_states) >= 1:
+                    # get the worst next state
+                    worst_next_state = min(remaining_states, key=lambda i: state_values.get(i, 0.0))
+                    remaining_states = [state for state in remaining_states if state != worst_next_state]
+                    # add mass untill we reach max_prob or total_mass = 1
+                    bounds = trans[worst_next_state]
+                    difference = bounds["upper"]-bounds["lower"]
+                    added_mass = min(difference, 1-total_mass)
+                    total_mass+= added_mass
+                    worst_case_transitions[worst_next_state] = worst_case_transitions[worst_next_state]+added_mass
+                
+                value = 0  
+                for next_state, trans_prob in worst_case_transitions.items():                        
+                    value += trans_prob*state_values.get(next_state, 0.0)
+                self.shield[state][action] = max(min(1.0, 1-value), 0.0)
+        # print(self.shield)
+        # Clean up temporary files
+        os.remove(model_file)  
+        os.remove(prop_file)   
+        os.remove(results_file)   
+        end_total_time = time.time()
+        print("Total time needed to create the Shield:", end_total_time - start_total_time)    
     def printShield(self):
         """
         print the shield
@@ -207,7 +323,7 @@ class ShieldRandomMDP(Shield):
 class ShieldWetChicken(Shield):
     # Calculate the shield for the wet chicken environment
 
-    def __init__(self, transition_matrix, width, length, goals, intervals, prop, theta):
+    def __init__(self, transition_matrix, width, length, goals, intervals, prop, init):
         """
         args:
         transition_matrix (np.ndarray): 
@@ -230,8 +346,9 @@ class ShieldWetChicken(Shield):
         self.width = width
         self.length = length
         self.model_builder = IntervalMDPBuilderWetChicken(transition_matrix, intervals,goals, [])
-        self.theta = theta
         super().__init__(transition_matrix, [], [], intervals, prop)
+        self.traps = [self.num_states-1]
+        self.prism_text = encodeWetChicken(transition_matrix, intervals, self.traps, goals, init)
         
     
     def printShield(self):
@@ -273,11 +390,25 @@ class ShieldWetChicken(Shield):
         # How likely are we to step into a trap
         # prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
         prop = self.prop
-        # prop = "Pmin=? [  F\"waterfall\"]"
+        
+        
+        # prop = "Pmax=? [  G <15 !\"waterfall\"]"
+        
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
         super().calculateShieldInterval(prop, self.model_builder.build_model())
+        # print("storm shield")
+        # self.printShield()
         
-    def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
+        # self.shield = np.full((self.num_states, self.num_actions), -1, dtype=np.float64) #reset
+        # super().calculateShieldPrism(self.prism_text, prop)
+        # print("prism shield")
+        self.shield = self.shield
+        # self.printShield()
+        
+        
+    def get_safe_actions_from_shield(self, state, threshold=0.1, buffer = 0.01):
+        # For reach avoid shield, use threshold =0.1, buffer =0.01
+        # For avoid shield, use threshold = 0.2 , buffer = 0.1
         """
         calculate the actions allowed by the shield for a given state
         Args:
@@ -288,7 +419,8 @@ class ShieldWetChicken(Shield):
         Returns:
             safe_actions (list[int]): list containing the actions deemed to be 'safe' by the shield
         """
-        threshold = self.theta
+        
+        
         probs = self.shield[state]
         safe_actions = []
         for i, prob in enumerate(probs):
