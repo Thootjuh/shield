@@ -814,11 +814,13 @@ class Experiment:
 
 
 class SimplifiedPacmanExperiment(Experiment):
-    fixed_params_exp_columns = ['seed', 'gamma', 'width', 'height', 'lag_p', 'ghost_opt_chance', 'pi_rand_perf', 'pi_star_perf']   
+    fixed_params_exp_columns = ['seed', 'gamma', 'width', 'height', 'lag_p', 'ghost_opt_chance', 'pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate']   
     variable_params_exp_columns = ['iteration', 'epsilon_baseline', 'pi_b_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'nb_trajectories'] 
     
     def _set_env_params(self):
         self.episodic = True
+        self.prop = "Pmax=? [!\"eaten\"U\"goal\"]"
+        self.avoid_prop = "Pmax=? [G !\"eaten\"]"
         self.env_name = self.experiment_config['META']['env_name']
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         self.lag = float(self.experiment_config['ENV_PARAMETERS']['LAG'])
@@ -859,16 +861,17 @@ class SimplifiedPacmanExperiment(Experiment):
         pi_rand = np.ones((self.nb_states, self.nb_actions)) / self.nb_actions
         pi_rand_perf = self._policy_evaluation_exact(pi_rand)
         # pi_rand_perf = 0
-        self.prop = "Pmax=? [!\"eaten\"U\"goal\"]"
-        self.avoid_prop = "Pmax=? [G !\"eaten\"]"
+
         self.fixed_params_exp_list.append(pi_rand_perf)
         
         pi_star = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()    
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        # pi_star_perf = 7.7
-        self.fixed_params_exp_list.append(pi_star_perf)
+        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        pi_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star.pi)
+        pi_star_succ_rate, pi_star_avoid_rate = self.policy_evaluation_success_rate(pi_star.pi)
+        self.fixed_params_exp_list.extend([pi_star_perf, pi_star_perf_no_neg, pi_star_succ_rate, pi_star_avoid_rate])
         
         # pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
         # self.pi_b_perf = self._policy_evaluation_exact(pi_b)
@@ -1252,12 +1255,14 @@ class AirplaneExperiment(Experiment):
 class WetChickenExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'length', 'width', 'max_turbulence', 'max_velocity', 'baseline_method',
-                                'pi_rand_perf', 'pi_star_perf']
+                                'pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate']
     
     def _set_env_params(self):
         """
         Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
         """
+        self.prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
+        self.avoid_prop = "Pmax=? [F<15 \"waterfall\"]"
         self.episodic = True
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         self.length = int(self.experiment_config['ENV_PARAMETERS']['LENGTH'])
@@ -1272,6 +1277,7 @@ class WetChickenExperiment(Experiment):
                               max_velocity=self.max_velocity)
         self.initial_state = self.env.get_state_int()
         self.goal = [self.env.get_state_int()]
+        self.traps = [self.nb_states-1]
         self.P = self.env.get_transition_function()
         self.R_state_state = self.env.get_reward_function()
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
@@ -1300,7 +1306,9 @@ class WetChickenExperiment(Experiment):
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        self.fixed_params_exp_list.append(pi_star_perf)
+        pi_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star.pi)
+        pi_star_succ_rate, pi_star_avoid_rate = self.policy_evaluation_success_rate(pi_star.pi)
+        self.fixed_params_exp_list.extend([pi_star_perf, pi_star_perf_no_neg, pi_star_succ_rate, pi_star_avoid_rate])
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.lengths_trajectory = ast.literal_eval(self.experiment_config['BASELINE']['lengths_trajectory'])
@@ -1311,8 +1319,7 @@ class WetChickenExperiment(Experiment):
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'threshold', 'pi_b_perf',
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
-        self.prop = "Pmax=? [  !\"waterfall\" U \"goal\"]"
-        self.avoid_prop = "Pmax=? [F<15 \"waterfall\"]"
+
         # self.goal = []
         self.traps = []
     def _run_one_iteration(self):
@@ -1437,7 +1444,7 @@ class RandomMDPsExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'nb_states', 'nb_actions', 'nb_next_state_transition']
     variable_params_exp_columns = ['iteration', 'softmax_target_perf_ratio',  'baseline_target_perf_ratio',
-                                   'threshold', 'baseline_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'pi_rand_perf', 'pi_star_perf','nb_trajectories']
+                                   'threshold', 'baseline_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate','nb_trajectories']
 
     def _set_env_params(self):
         """
@@ -1520,7 +1527,9 @@ class RandomMDPsExperiment(Experiment):
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
                 pi_star.fit()
                 self.pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-                self.to_append_run_one_iteration += [theta, self.pi_b_perf, pi_b_succ_rate, pi_b_avoid_rate, self.pi_rand_perf, self.pi_star_perf]
+                pi_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star.pi)
+                pi_star_succ_rate, pi_star_avoid_rate = self.policy_evaluation_success_rate(pi_star.pi)
+                self.to_append_run_one_iteration += [theta, self.pi_b_perf, pi_b_succ_rate, pi_b_avoid_rate, self.pi_rand_perf, self.pi_star_perf, pi_star_perf_no_neg, pi_star_succ_rate, pi_star_avoid_rate]
                 
 
                 
@@ -1983,7 +1992,7 @@ class GymTaxiExperiment(Experiment):
     
 class GymFrozenLakeExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
-    fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method','pi_rand_perf', 'pi_star_perf', 'baseline_success_rate', 'baseline_avoid_rate']
+    fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method','pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate', 'baseline_success_rate', 'baseline_avoid_rate']
     
     def compute_r_state_action(self, P, R):
         result = defaultdict(float)
@@ -2006,6 +2015,9 @@ class GymFrozenLakeExperiment(Experiment):
         Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
         """
         self.episodic = True
+        self.env_name = self.experiment_config['META']['env_name']
+        self.prop = "Pmax=? [!\"hole\"U\"goal\"]"
+        self.avoid_prop = "Pmax=? [G !\"hole\"]"
         self.gamma = float(self.experiment_config['ENV_PARAMETERS']['GAMMA'])
         
         self.env = gymIce()
@@ -2044,10 +2056,12 @@ class GymFrozenLakeExperiment(Experiment):
         pi_star.fit()
 
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
+        pi_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star.pi)
+        pi_star_succ_rate, pi_star_avoid_rate = self.policy_evaluation_success_rate(pi_star.pi)
+        self.fixed_params_exp_list.extend([pi_star_perf, pi_star_perf_no_neg, pi_star_succ_rate, pi_star_avoid_rate])
         with open("optimal.txt", "w") as file:
             for item in pi_star.pi:
                 file.write(f"{item}\n")
-        self.fixed_params_exp_list.append(pi_star_perf)
         
 
 
@@ -2063,11 +2077,10 @@ class GymFrozenLakeExperiment(Experiment):
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
         
-        self.env_name = self.experiment_config['META']['env_name']
+        
         
         self.pi_b = self.env.get_baseline_policy(epsilon=0.5)
-        self.prop = "Pmax=? [!\"hole\"U\"goal\"]"
-        self.avoid_prop = "Pmax=? [G !\"hole\"]"
+
         
         pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
         self.fixed_params_exp_list.append(pi_b_succ_rate)
