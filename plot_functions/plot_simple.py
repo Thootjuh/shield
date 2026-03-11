@@ -17,7 +17,7 @@ def read_data(filepath):
 
 def read_data_from_directory(directory_path):
     # List all CSV files in the directory
-    csv_files = glob.glob(os.path.join(directory_path, "*.csv"))
+    csv_files = glob.glob(os.path.join(directory_path, "**/*.csv"), recursive=True)
     
     # Initialize an empty DataFrame
     combined_data = pd.DataFrame()
