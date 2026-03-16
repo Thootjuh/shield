@@ -1626,7 +1626,17 @@ class GymFrozenLakeExperiment(Experiment):
                 self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
                 data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
-                
+                with open("data_grid.txt", "w") as f:
+                    for traj_idx, trajectory in enumerate(data_grid, start=1):
+                        f.write(f"----trajectory {traj_idx}----\n")
+                        for step_idx, transition in enumerate(trajectory, start=1):
+                            action, region, next_region, reward = transition
+                            f.write(
+                                f"step {step_idx}: "
+                                f"action={action}, region={region}, "
+                                f"next_region={next_region}, reward={reward}\n"
+                            )
+                        f.write("\n")
                 self.data_df = trajToDF(self.data_cont, self.dimensions, self.data_cont[0][0][3])
                 
                 # ------------------------ MRL --------------------------
@@ -1746,42 +1756,61 @@ class GymFrozenLakeExperiment(Experiment):
         """
         trajectories = []
         trajectories_cont = []
+
+        # Create/overwrite the log file at the beginning
+        with open("data_d.txt", "w") as f:
+            f.write("")
+
         env.reset()
-        for _ in np.arange(nb_trajectories):
+
+        for traj_idx in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
-            trajectorY_cont = []            
+            trajectorY_cont = []
+
             state = self.env.get_state()
             region = self.env.state2region(state)
-            # print(f"init state = {state}, region = {region}")
             is_done = False
+
+            # Write trajectory header
+            with open("data_d.txt", "a") as f:
+                f.write(f"----trajectory {traj_idx + 1}----\n")
+
             while nb_steps < max_steps and not is_done:
-                # step through the environment
                 action_choice = np.random.choice(pi.shape[1], p=pi[region])
                 state, next_state, reward = env.step(action_choice)
-                # if reward>0:
-                #     print("success")
-                # if reward<0: 
-                #     print("epic fail")
-                # add discrete transition
+
+                # Regions
                 region = env.state2region(state)
                 next_region = env.state2region(next_state)
+
+                # Add discrete transition
                 trajectorY.append([action_choice, region, next_region, reward])
-                
-                # add continuous transition
+
+                # Add continuous transition
                 terminated = env.is_terminated()
                 truncated = env.is_truncated()
                 trajectorY_cont.append([state, action_choice, next_state, reward, terminated, truncated])
-                
-                # update values
-                is_done = env.is_done()     
+
+                # Write transition to file
+                with open("data_d.txt", "a") as f:
+                    f.write(
+                        f"state: {state}, region: {region}, "
+                        f"action: {action_choice}, "
+                        f"next_state: {next_state}, next_region: {next_region}\n"
+                    )
+
+                # Update values
+                is_done = env.is_done()
                 region = next_region
                 state = next_state
                 nb_steps += 1
+
             trajectories_cont.append(trajectorY_cont)
             trajectories.append(trajectorY)
             env.reset()
             env.set_random_state()
+
         batch_traj = [val for sublist in trajectories for val in sublist]
         return trajectories, batch_traj, trajectories_cont
             
