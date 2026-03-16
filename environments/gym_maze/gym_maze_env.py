@@ -13,17 +13,22 @@ sys.path.append("../gym_maze/")
 MAZE = "maze-sample-5x5-v0"
 STANDARD_REWARD = -0.04
 class maze:
-    def __init__(self):
-        self.env = gym.make(MAZE)
+    def __init__(self, enable_render=False):
+        # if render_mode:
+        #     env = gym.make(MAZE,enable_render="rgb_array")
+        # else:
+        env = gym.make(MAZE, enable_render=enable_render)
         
         # self.initial_calculations()
+        
+        self.env = env.env.env.env
         observation = self.env.reset()
         # print("bbbbbbbbbbbbbbbbbbbb", observation)
         self.init = observation
         self.state = observation
         self.state_shape = [2]
         self.terminated = False
-        self.goal = self.env.env.env.env.get_goal()
+        self.goal = self.env.get_goal()
         self.partition_states()
     
     def reset(self):
@@ -31,7 +36,7 @@ class maze:
         self.state = observation
     
     def set_random_state(self):
-        self.state = self.env.env.env.env.set_random_state()
+        self.state = self.env.set_random_state()
         # print(self.state)
         
     def partition_states(self):
@@ -89,9 +94,9 @@ class maze:
         traps = self.get_traps()
         for ns in range(len(reward_matrix)):
             if ns in goal:
-                reward_matrix[:, ns] = 10
+                reward_matrix[:, ns] = 1
             elif ns in traps:
-                reward_matrix[:, ns] = -10
+                reward_matrix[:, ns] = -1
             else:
                 reward_matrix[:, ns] = STANDARD_REWARD
         return reward_matrix
@@ -131,7 +136,7 @@ class maze:
         return intersecting
     
     def get_traps(self):
-        traps = self.env.env.env.env.get_trap()
+        traps = self.env.get_trap()
 
         trap_states = []
         for trap_cell in traps:
@@ -140,7 +145,7 @@ class maze:
         return list(set(trap_states))
     
     def get_goal_state(self):
-        goal = self.env.env.env.env.get_goal()
+        goal = self.env.get_goal()
 
         goal_states = self._regions_intersecting_cell(goal)
         return goal_states
@@ -252,7 +257,6 @@ class mazePolicy:
     #     return P, R
     
     def compute_baseline(self):
-        
         # Go right and down
         # Somehow figure out where the walls are?
         # Base this on the original statespace?

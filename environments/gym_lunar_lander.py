@@ -63,7 +63,7 @@ class LunarLander:
     
     def set_random_state(self, max_attempts = 1000):
         """
-        Set the LunarLander environment to a random *physically plausible* state.
+        Set the LunarLander environment to a random state.
 
         A state is considered plausible if:
             - The lander body does NOT intersect the moon.
@@ -104,14 +104,14 @@ class LunarLander:
         for _ in range(max_attempts):
 
             # ----- Sample position first -----
-            x = np.random.uniform(-0.95, 0.95)  # enforce |x| < 1 strictly
+            x = np.random.uniform(-0.1, 0.1)  # enforce |x| < 1 strictly
             y = np.random.uniform(0.1, 1.5)    # reasonable vertical band
 
-            angle = np.random.uniform(-0.4, 0.4)  # restrict tilt
+            angle = np.random.uniform(-0.1, 0.1)  # restrict tilt
 
-            vx = np.random.uniform(-2.0, 2.0)
-            vy = np.random.uniform(-2.0, 2.0)
-            omega = np.random.uniform(-2.0, 2.0)
+            vx = np.random.uniform(-0.1, 0.1)
+            vy = np.random.uniform(-1.0, 1.0)
+            omega = np.random.uniform(-0.1, 0.1)
 
             # Convert normalized → world pose
             pos_x = x * (W / 2) + (W / 2)

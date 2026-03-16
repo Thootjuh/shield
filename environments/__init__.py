@@ -91,3 +91,8 @@ register(
     max_episode_steps=1000000,
     nondeterministic=True,
 )
+
+register(
+    id='FrozenLakeContinuous-v0',
+    entry_point='environments.frozenLakeEnv:ContinuousFrozenLakeEnv',
+)

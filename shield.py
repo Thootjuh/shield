@@ -5,7 +5,7 @@ import os
 import time
 import numpy as np
 from IntervalMDPBuilder import IntervalMDPBuilderPacman, IntervalMDPBuilderRandomMDP, IntervalMDPBuilderAirplane, IntervalMDPBuilderSlipperyGridworld, IntervalMDPBuilderWetChicken, IntervalMDPBuilderPrism, IntervalMDPBuilderTaxi, IntervalMDPBuilderFrozenLake, IntervalMDPBuilderLunarLander
-from PrismEncoder import encodeCartPole, encodeCrashingMountainCar, encodeMaze, encodeLunarLander
+from PrismEncoder import encodeCartPole, encodeCrashingMountainCar, encodeMaze, encodeLunarLander, encodeFrozenLake
 import pycarl
 import subprocess
 from collections import defaultdict
@@ -203,7 +203,7 @@ class Shield:
         
         # Run PRISM
         cmd = (
-            f"{prism_executable} -explicit -sparse -gs epsilon 1e-4 -javamaxmem {java_mem}g "
+            f"{prism_executable} -explicit -sparse -gs -javamaxmem {java_mem}g "
             f"{model_file} {prop_file} "
             f"| awk '/Results \\(including zeros\\) for filter true:/ {{flag=1; next}} "
             f"flag && /^Range of values/ {{exit}} flag {{print}}' "
@@ -355,6 +355,7 @@ class ShieldRandomMDP(Shield):
         # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
         super().calculateShieldInterval(prop, self.model_builder.build_model())
+        
         
     def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         """
@@ -582,6 +583,104 @@ class ShieldLunarLander(Shield):
             print(f"State: {state}, action: {action}, with probability of falling: {prob}")
         print(f"with crash states being {self.traps} and success states being {self.goal}")
         
+class ShieldFrozenLake(Shield):
+    # Calculate the shield for the Frozen Lake environment
+    def __init__(self, transition_matrix, traps, goal, intervals):
+        """
+        args:
+            transition_matrix (np.ndarray): 
+                A NumPy array of shape (num_states, num_actions), where each element is a list of possible
+                next states for the corresponding state-action pair.
+            traps (list[int]):
+                A list of state indices that represent trap states (undesirable or absorbing states).
+            goal (list[int]):
+                A list of state indices that represent goal states (desirable or target states).
+            intervals (dict[tuple[int, int, int], tuple[float, float]])
+                A dictionary mapping (state, action, next_state) tuples to a (min, max) interval tuple representing
+                the range of possible transition probabilities due to uncertainty.
+        """
+        self.model_builder = IntervalMDPBuilderFrozenLake(transition_matrix, intervals, goal, traps)
+        self.prism_text = encodeFrozenLake(transition_matrix, intervals, traps, goal)
+        super().__init__(transition_matrix, traps, goal, intervals)
+        self.grid_size = np.sqrt(self.num_states)
+        
+    def calculateShield(self):
+        """
+        calculate the probability of violating the safety specification for the Frozen Lake environment
+        """
+        # How likely are we to step into a trap
+        prop = "Pmax=? [!\"hole\"U\"goal\"]"
+        # prop = self.prop
+        
+        # super().calculateShieldInterval(prop, self.model_builder.build_model())
+        super().calculateShieldPrism(self.prism_text, prop)
+        # self.printShield()
+        # self.printShield()
+    
+    def get_safe_actions_from_shield(self, state, threshold=0.1, buffer = 0.02):
+        """
+        calculate the actions allowed by the shield for a given state
+        Args:
+            state (int): the state for which we want compute the safe actions
+            threshold (float, optional): maximum probability for which we will accept an action. Defaults to 0.2.
+            buffer (float, optional): we allow any actions within the buffer of the best action. Defaults to 0.02.
+
+        Returns:
+            safe_actions (list[int]): list containing the actions deemed to be 'safe' by the shield
+        """
+        probs = self.shield[state]
+        safe_actions = []
+        for i, prob in enumerate(probs):
+            if prob >= 0 and prob <= threshold:
+                safe_actions.append(i)
+
+        if len(safe_actions) == 0:
+            min_value = np.min(probs)
+            safe_actions = np.where(probs <= min_value+buffer)[0].tolist()
+        return safe_actions  
+    
+    def decode(self, state):
+        """
+        Decode a state into its row and collumn position
+
+        Args:
+            state (int): the state to be decoded
+
+        Returns:
+            col (int): the current collumn the agent is in
+            row (int): the current row the agent is in
+        """
+        col = int(state % self.grid_size)
+        row = int(state // self.grid_size)
+        return col, row
+    
+    def printShield(self):
+        """
+        print the probabilities associated with each state-action pair
+        """
+        ACTIONS = {
+            0 : "left",
+            1 : "down",
+            2 : "right",
+            3 : "up",
+        }   
+        
+        state_action_prob_pairs = []
+        for state in range(len(self.shield)):
+            for action in range(len(self.shield[state])):
+                prob = self.shield[state][action]
+                state_action_prob_pairs.append([state, action, prob])
+        # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
+        
+        for pair in state_action_prob_pairs:
+            state = pair[0]
+            act = pair[1]
+            prob = pair[2]
+            col, row = self.decode(state)
+            print(f"State: {state}: ({row},{col}, taking action {ACTIONS[act]} with probability of getting trapped: {prob}")
+        
+        print(f"with crash states being {self.traps} and success states being {self.goal}")
+                
 class ShieldMaze(Shield):
     # Calculate the shield for the Random MDPs environment
     def __init__(self, transition_matrix, traps, goal, intervals, init):
@@ -612,7 +711,8 @@ class ShieldMaze(Shield):
         # How likely are we to step into a trap
         # prop = "Pmax=? [!\"trap\" U \"goal\"]"
         # prop = "Pmax=? [!\"goal\"U\"trap\"]"
-        prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        # prop = "Pmax=? [!\"trap\" U \"goal\"]"
+        prop = "Pmax=? [F<10 \"goal\"]"
         # prop1 = "Pmax=? [  F \"trap\" ]"
         
         # Is it possible to reach the goal

@@ -1,1 +1,0 @@
-We have A t of 0.2 and reward of -100, shield on PI

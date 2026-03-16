@@ -6,8 +6,8 @@ from gymnasium.utils import seeding
 from environments.gym_maze.gym_maze.envs.maze_view_2d import MazeView2D
 import random
 
-FAIL_PUNISHMENT = -10
-REWARD = 10
+FAIL_PUNISHMENT = -1
+REWARD = 1
 
 class MazeEnv(gym.Env):
     metadata = {

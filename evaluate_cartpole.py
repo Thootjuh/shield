@@ -8,15 +8,18 @@ import os
 
 def infer_action_mrl(state, predictor, policy, dimensions):
     region = state2region(predictor, state, dimensions)
-    return int(np.argmax(policy[region]))
+    return int(np.random.choice(policy.shape[1], p=policy[region]))
 
 def infer_action(state, env, policy):
     region = env.state2region(state)
-    return int(np.argmax(policy[region]))
+    return int(np.random.choice(policy.shape[1], p=policy[region]))
 
-def infer_action_DQN(state, ai):
+def infer_action_SPIBB_DQN(state, ai):
     action, _, _, _ = ai.inference(state)
     return int(action)
+
+def infer_action_CQL_DQN(state, ai):
+    return ai.get_action(state, epsilon=0.0)[0]
 
 def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  disc_method, noise_factor=1.0, predictor=None, dimensions=0, ai=None, env_name="cartpole", generate_gif=False, gif_name="agent.gif", render_env=None):
     """ Evaluate the baseline number_of_epochs times for number_of_steps steps.
@@ -75,10 +78,12 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  
                 #     print(type(action))
                 #     print(action)
             elif disc_method == 'SPIBB-DQN':
-                action = infer_action_DQN(last_state, ai)
+                action = infer_action_SPIBB_DQN(last_state, ai)
                 # if nb_steps == 0 and epoch == 0:
                     # print(type(action))
                     # print(action)
+            elif disc_method == 'CQL-DQN':
+                action = infer_action_CQL_DQN(last_state, ai)
             _, _, reward = current_env.step(action)
             term = current_env.is_done()
             last_state = current_env.get_state()
@@ -90,6 +95,7 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  
 
             current_reward += reward
             nb_steps += 1
+        # print(f"episode = {episode}, length = {nb_steps}")
         
         rewards.append(current_reward)
         # print("number of steps in episode = ", nb_steps, ", total episode reward = ", current_reward, ", ended with reward ", reward)
@@ -112,6 +118,14 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,  
                 # print("failure")
                 failure_count+=1
             if reward == 100:
+                # print("succass")
+                success_count+=1
+        elif env_name=="frozen_lake_cont":
+            # print("C")
+            if reward<0: 
+                # print("failure")
+                failure_count+=1
+            if reward > 0:
                 # print("succass")
                 success_count+=1
         all_rewards.append(current_reward)
