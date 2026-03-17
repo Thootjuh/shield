@@ -1,0 +1,144 @@
+# Code for evaluating a given policy:
+# Modified from: https://github.com/rems75/SPIBB-DQN
+import numpy as np
+import time
+from discretization.MRL.helper_functions import state2region
+import imageio
+import os
+
+def infer_action_mrl(state, predictor, policy, dimensions):
+    region = state2region(predictor, state, dimensions)
+    return int(np.random.choice(policy.shape[1], p=policy[region]))
+
+def infer_action(state, env, policy):
+    region = env.state2region(state)
+    return int(np.random.choice(policy.shape[1], p=policy[region]))
+
+def infer_action_SPIBB_DQN(state, ai):
+    action, _, _, _ = ai.inference(state)
+    return int(action)
+
+def infer_action_CQL_DQN(state, ai):
+    return ai.get_action(state, epsilon=0.0)[0]
+
+def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
+                    disc_method, noise_factor=1.0, predictor=None, dimensions=0,
+                    ai=None, env_name="cartpole", generate_gif=False,
+                    gif_name="agent.gif", render_env=None, gamma=0.99):
+
+    episode_count = 0
+    success_count = 0
+    failure_count = 0
+    avoid_count = 0
+
+    all_rewards = []
+    all_discounted_rewards = []
+
+    frames = []
+
+    if generate_gif:
+        gif_folder = os.path.join("gifs", env_name)
+        os.makedirs(gif_folder, exist_ok=True)
+        gif_path = os.path.join(gif_folder, gif_name)
+
+    for episode in range(number_of_episodes):
+
+        if generate_gif and episode == 0 and render_env is not None:
+            current_env = render_env
+        else:
+            current_env = env
+
+        current_env.reset()
+        last_state = current_env.get_state()
+
+        if generate_gif and episode == 0 and render_env is not None:
+            frame = current_env.env.render()
+            if frame is not None:
+                frames.append(frame)
+
+        term = False
+        rewards = []
+        current_reward = 0
+        discounted_reward = 0
+        discount = 1.0
+
+        nb_steps = 0
+
+        while nb_steps < max_nb_steps_per_episode and not term:
+
+            if disc_method == 'mrl':
+                action = infer_action_mrl(last_state, predictor, policy, dimensions)
+            elif disc_method == 'grid':
+                action = infer_action(last_state, current_env, policy)
+            elif disc_method == 'SPIBB-DQN':
+                action = infer_action_SPIBB_DQN(last_state, ai)
+            elif disc_method == 'CQL-DQN':
+                action = infer_action_CQL_DQN(last_state, ai)
+
+            _, _, reward = current_env.step(action)
+
+            term = current_env.is_done()
+            last_state = current_env.get_state()
+
+            if generate_gif and episode == 0 and render_env is not None:
+                frame = current_env.env.render()
+                if frame is not None:
+                    frames.append(frame)
+
+            # standard return
+            current_reward += reward
+
+            # discounted return
+            discounted_reward += discount * reward
+            discount *= gamma
+
+            nb_steps += 1
+
+        episode_count += 1
+
+        if env_name == "cartpole":
+            if nb_steps < 50:
+                failure_count += 1
+            if nb_steps >= 50:
+                avoid_count += 1
+            if nb_steps >= 200:
+                success_count += 1
+
+        elif env_name == "grid":
+            if reward <= -1:
+                failure_count += 1
+            if reward > -1:
+                avoid_count += 1
+            if reward > 0:
+                success_count += 1
+
+        elif env_name == "lunar_lander":
+            if reward == -100:
+                failure_count += 1
+            if reward != 100:
+                avoid_count += 1
+            if reward == 100:
+                success_count += 1
+
+        elif env_name == "frozen_lake_cont":
+            if reward < 0:
+                failure_count += 1
+            if reward >= 0:
+                avoid_count += 1
+            if reward > 0:
+                success_count += 1
+
+        all_rewards.append(current_reward)
+        all_discounted_rewards.append(discounted_reward)
+
+        if generate_gif and episode == 0 and len(frames) > 0:
+            imageio.mimsave(gif_path, frames, fps=30)
+
+    return (
+        np.mean(all_rewards),
+        np.mean(all_discounted_rewards),
+        success_count / episode_count,
+        failure_count / episode_count,
+        avoid_count / episode_count
+    )
+

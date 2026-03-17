@@ -51,7 +51,7 @@ from batch_rl_algorithms.CQL_DQN.train_CQL_DQN import train_cql_dqn, train_cql_d
 
 from shield import ShieldRandomMDP, ShieldCartpole, ShieldCrashingMountainCar, ShieldMaze, ShieldLunarLander, ShieldFrozenLake
 from PACIntervalEstimator import PACIntervalEstimator
-from evaluate_cartpole import evaluate_policy
+from evaluate_policy import evaluate_policy
 from discretization.grid.define_imdp import imdp_builder
 
 from discretization.MRL.helper_functions import trajToDF, state2region, state2region_fast
@@ -87,7 +87,7 @@ class Experiment:
     fixed_params_exp_list = None
     fixed_params_exp_columns = None
     variable_params_exp_columns = None
-    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'run_time', 'nb_states', 'success_rate', 'failure_rate', 'predicted_perf']
+    algorithms_columns = ['method', 'hyperparam', 'method_perf', 'discounted_method_perf', 'run_time', 'nb_states', 'success_rate', 'failure_rate', 'avoid_rate', 'predicted_perf']
 
     def __init__(self, experiment_config, seed, nb_iterations, machine_specific_experiment_directory):
         """
@@ -235,14 +235,14 @@ class Experiment:
             
     def _run_baseline(self):
         if self.discretization_method=='grid':
-            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env)
+            method_perf, discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env, gamma=self.gamma)
         elif self.discretization_method=='mrl':
-            method_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="baseline_mrl.gif",render_env=self.render_env)
+            method_perf, discounted_method_perf,pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="baseline_mrl.gif",render_env=self.render_env, gamma=self.gamma)
         method = "baseline_" + self.discretization_method
         method_perf_pred = policy_evaluation_exact(self.pi_b,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
         hyperparam = None
         run_time = 0.0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, pi_b_succ_rate, pi_b_avoid_rate, method_perf_pred])
+        self.results.append(self.to_append + [method, hyperparam, method_perf, discounted_method_perf, run_time, self.nb_states, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate, method_perf_pred])
         
     def _run_shielded_baseline(self):
         pi_b_s = shieldedBaseline(pi_b=self.pi_b, gamma=self.gamma, nb_states=self.nb_states,
@@ -252,16 +252,16 @@ class Experiment:
         pi_b_s.fit()
         t_1 = time.time()
         if self.discretization_method=='mrl':
-            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_mrl.gif",render_env=self.render_env)
+            basic_rl_perf,discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_mrl.gif",render_env=self.render_env, gamma=self.gamma)
         elif self.discretization_method=='grid':
-            basic_rl_perf, pi_b_succ_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_grid.gif",render_env=self.render_env)
+            basic_rl_perf,discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_grid.gif",render_env=self.render_env, gamma=self.gamma)
         
         method_perf_pred = policy_evaluation_exact(pi_b_s.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
         method = pi_b_s.NAME + "_" + self.discretization_method
         method_perf = basic_rl_perf
         hyperparam = None
         run_time = t_1 - t_0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, pi_b_succ_rate, pi_b_avoid_rate, method_perf_pred])
+        self.results.append(self.to_append + [method, hyperparam, method_perf, discounted_method_perf, run_time, self.nb_states, pi_b_succ_rate, pi_b_fail_rate,  pi_b_avoid_rate, method_perf_pred])
     
     def _run_spibb_shielded(self, key):
         """
@@ -279,16 +279,16 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_mrl.gif",render_env=self.render_env)
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_mrl.gif",render_env=self.render_env, gamma=self.gamma)
             elif self.discretization_method=='grid':
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 500,  self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_grid.gif",render_env=self.render_env)
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 100, 500,  self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_grid.gif",render_env=self.render_env, gamma=self.gamma)
             method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
             write_policy_to_file(spibb.pi, "policy_shielded.txt")
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate, method_perf_pred])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, discounted_method_perf, run_time, self.nb_states, succ_rate, failure_rate, avoid_rate, method_perf_pred])
                   
     def _run_spibb(self, key):
         """
@@ -305,9 +305,9 @@ class Experiment:
             print("trained policy")
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="spibb_mrl.gif",render_env=self.render_env)
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="spibb_mrl.gif",render_env=self.render_env, gamma=self.gamma)
             elif self.discretization_method=='grid':
-                spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env)
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env, gamma=self.gamma)
             print("evaluated policy")
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
             method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
@@ -316,7 +316,7 @@ class Experiment:
             hyperparam = N_wedge
             run_time = t_1 - t_0
             write_policy_to_file(spibb.pi, "policy.txt")
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate, method_perf_pred])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, discounted_method_perf, run_time, self.nb_states, succ_rate, failure_rate,avoid_rate, method_perf_pred])
     
     def _run_spibb_dqn(self, key):
         for N_wedge in self.algorithms_dict[key]['hyperparam']:
@@ -324,24 +324,24 @@ class Experiment:
             t_0 = time.time()
             spibb.learn(passes_on_dataset = 25)
             t_1 = time.time()
-            spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 100, 500, self.discretization_method, ai=spibb.ai, env_name=self.env_name, generate_gif=True, gif_name="spibb_dqn.gif",render_env=self.render_env)
+            spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, None, 100, 500, self.discretization_method, ai=spibb.ai, env_name=self.env_name, generate_gif=True, gif_name="spibb_dqn.gif",render_env=self.render_env, gamma=self.gamma)
             method = 'spibb_dqn'
             method_perf = spibb_perf
             hyperparam = N_wedge
             run_time = t_1 - t_0
-            self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate, 0])
+            self.results.append(self.to_append + [method, hyperparam, method_perf, discounted_method_perf, run_time, self.nb_states, succ_rate, avoid_rate, failure_rate, 0])
             
     def _run_cql_dqn(self):
         t_0 = time.time()
-        # agent = train_cql_dqn(self.env, self.data_cont)
-        agent = train_cql_dqn_hybrid(self.env, self.data_cont, 1000000, 100)
+        agent = train_cql_dqn(self.env, self.data_cont, verbose=True)
+        # agent = train_cql_dqn_hybrid(self.env, self.data_cont, 100000, 100)
         t_1 = time.time()
-        spibb_perf, succ_rate, failure_rate = evaluate_policy(self.env, None, 100, 500, self.discretization_method, ai=agent, env_name=self.env_name, generate_gif=True, gif_name="cql_dqn.gif",render_env=self.render_env)
+        spibb_perf, discounted_method_perf, succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, None, 100, 500, self.discretization_method, ai=agent, env_name=self.env_name, generate_gif=True, gif_name="cql_dqn.gif",render_env=self.render_env, gamma=self.gamma)
         method = 'cql_dqn'
         method_perf = spibb_perf
         hyperparam = None
         run_time = t_1 - t_0
-        self.results.append(self.to_append + [method, hyperparam, method_perf, run_time, self.nb_states, succ_rate, failure_rate, 0])
+        self.results.append(self.to_append + [method, hyperparam, method_perf, discounted_method_perf, run_time, self.nb_states, succ_rate, failure_rate, avoid_rate, 0])
             
     def _run_soft_spibb(self, key):
         """
@@ -1581,7 +1581,7 @@ class GymFrozenLakeExperiment(Experiment):
         
         print("start env")
         self.env = gymIce()
-        self.render_env = gymIce()
+        self.render_env = gymIce(True)
         print("end env")
         
         self.nb_states = self.env.get_nb_states()
@@ -1626,17 +1626,17 @@ class GymFrozenLakeExperiment(Experiment):
                 self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
                 data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
-                with open("data_grid.txt", "w") as f:
-                    for traj_idx, trajectory in enumerate(data_grid, start=1):
-                        f.write(f"----trajectory {traj_idx}----\n")
-                        for step_idx, transition in enumerate(trajectory, start=1):
-                            action, region, next_region, reward = transition
-                            f.write(
-                                f"step {step_idx}: "
-                                f"action={action}, region={region}, "
-                                f"next_region={next_region}, reward={reward}\n"
-                            )
-                        f.write("\n")
+                # with open("data_grid.txt", "w") as f:
+                #     for traj_idx, trajectory in enumerate(data_grid, start=1):
+                #         f.write(f"----trajectory {traj_idx}----\n")
+                #         for step_idx, transition in enumerate(trajectory, start=1):
+                #             action, region, next_region, reward = transition
+                #             f.write(
+                #                 f"step {step_idx}: "
+                #                 f"action={action}, region={region}, "
+                #                 f"next_region={next_region}, reward={reward}\n"
+                #             )
+                #         f.write("\n")
                 self.data_df = trajToDF(self.data_cont, self.dimensions, self.data_cont[0][0][3])
                 
                 # ------------------------ MRL --------------------------
@@ -1665,7 +1665,7 @@ class GymFrozenLakeExperiment(Experiment):
                 
                 # discretize data
                 self.predictor = predict_cluster(m.df_trained, self.dimensions)
-                d_data = self.discretize_data(self.data_cont, self.predictor)
+                d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
                 
                 nb_states = m.df_trained["CLUSTER"].nunique()
                 self.nb_states = nb_states
@@ -1744,9 +1744,13 @@ class GymFrozenLakeExperiment(Experiment):
                 self.discretization_method = 'SPIBB-DQN'
                 self.data = self.data_cont
                 self._run_spibb_dqn('SPIBB-DQN')
+                # ----------------------------- CQL-DQN ----------------------------------                
+                self.discretization_method = 'CQL-DQN'
+                self.data = self.data_cont
+                self._run_cql_dqn()
                 
 
-    def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
+    def generate_batch(self, nb_trajectories, env, pi, max_steps=500):
         """
         Generates a data batch for an episodic MDP.
         :param nb_steps: number of steps in the data batch
@@ -1762,20 +1766,20 @@ class GymFrozenLakeExperiment(Experiment):
             f.write("")
 
         env.reset()
-
         for traj_idx in np.arange(nb_trajectories):
             nb_steps = 0
             trajectorY = []
             trajectorY_cont = []
 
-            state = self.env.get_state()
-            region = self.env.state2region(state)
+            state = env.get_state()
+            region = env.state2region(state)
             is_done = False
 
             # Write trajectory header
             with open("data_d.txt", "a") as f:
                 f.write(f"----trajectory {traj_idx + 1}----\n")
-
+            # if traj_idx % 10 == 0:
+                # print(f"traj {traj_idx} out of {nb_trajectories}")
             while nb_steps < max_steps and not is_done:
                 action_choice = np.random.choice(pi.shape[1], p=pi[region])
                 state, next_state, reward = env.step(action_choice)
@@ -1793,12 +1797,12 @@ class GymFrozenLakeExperiment(Experiment):
                 trajectorY_cont.append([state, action_choice, next_state, reward, terminated, truncated])
 
                 # Write transition to file
-                with open("data_d.txt", "a") as f:
-                    f.write(
-                        f"state: {state}, region: {region}, "
-                        f"action: {action_choice}, "
-                        f"next_state: {next_state}, next_region: {next_region}\n"
-                    )
+                # with open("data_d.txt", "a") as f:
+                #     f.write(
+                #         f"state: {state}, region: {region}, "
+                #         f"action: {action_choice}, "
+                #         f"next_state: {next_state}, next_region: {next_region}\n"
+                #     )
 
                 # Update values
                 is_done = env.is_done()
@@ -1814,6 +1818,53 @@ class GymFrozenLakeExperiment(Experiment):
         batch_traj = [val for sublist in trajectories for val in sublist]
         return trajectories, batch_traj, trajectories_cont
             
+    def discretize_data_from_df(self, data, df):
+        """
+        Discretizes trajectories using cluster assignments directly from a dataframe.
+
+        Parameters
+        ----------
+        data : list
+            trajectories_cont produced by generate_batch
+            [state, action, next_state, reward, terminated, truncated]
+
+        df : pandas.DataFrame
+            dataframe containing FEATURE_0..FEATURE_7, CLUSTER, NEXT_CLUSTER
+
+        Returns
+        -------
+        data_disc : list
+            discretized trajectories in the form
+            [action, state_region, next_state_region, reward]
+        """
+
+        feature_cols = [f"FEATURE_{i}" for i in range(self.dimensions)]
+
+        # --- build lookup dictionary much faster ---
+        features = df[feature_cols].to_numpy()
+        clusters = df["CLUSTER"].to_numpy()
+
+        state_to_cluster = {tuple(features[i]): clusters[i] for i in range(len(features))}
+
+        data_disc = []
+
+        for trajectory in data:
+            traj = []
+
+            for s, a, ns, r, terminated, truncated in trajectory:
+                s_region = state_to_cluster.get(tuple(s))
+                ns_region = state_to_cluster.get(tuple(ns))
+
+                if s_region is None or ns_region is None:
+                    raise ValueError(
+                        f"State {tuple(s)} and next_state {tuple(ns)} not found in lookup."
+                    )
+
+                traj.append([a, s_region, ns_region, r])
+
+            data_disc.append(traj)
+
+        return data_disc
     
     def discretize_data(self, data, predictor):
         data_disc = []

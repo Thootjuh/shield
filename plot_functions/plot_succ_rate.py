@@ -34,7 +34,7 @@ def read_data_from_directory(directory_path):
 
 def extract_data(data):
     # Extract relevant columns
-    relevant_data_new = data[['method', 'length_trajectory', 'success_rate', 'failure_rate', 'run_time']]
+    relevant_data_new = data[['method', 'length_trajectory', 'success_rate', 'failure_rate', 'avoid_rate', 'run_time']]
 
     # Group by method and calculate the average performance for each length_trajectory
     return relevant_data_new
@@ -109,6 +109,28 @@ def plot_failure_rate(data, filename):
     plt.savefig(filename)
     plt.show()
    
+def plot_avoid_rate(data, filename):
+    grouped_data = data.groupby(['method', 'length_trajectory'])
+    # data_succ_rate = grouped_data.success_rate.mean().reset_index()
+    data_avoid_rate = grouped_data.avoid_rate.mean().reset_index()
+    # Plot average performance against length_trajectory for each method
+    plt.figure(figsize=(12, 8))
+    for method in data_avoid_rate['method'].unique():
+        # method_data = data_succ_rate[data_succ_rate['method'] == method]
+        # label = method+"_success_rate"
+        # plt.plot(method_data['length_trajectory'], method_data['success_rate'], label=label)
+        method_data = data_avoid_rate[data_avoid_rate['method'] == method]
+        label = method+"_avoid_rate"
+        plt.plot(method_data['length_trajectory'], method_data['avoid_rate'], label=label)
+
+    # Set plot labels and legend
+    plt.xlabel('Length Trajectory')
+    plt.ylabel('Probability of satisfying the specification')
+    plt.title('Success probability vs. Length Trajectory')
+    plt.legend(title='Method')
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.show()
 
 # pass this path as an argument in the commandline
 if len(sys.argv) > 1:
@@ -117,6 +139,7 @@ else:
     directory_path = "/internship/code/results/wet_chicken/shield/wet_chicken_results/"
 data = read_data_from_directory(directory_path)
 data = extract_data(data)
-plot_data(data, 'results_succ_fail_rate.png')
+# plot_data(data, 'results_succ_fail_rate.png')
 plot_succ_rate(data, 'results_succ_rate.png')
 plot_failure_rate(data, 'results_fail_rate.png')
+plot_avoid_rate(data, 'results_avoid_rate')

@@ -21,7 +21,7 @@ def add_dataset_to_buffer(dataset, buffer_size, device):
     
     return buffer
 
-def train_cql_dqn(env, dataset, buffer_size=32, nb_iterations=10000, verbose=False):
+def train_cql_dqn(env, dataset, buffer_size=32, nb_iterations=5000, verbose=False):
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

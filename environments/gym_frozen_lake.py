@@ -7,8 +7,12 @@ import math
 import discretization.grid.partition as prt
 
 class gymIce:
-    def __init__(self):
-        env = gym.make("FrozenLakeContinuous-v0", render_mode="rgb_array", map_name = "8x8", is_slippery=True)
+    def __init__(self, render=False):
+        if render:
+            print("I get made!AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa")
+            env = gym.make("FrozenLakeContinuous-v0", render_mode="rgb_array", map_name = "8x8", is_slippery=True)
+        else:
+            env = gym.make("FrozenLakeContinuous-v0", map_name = "8x8", is_slippery=True)
         # self.sv_model = gymnasium_grid_to_stormvogel(self.env)
         self.env = env.env.env
         self.partition_states()
