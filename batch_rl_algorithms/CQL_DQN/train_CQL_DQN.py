@@ -4,25 +4,102 @@ import torch
 from .buffer import ReplayBuffer
 from .agent import CQLAgent
 from collections import deque
-
+from torch.utils.data import DataLoader, TensorDataset
 
 
 def add_dataset_to_buffer(dataset, buffer_size, device):
     buffer = ReplayBuffer(buffer_size=buffer_size, batch_size=32, device=device)
     # state, action_choice, next_state, reward, terminated, truncated
-    for traj in dataset:
-        for trans in traj:
-            state = trans[0]
-            action = trans[1]
-            next_state = trans[2]
-            reward = trans[3]
-            is_done = trans[4] or trans[5]
-            buffer.add(state, action, reward, next_state, is_done)
+    for trans in dataset:
+        # for trans in traj:
+        state = trans[0]
+        action = trans[1]
+        next_state = trans[2]
+        reward = trans[3]
+        is_done = trans[4] or trans[5]
+        buffer.add(state, action, reward, next_state, is_done)
     
     return buffer
+def create_dataloader_from_dataset(dataset, batch_size, device):
+    states = []
+    actions = []
+    rewards = []
+    next_states = []
+    dones = []
 
-def train_cql_dqn(env, dataset, buffer_size=32, nb_iterations=5000, verbose=False):
-    
+    for trans in dataset:
+        state = trans[0]
+        action = trans[1]
+        next_state = trans[2]
+        reward = trans[3]
+        done = trans[4] or trans[5]   # terminated OR truncated
+
+        states.append(state)
+        actions.append(action)
+        rewards.append(reward)
+        next_states.append(next_state)
+        dones.append(done)
+    # Convert to tensors
+    states      = torch.tensor(np.array(states), dtype=torch.float32)
+    actions     = torch.tensor(np.array(actions), dtype=torch.long).unsqueeze(1)
+    rewards     = torch.tensor(np.array(rewards), dtype=torch.float32).unsqueeze(1)
+    next_states = torch.tensor(np.array(next_states), dtype=torch.float32)
+    dones       = torch.tensor(np.array(dones), dtype=torch.float32).unsqueeze(1)
+
+    dataset_torch = TensorDataset(states, actions, rewards, next_states, dones)
+    dataloader = DataLoader(dataset_torch, batch_size=batch_size, shuffle=True)
+
+    return dataloader
+
+def train_cql_dqn(
+    env,
+    dataset_raw,
+    nb_epochs=100,
+    batch_size=64
+):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    dataset = [val for sublist in dataset_raw for val in sublist]
+
+    # Agent
+    agent = CQLAgent(
+        state_size=env.get_state_shape(),
+        action_size=env.get_nb_actions(),
+        device=device
+    )
+
+    # DataLoader
+    dataloader = create_dataloader_from_dataset(dataset, batch_size, device)
+
+    # Training loop
+    total_updates = 0
+    avg_loss = deque(maxlen=100)
+
+    for epoch in range(1, nb_epochs + 1):
+
+        for batch in dataloader:
+            states, actions, rewards, next_states, dones = [
+                x.to(device) for x in batch
+            ]
+
+            # Same interface as ReplayBuffer.sample()
+            loss, cql_loss, bellmann_error = agent.learn(
+                (states, actions, rewards, next_states, dones)
+            )
+
+            total_updates += 1
+            avg_loss.append(loss)
+
+        print(
+            f"Epoch {epoch} | "
+            f"Total Loss: {loss:.4f} | "
+            f"CQL Loss: {cql_loss:.4f} | "
+            f"Bellman Error: {bellmann_error:.4f}"
+        )
+
+    return agent
+                              
+def train_cql_dqn_buffer(env, dataset_raw, buffer_size=32, Passes_on_dataset=20, verbose=False):
+    dataset = [val for sublist in dataset_raw for val in sublist]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Create the agent
@@ -36,25 +113,28 @@ def train_cql_dqn(env, dataset, buffer_size=32, nb_iterations=5000, verbose=Fals
     losses = []
     cql_losses = []
     bellman_losses = []
-
+    total_steps = 0
     # Offline training loop
-    for step in range(nb_iterations):
+    for ds_pass in range(Passes_on_dataset):
+        steps=0
+        while steps < len(dataset):
+            batch = buffer.sample()
+            steps += buffer_size
+            total_steps += buffer_size
+            loss, cql_loss, bellmann_error = agent.learn(batch)
 
-        batch = buffer.sample()
+            losses.append(loss)
+            cql_losses.append(cql_loss)
+            bellman_losses.append(bellmann_error)
 
-        loss, cql_loss, bellmann_error = agent.learn(batch)
-
-        losses.append(loss)
-        cql_losses.append(cql_loss)
-        bellman_losses.append(bellmann_error)
-
-        if step % 100 == 0 and verbose:
-            print(
-                f"Step {step} | "
-                f"Total Loss: {loss:.4f} | "
-                f"CQL Loss: {cql_loss:.4f} | "
-                f"Bellman Error: {bellmann_error:.4f}"
-            )
+        # if step % 100 == 0 and verbose:
+        print(
+            f"Passes {ds_pass} | "
+            f"Step {total_steps} | "
+            f"Total Loss: {loss:.4f} | "
+            f"CQL Loss: {cql_loss:.4f} | "
+            f"Bellman Error: {bellmann_error:.4f}"
+        )
 
     return agent
 
