@@ -32,7 +32,9 @@ from collections import Counter
 from itertools import groupby
 from operator import itemgetter
 import sys
-
+from collections import defaultdict
+import colorsys
+from scipy.spatial import cKDTree
 from .testing import (
     training_value_error,
     training_accuracy,
@@ -168,10 +170,6 @@ def initializeClusters(
 
     return df
 
-
-# Function for the Iterations
-
-
 def findContradictionStochastic(df, th, p_feats):
     """Similar to below. Stochastic version. p_feats is number of features"""
     # filter out relevant entries in datasets
@@ -199,6 +197,51 @@ def findContradictionStochastic(df, th, p_feats):
     if stds.max() < th:
         return (-1, -1)
     return stds.idxmax()
+
+# def findContradictionStochastic(df, th, p_feats):
+#     """Similar to below. Stochastic version. p_feats is number of features"""
+#     # filter out relevant entries in datasets
+#     X = df[df.NEXT_CLUSTER != "None"]
+
+#     def next_cluster_std_weighted(df, th):
+#         """
+#         Given a cluster-action pair, check how "uniform" the distribution of next cluster is.
+#         """
+#         # Step 1. Use regression to smooth the observations
+            
+#         X_regr = df.iloc[:, 2 : p_feats + 2]
+#         y_regr_raw = df["NEXT_CLUSTER"]
+#         if len(y_regr_raw) == 0 or len(set(y_regr_raw)) == 1: # or y_regr_raw.value_counts().iloc[1] < th
+#             return 0.0
+
+#         encoder = LabelEncoder()
+#         y_regr = encoder.fit_transform(y_regr_raw)
+#         mlp = MLPClassifier((10,), "relu", alpha=0.05, learning_rate_init=0.2, tol=1e-3)
+#         mlp.fit(X_regr, y_regr)
+
+#         # Step 2. The variances in the predicted probabilities is used to measure how much variation the cluster has
+#         y_preds = mlp.predict_proba(X_regr)
+#         return sum(np.std(y_preds, axis=0) * np.sum(y_regr, axis=0))
+
+#     # Step 3. Find the cluster-action pair with highest variance. Early stop if variance less than threshold.
+#     grouped = X.groupby(["CLUSTER", "ACTION"], sort=False)
+
+#     max_std = -np.inf
+#     max_key = (-1, -1)
+
+#     for key, g in grouped:
+#         std_val = next_cluster_std_weighted(g, th)
+
+#         if std_val > max_std:
+#             max_std = std_val
+#             max_key = key
+
+#     # Early stop condition
+#     if max_std < th:
+        
+#         return (-1, -1)
+
+#     return max_key
 
 
 def findContradiction(df, th, verbose=False):
@@ -597,7 +640,9 @@ def splitter(
     nc = k  # number of clusters
 
     df_new = deepcopy(df)
-
+    df_new.to_csv("file2origin.csv")
+    if plot:
+        plot_discretization(df_new, 0, max_k)
     # storing optimal df
     best_df = None
     opt_k = None
@@ -623,10 +668,22 @@ def splitter(
         if not stochastic:
             c, a = findContradiction(df_new, th)
         else:
+            # c, a = findContradictionStochasticNew(df_new, th, pfeatures)
+            # print(f"new version:  ({c}, {a})")
+            # c, a = findContradictionStochastic(df_new, th, pfeatures)
+            # print("old:", " ", c,a)
+            # c, a = findContradictionStochastic(df_new, th, pfeatures)
+            # print("old:", " ", c,a)
             c, a = findContradictionStochastic(df_new, th, pfeatures)
+            # print("new:", c2, " ", a2)
+            # c, a = findContradiction(df_new, th)
+            # print(f"correct version:  ({c}, {a})")
+            # c, a = findContradictionStochastic(df_new, th, pfeatures)
+            # print(f"correct version:  ({c}, {a})")
 
         if verbose:
             print(f"Found contradiction in {time.time()-st}!")
+            print(f"They are at c = {c}, action = {a}")
 
         gc.collect()
         if (
@@ -672,7 +729,9 @@ def splitter(
                     classification,
                     split_classifier_params,
                 )
-
+                # print("the new dataframe = ", df_new)
+            if plot:
+                plot_discretization(df_new, i+1, max_k)
             if verbose:
                 print(f"Split clusters in {time.time() - st}!")
 
@@ -709,7 +768,7 @@ def splitter(
             if verbose:
                 print("Calculating R2 metric...")
                 print("Calculating training error...")
-
+            st = time.time()
             train_error = training_value_error(
                 df_new,
                 gamma,
@@ -718,9 +777,11 @@ def splitter(
                 eval_samples=eval_samples,
                 stochastic=stochastic,
             )
+            # print(f"evaluate in {time.time()-st}")
             training_error.append(train_error)
             
             if verbose:
+                
                 print("Training Error", train_error)
                 print("Calculating training accuracy (grid only) ...")
             
@@ -798,6 +859,8 @@ def splitter(
             nc += 1
             if verbose:
                 print(f"Model saved in {time.time()-st}")
+        else:
+            print("no contradictions present")
         if not cont:
             break
         if nc >= max_k:
@@ -853,6 +916,7 @@ def splitter(
     df_incoherences = pd.DataFrame(
         list(zip(its, incoherences)), columns=["Clusters", "Incoherences"]
     )
+    best_df.to_csv("file2final.csv")
     if testing and not stochastic:
         df_test_error = pd.DataFrame(
             list(zip(its, testing_error)), columns=["Clusters", "Error"]
@@ -878,7 +942,89 @@ def splitter(
         training_error,
     )
 
+def generate_distinct_colors(n):
+    """
+    Deterministic color generation using golden ratio.
+    Same index -> same color across runs.
+    """
+    golden_ratio = 0.61803398875
+    h = 0.0
+    colors = []
 
+    for i in range(n):
+        h = (i * golden_ratio) % 1  # deterministic (no accumulation)
+        r, g, b = colorsys.hsv_to_rgb(h, 0.65, 0.95)
+        colors.append((r, g, b))
+
+    return colors
+
+
+def plot_discretization(
+    df,
+    iteration,
+    max_k,
+    grid_size=(8, 8),
+    save_dir="MRL_lake",
+    max_clusters_to_label=20
+):
+    os.makedirs(save_dir, exist_ok=True)
+
+    y = df["FEATURE_0"].values
+    x = df["FEATURE_1"].values
+    clusters = df["CLUSTER"].values
+    unique_clusters = np.unique(clusters)
+
+    colors = generate_distinct_colors(max_k)
+
+    markers = ['o', 's', '^', 'D', 'P', 'X', '*', 'v', '<', '>']
+
+    cluster_to_color = {
+        c: colors[int(c) % max_k] for c in unique_clusters
+    }
+
+    cluster_to_marker = {
+        c: markers[int(c) % len(markers)] for c in unique_clusters
+    }
+
+    plt.figure(figsize=(6, 6))
+
+    # Grid
+    for gx in range(grid_size[0] + 1):
+        plt.axvline(gx, color='lightgray', linewidth=1)
+    for gy in range(grid_size[1] + 1):
+        plt.axhline(gy, color='lightgray', linewidth=1)
+
+    # Plot clusters (sorted for consistency)
+    for i, c in enumerate(sorted(unique_clusters)):
+        mask = clusters == c
+
+        plt.scatter(
+            x[mask],
+            y[mask],
+            s=12,
+            color=cluster_to_color[c],
+            marker=cluster_to_marker[c],
+            alpha=0.85,
+            edgecolors='black',
+            linewidths=0.2,
+            label=f"C{c}" if i < max_clusters_to_label else None
+        )
+
+    plt.xlim(0, grid_size[0])
+    plt.ylim(0, grid_size[1])
+    plt.gca().set_aspect('equal')
+    plt.gca().invert_yaxis()
+
+    plt.title(f"Discretization at Iteration {iteration}")
+
+    if len(unique_clusters) <= max_clusters_to_label:
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    plt.tight_layout()
+
+    save_path = os.path.join(save_dir, f"split_{iteration}.png")
+    plt.savefig(save_path, dpi=150)
+    plt.close()
 # Splitter algorithm with Group K-fold cross-validation (number of folds from param cv)
 # Returns dataframes of incoherences, errors, and splitter split-scores; these
 # can be used to determine optimal clustering.

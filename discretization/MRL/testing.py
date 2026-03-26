@@ -202,7 +202,7 @@ def get_MDP_stochastic(df_new):
     ) #DEBUG
 
     R_df = df_new.groupby("CLUSTER")["RISK"].mean()
-    R_df = pd.concat([R_df, pd.Series([0], index=[s])], axis=1).T #DEBUG
+    # R_df = pd.concat([R_df, pd.Series([0], index=[s])], axis=1).T #DEBUG
 
     return P_df, R_df
 
@@ -255,9 +255,17 @@ def training_value_error(
     num_sims=20,
     stochastic=False,
 ):
-
+    
+    # if not stochastic:
     P_df, R_df = get_MDP(df_new)
+    # print("R_df non stochastic = ", R_df)
+    # print("its R is then ", R)
 
+    if stochastic: 
+        P_df, R_df = get_MDP_stochastic(df_new)
+        P_lookup = build_transition_model_look_up(P_df)
+        # print("R_df stochastic = ", R_df)
+        # print("its R is then ", R)
     # --- convert dataframe columns to numpy ---
     ID = df_new["ID"].to_numpy()
     ACTION = df_new["ACTION"].to_numpy()
@@ -283,8 +291,27 @@ def training_value_error(
         eval_ids = rng.choice(N_train, size=eval_samples, replace=False)
 
     # --- convert MDP tables ---
-    P = {(s, a): P_df.loc[s, a].values[0] for s, a in P_df.index}
+    if stochastic:
+        from collections import defaultdict
+
+        P = defaultdict(list)
+
+        for _, row in P_df.iterrows():
+            s = row["CLUSTER"]
+            a = row["ACTION"]
+            s_next = row["NEXT_CLUSTER"]
+            p = row["PROBABILITY"]
+
+            # skip terminal rows
+            if a is None or s_next == "End":
+                continue
+
+            P[(s, a)].append((s_next, p))
+    else:
+        P = {(s, a): P_df.loc[s, a].values[0] for s, a in P_df.index}
+    
     R = R_df.squeeze().to_dict()
+
 
     E_v = 0.0
 
@@ -331,7 +358,8 @@ def training_value_error(
                     break
 
                 if stochastic:
-                    s = sim_next_cluster(P_df, s, a)
+                    # s = sim_next_cluster(P_lookup, s, a)
+                    P_lookup.get((s, a),s)
                 else:
                     s = P.get((s, a), s)
 
@@ -347,24 +375,58 @@ def training_value_error(
         else:
             E_v += (v_true - v_estim) ** 2
 
+
     E_v /= N_train
     return np.sqrt(E_v)
 
+def build_transition_model_look_up(P_df):
+    P_lookup = {}
 
-def sim_next_cluster(P_df, s, a):
+    grouped = P_df.groupby(["CLUSTER", "ACTION"])
+
+    for (s, a), group in grouped:
+        next_states = group["NEXT_CLUSTER"].to_numpy()
+        probs = group["PROBABILITY"].to_numpy()
+
+        # normalize just in case
+        probs = probs / probs.sum()
+
+        # cumulative distribution for fast sampling
+        cum_probs = np.cumsum(probs)
+
+        P_lookup[(s, a)] = (next_states, cum_probs)
+
+    return P_lookup
+
+def sim_next_cluster(P_lookup, s, a):
     """Get the next cluster from cluster/action pair, stochastic case"""
-    nc_probs = P_df[(P_df["CLUSTER"] == s) & (P_df["ACTION"] == a)]
-    if not len(nc_probs):
-        raise ValueError("Transition Action not observed")
-    rand = np.random.random()
+    # nc_probs = P_df[(P_df["CLUSTER"] == s) & (P_df["ACTION"] == a)]
+    # if not len(nc_probs):
+    #     # raise ValueError("Transition Action not observed")
+    #     # print("not all actions observed")
+    #     return s # if the state action pair is not observed in the dataset, make it loop
+    
+    # rand = np.random.random()
 
-    agg_probs = 0
-    for _, row in nc_probs.iterrows():
-        agg_probs += row["PROBABILITY"]
-        if agg_probs > rand:
-            return row["NEXT_CLUSTER"]
-    print(rand, agg_probs)
-    raise ValueError("Probabilities dont sum to 1")
+    # agg_probs = 0
+    # for _, row in nc_probs.iterrows():
+    #     agg_probs += row["PROBABILITY"]
+    #     if agg_probs > rand:
+    #         return row["NEXT_CLUSTER"]
+    # print(rand, agg_probs)
+    # raise ValueError("Probabilities dont sum to 1")
+    
+    key = (s, a)
+
+    if key not in P_lookup:
+        return s  # self-loop fallback
+
+    next_states, cum_probs = P_lookup[key]
+
+    r = np.random.random()
+    idx = np.searchsorted(cum_probs, r)
+
+    return next_states[idx]
 
 
 # testing_value_error() takes in a dataframe of testing data, and dataframe of

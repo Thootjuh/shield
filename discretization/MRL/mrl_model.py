@@ -31,6 +31,7 @@ class MRL_model(MDP_model):
         plot=False,
         optimize=True,
         verbose=False,
+        stochastic=False
     ):
 
         df = data.copy()
@@ -81,6 +82,7 @@ class MRL_model(MDP_model):
             gamma=gamma,
             verbose=verbose,
             plot=plot,
+            stochastic=stochastic
         )
 
         # store all training errors

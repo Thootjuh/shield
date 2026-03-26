@@ -42,7 +42,7 @@ def trajToDF(trajectories, num_features, standard_reward="test"):
             
             r = transition[3]
         # Add one more entry for the final state  
-        if transition[4] or transition[5]: # If an end state is reached, add it
+        if transition[4]: # If an end state is reached, add it
             transition_count+=1
             rows.append([trajectory_count, transition_count]
                     + [val for val in n_s] +

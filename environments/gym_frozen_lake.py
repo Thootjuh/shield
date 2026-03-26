@@ -9,7 +9,6 @@ import discretization.grid.partition as prt
 class gymIce:
     def __init__(self, render=False):
         if render:
-            print("I get made!AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa")
             env = gym.make("FrozenLakeContinuous-v0", render_mode="rgb_array", map_name = "8x8", is_slippery=True)
         else:
             env = gym.make("FrozenLakeContinuous-v0", map_name = "8x8", is_slippery=True)
@@ -31,8 +30,9 @@ class gymIce:
         self.state = observation
     
     def set_random_state(self):
-        possible_states = [s for s in range(self.nb_states) if s not in self.traps and s != self.goal]    
+        possible_states = [s for s in range(self.nb_states) if s not in self.traps and not s in self.goal]    
         random_state = random.choice(possible_states)
+        # print(random_state)
         self.env.s = random_state
         self.state = self.env._state_to_continuous(random_state)
 
@@ -96,8 +96,8 @@ class gymIce:
 
         for region, center in enumerate(self.partition["center"]):
             x, y = center
-            col = int(x)
-            row = int(y)
+            row = int(x)
+            col = int(y)
 
             tile = self.env.get_tile_from_continuous_state([x,y])
             reward = 0
