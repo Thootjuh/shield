@@ -3,8 +3,14 @@
 import numpy as np
 import time
 from discretization.MRL.helper_functions import state2region
+# from discretization.greedyCut.greedyCut import GreedyCut
 import imageio
 import os
+
+def infer_action_greedy_cut(state, predictor, policy, gc):
+    region = gc.state2region(state, predictor)
+    # print("region = ", region, " withc policy ", policy[region])
+    return int(np.random.choice(policy.shape[1], p=policy[region]))
 
 def infer_action_mrl(state, predictor, policy, dimensions):
     region = state2region(predictor, state, dimensions)
@@ -42,7 +48,8 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
         gif_path = os.path.join(gif_folder, gif_name)
 
     for episode in range(number_of_episodes):
-
+        if episode % 100 == 0:
+            print(episode)
         if generate_gif and episode == 0 and render_env is not None:
             current_env = render_env
         else:
@@ -74,6 +81,8 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
                 action = infer_action_SPIBB_DQN(last_state, ai)
             elif disc_method == 'CQL-DQN':
                 action = infer_action_CQL_DQN(last_state, ai)
+            elif disc_method == 'GreedyCut':
+                action = infer_action_greedy_cut(last_state, predictor, policy, ai)
 
             _, _, reward = current_env.step(action)
 
@@ -95,7 +104,8 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
             nb_steps += 1
 
         episode_count += 1
-
+        if nb_steps > max_nb_steps_per_episode:
+            print("AAAAAAAAAAAAAAAAAAAAA")
         if env_name == "cartpole":
             if nb_steps < 50:
                 failure_count += 1

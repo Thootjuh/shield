@@ -303,9 +303,9 @@ class Shield:
                 self.shield[state][action] = max(min(1.0, 1-value), 0.0)
         # print(self.shield)
         # Clean up temporary files
-        os.remove(model_file)  
-        os.remove(prop_file)   
-        os.remove(results_file)   
+        # os.remove(model_file)  
+        # os.remove(prop_file)   
+        # os.remove(results_file)   
         end_total_time = time.time()
         print("Total time needed to create the Shield:", end_total_time - start_total_time)
 
@@ -610,6 +610,7 @@ class ShieldFrozenLake(Shield):
         """
         # How likely are we to step into a trap
         prop = "Pmax=? [!\"hole\"U\"goal\"]"
+        # prop = "Pmax=? [<100 \"goal\"]"
         # prop = self.prop
         
         # super().calculateShieldInterval(prop, self.model_builder.build_model())
@@ -617,7 +618,7 @@ class ShieldFrozenLake(Shield):
         # self.printShield()
         # self.printShield()
     
-    def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.02):
+    def get_safe_actions_from_shield(self, state, threshold=0.1, buffer = 0.01):
         """
         calculate the actions allowed by the shield for a given state
         Args:

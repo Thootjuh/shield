@@ -49,7 +49,7 @@ class cartPole:
     
     def partition_states(self):
         # Non-terminal region definitions
-        nrPerDim = [6, 6, 4, 6]
+        nrPerDim = [6, 6, 6, 6]
         # nrPerDim = [20, 20, 10, 20]
         regionWidth = [
             (2.4*2)/nrPerDim[0],    # cart position ∈ [-2.4, 2.4]

@@ -60,6 +60,8 @@ from discretization.MRL.model import MDP_model
 from discretization.MRL.mrl_model import MRL_model
 from discretization.MRL.testing import predict_cluster
 from discretization.MRL_scratch.mrl_scratch import MRL_scratch
+from discretization.greedyCut.greedyCut import GreedyCut
+
 directory = os.path.dirname(os.path.expanduser(__file__))
 
 def write_policy_to_file(policy, filename):
@@ -218,8 +220,8 @@ class Experiment:
         """
         if self.speed_up:
             self._compute_speed_up_dict()
-        self._run_shielded_baseline()
-        self._run_baseline()
+        # self._run_shielded_baseline()
+        # self._run_baseline()
         for key in self.algorithms_dict.keys():
             print(key)
             if key in {SPIBB.NAME, Lower_SPIBB.NAME}:
@@ -237,11 +239,14 @@ class Experiment:
             
     def _run_baseline(self):
         if self.discretization_method=='grid':
-            method_perf, discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env, gamma=self.gamma)
+            method_perf, discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env, gamma=self.gamma)
         elif self.discretization_method=='mrl':
-            method_perf, discounted_method_perf,pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="baseline_mrl.gif",render_env=self.render_env, gamma=self.gamma)
+            method_perf, discounted_method_perf,pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="baseline_mrl.gif",render_env=self.render_env, gamma=self.gamma)
+        elif self.discretization_method=='GreedyCut':
+            method_perf, discounted_method_perf,pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, self.pi_b, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, ai=self.discretizer, env_name=self.env_name, generate_gif=True, gif_name="baseline_GC.gif",render_env=self.render_env, gamma=self.gamma)
         method = "baseline_" + self.discretization_method
-        method_perf_pred = policy_evaluation_exact(self.pi_b,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
+        # method_perf_pred = policy_evaluation_exact(self.pi_b,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
+        method_perf_pred = 0
         hyperparam = None
         run_time = 0.0
         self.results.append(self.to_append + [method, hyperparam, method_perf, discounted_method_perf, run_time, self.nb_states, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate, method_perf_pred])
@@ -254,11 +259,14 @@ class Experiment:
         pi_b_s.fit()
         t_1 = time.time()
         if self.discretization_method=='mrl':
-            basic_rl_perf,discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_mrl.gif",render_env=self.render_env, gamma=self.gamma)
+            basic_rl_perf,discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_mrl.gif",render_env=self.render_env, gamma=self.gamma)
         elif self.discretization_method=='grid':
-            basic_rl_perf,discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_grid.gif",render_env=self.render_env, gamma=self.gamma)
-        
-        method_perf_pred = policy_evaluation_exact(pi_b_s.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
+            basic_rl_perf,discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_grid.gif",render_env=self.render_env, gamma=self.gamma)
+        elif self.discretization_method=='GreedyCut':
+            basic_rl_perf,discounted_method_perf, pi_b_succ_rate, pi_b_fail_rate, pi_b_avoid_rate = evaluate_policy(self.env, pi_b_s.pi, 100, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, ai=self.discretizer, env_name=self.env_name, generate_gif=True, gif_name="shielded_baseline_GC.gif",render_env=self.render_env, gamma=self.gamma)
+        method = "baseline_" + self.discretization_method
+        # method_perf_pred = policy_evaluation_exact(pi_b_s.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
+        method_perf_pred = 0
         method = pi_b_s.NAME + "_" + self.discretization_method
         method_perf = basic_rl_perf
         hyperparam = None
@@ -281,10 +289,14 @@ class Experiment:
             t_1 = time.time()
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_mrl.gif",render_env=self.render_env, gamma=self.gamma)
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 1000, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_mrl.gif",render_env=self.render_env, gamma=self.gamma)
             elif self.discretization_method=='grid':
-                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 100, 500,  self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_grid.gif",render_env=self.render_env, gamma=self.gamma)
-            method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 1000, 250,  self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_grid.gif",render_env=self.render_env, gamma=self.gamma)
+            elif self.discretization_method=='GreedyCut':
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 1000, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, ai=self.discretizer, env_name=self.env_name, generate_gif=True, gif_name="shielded_spibb_GC.gif",render_env=self.render_env, gamma=self.gamma)
+            method = "baseline_" + self.discretization_method
+            # method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
+            method_perf_pred = 0
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
             hyperparam = N_wedge
@@ -307,12 +319,15 @@ class Experiment:
             print("trained policy")
             if self.discretization_method=='mrl':
                 # spibb_perf = evaluate_policy(self.env, spibb.pi, 1, 100)
-                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="spibb_mrl.gif",render_env=self.render_env, gamma=self.gamma)
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 1000, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, env_name=self.env_name, generate_gif=True, gif_name="spibb_mrl.gif",render_env=self.render_env, gamma=self.gamma)
             elif self.discretization_method=='grid':
-                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 100, 500, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="baseline_grid.gif",render_env=self.render_env, gamma=self.gamma)
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 1000, 250, self.discretization_method, env_name=self.env_name, generate_gif=True, gif_name="spibb_grid.gif",render_env=self.render_env, gamma=self.gamma)
+            elif self.discretization_method=='GreedyCut':
+                spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, spibb.pi, 1000, 250, self.discretization_method, predictor=self.predictor, dimensions=self.dimensions, ai=self.discretizer, env_name=self.env_name, generate_gif=True, gif_name="spibb_GC.gif",render_env=self.render_env, gamma=self.gamma)
             print("evaluated policy")
             # spibb_perf = self._policy_evaluation_exact(spibb.pi)
-            method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
+            # method_perf_pred = policy_evaluation_exact(spibb.pi,self.R_s_a, self.transition_model, self.gamma)[0][self.initial_state]
+            method_perf_pred = 0
             method = spibb.NAME + "_" + self.discretization_method
             method_perf = spibb_perf
             hyperparam = N_wedge
@@ -326,7 +341,7 @@ class Experiment:
             t_0 = time.time()
             spibb.learn(passes_on_dataset = 25)
             t_1 = time.time()
-            spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, None, 100, 500, self.discretization_method, ai=spibb.ai, env_name=self.env_name, generate_gif=True, gif_name="spibb_dqn.gif",render_env=self.render_env, gamma=self.gamma)
+            spibb_perf, discounted_method_perf,succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, None, 100, 250, self.discretization_method, ai=spibb.ai, env_name=self.env_name, generate_gif=True, gif_name="spibb_dqn.gif",render_env=self.render_env, gamma=self.gamma)
             method = 'spibb_dqn'
             method_perf = spibb_perf
             hyperparam = N_wedge
@@ -338,7 +353,7 @@ class Experiment:
         agent = train_cql_dqn(self.env, self.env_name, self.data_cont)
         # agent = train_cql_dqn_hybrid(self.env, self.data_cont, 100000, 100)
         t_1 = time.time()
-        spibb_perf, discounted_method_perf, succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, None, 100, 500, self.discretization_method, ai=agent, env_name=self.env_name, generate_gif=True, gif_name="cql_dqn.gif",render_env=self.render_env, gamma=self.gamma)
+        spibb_perf, discounted_method_perf, succ_rate, failure_rate, avoid_rate = evaluate_policy(self.env, None, 100, 250, self.discretization_method, ai=agent, env_name=self.env_name, generate_gif=True, gif_name="cql_dqn.gif",render_env=self.render_env, gamma=self.gamma)
         print("perf = ", spibb_perf)
         method = 'cql_dqn'
         method_perf = spibb_perf
@@ -706,6 +721,7 @@ class GymCartPoleExperiment(Experiment):
                 # Generate trajectories, both stored as trajectories and (s,a,s',r) transition samples
                 print("Generating Trajectories")
                 # generate data on the real cartpole environment. Translate this data to the partitioning in generate_batch
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
                 data_grid, batch_traj, self.data_cont = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
                 
@@ -820,6 +836,75 @@ class GymCartPoleExperiment(Experiment):
                 # self.shielder.printShield()
                 print("Running Algorithms")
                 self._run_algorithms()
+                # ----------------------------- GreedyCut ----------------------------------
+                self.data = self.data_cont
+                self.discretization_method = 'GreedyCut'
+                bounds = [(-4.8, 4.8),(-3.0, 3.0),(-0.41887903, 0.41887903),(-3.5, 3.5)]
+                self.discretizer = GreedyCut(
+                    state_dim = self.dimensions,
+                    trajectories=self.data,
+                    B=10,
+                    bounds=bounds
+                )
+                self.predictor = self.discretizer.Greedy()
+                print(self.predictor)
+                d_data = self.discretizer.get_discretized_dataset()
+                self.data = d_data
+                with open("trajectories.txt", "w") as f:
+                    for i, traj in enumerate(d_data):
+                        f.write(f"Trajectory {i}:\n")
+                        for transition in traj:
+                            action, state, next_state, reward = transition
+                            f.write(f"{action}, {state}, {next_state}, {reward}\n")
+                        f.write("\n")
+                        
+                with open("trajectories_grid.txt", "w") as f:
+                    for i, traj in enumerate(data_grid):
+                        f.write(f"Trajectory {i}:\n")
+                        for transition in traj:
+                            action, state, next_state, reward = transition
+                            f.write(f"{action}, {state}, {next_state}, {reward}\n")
+                        f.write("\n")
+                nb_states = self.discretizer.get_num_regions(self.predictor)
+                self.nb_states = nb_states
+                print("nb_states = ", nb_states)
+                # get structure transition function
+                self.structure = self.get_empty_structure(nb_states)
+                self.structure = self.add_trans_from_data(self.structure, d_data)
+                self._count(d_data)
+                
+                self._build_model()           
+                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
+                self.initial_state = d_data[0][0][1]
+                
+                # Calculate Shield                
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()                
+                
+                print("Calculating Shield") 
+                # print(m.R_df) 
+                goal = []
+                # option 1: Any region that has at least one trap is considered to be a trap state
+                traps = []
+                for traj in d_data:
+                    final_transition = traj[-1]
+                    s, a, s_next, r = final_transition
+                    if  r==0 and s_next not in traps:
+                        traps.append(s_next)
+                print(traps)
+                # option 2: Use the known parameters to set the traps based on the centres. Any state for which the centre is outside the
+                self.shielder = ShieldCartpole(self.structure, traps, goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
+                
+                # # Run the algoirhtm
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states)
+                print("Running Algorithms")
+                self._run_algorithms()
+                
+
+                
                 # ----------------------------- SPIBB-DQN ----------------------------------
                 self.discretization_method = 'SPIBB-DQN'
                 self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).pi
@@ -1105,92 +1190,158 @@ class GymLunarLanderExperiment(Experiment):
                 print(len(self.data_df.index))
                 
 
-                # # ------------------------ MRL --------------------------
-                # print("getting abstraction")
-                # self.discretization_method = 'mrl'
+                # ------------------------ MRL --------------------------
+                print("getting abstraction")
+                self.discretization_method = 'mrl'
                 
-                # # Get discretization
-                # m = MDP_model()
-                # m.fit(
-                #     self.data_df,
-                #     pfeatures=self.dimensions,
-                #     h = -1,
-                #     gamma = 1,
-                #     max_k = 200,
-                #     distance_threshold=None,
-                #     th = 10,
-                #     eta = 25,
-                #     precision_thresh = 1e-14,
-                #     classification = 'DecisionTreeClassifier',
-                #     split_classifier_params = {'random_state':0, 'max_depth':5},
-                #     clustering = 'KMeans',
-                #     n_clusters = 10,
-                #     random_state = 0,
-                #     plot=True,
-                #     verbose=False
-                # )
-                # print("Trained the model!!")
+                # Get discretization
+                m = MDP_model()
+                m.fit(
+                    self.data_df,
+                    pfeatures=self.dimensions,
+                    h = -1,
+                    gamma = 1,
+                    max_k = 100,
+                    distance_threshold=None,
+                    th = 10,
+                    eta = 25,
+                    precision_thresh = 1e-14,
+                    classification = 'DecisionTreeClassifier',
+                    split_classifier_params = {'random_state':0, 'max_depth':5},
+                    clustering = 'KMeans',
+                    n_clusters = 10,
+                    random_state = 0,
+                    plot=False,
+                    verbose=False,
+                    stochastic=True
+                )
+                print("Trained the model!!")
                 
-                # # discretize data
-                # self.predictor = predict_cluster(m.df_trained, self.dimensions)
-                # # d_data = self.discretize_data(self.data_cont, self.predictor)
-                # print("start discretization")
-                # tb = time.time()
-                # d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
-                # self.data = d_data
-                # ta = time.time()
-                # print("time for discretization = ", ta-tb)
-                # # tfile = open('data_df_trained.txt', 'a')
-                # # tfile.write(m.df_trained.to_string())
-                # # tfile.close()
+                # discretize data
+                self.predictor = predict_cluster(m.df_trained, self.dimensions)
+                # d_data = self.discretize_data(self.data_cont, self.predictor)
+                print("start discretization")
+                tb = time.time()
+                d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
+                self.data = d_data
+                ta = time.time()
+                print("time for discretization = ", ta-tb)
+                # tfile = open('data_df_trained.txt', 'a')
+                # tfile.write(m.df_trained.to_string())
+                # tfile.close()
                 
-                # # self.write_discrete_data_to_txt(d_data, "data_d.txt")
-                # nb_states = m.df_trained["CLUSTER"].nunique()
-                # self.nb_states = nb_states
-                # print("nb states = ", nb_states)                
-                # # get discrete reward function
-                # self.R_state_state = np.zeros((nb_states, nb_states))
-                # #TODO fix this for this environment, also maybe write some stuff so that this does not have te be done manually
-                # traps = []
-                # goal = []
-                # print(m.R_df)
-                # for state in range(len(self.R_state_state)):
-                #     r = m.R_df[state]
-                #     self.R_state_state[:, state] = r
-                #     if r <= -95:
-                #         traps.append(state)
-                #     if r >= 95:
-                #         goal.append(state)
-                # print("traps = ", traps)
-                # print("goal = ", goal)
-                # self.initial_state = d_data[0][0][1]
+                # self.write_discrete_data_to_txt(d_data, "data_d.txt")
+                nb_states = m.df_trained["CLUSTER"].nunique()
+                self.nb_states = nb_states
+                print("nb states = ", nb_states)                
+                # get discrete reward function
+                self.R_state_state = np.zeros((nb_states, nb_states))
+                #TODO fix this for this environment, also maybe write some stuff so that this does not have te be done manually
+                traps = []
+                goal = []
+                print(m.R_df)
+                for state in range(len(self.R_state_state)):
+                    r = m.R_df[state]
+                    self.R_state_state[:, state] = r
+                    if r <= -95:
+                        traps.append(state)
+                    if r >= 95:
+                        goal.append(state)
+                print("traps = ", traps)
+                print("goal = ", goal)
+                self.initial_state = d_data[0][0][1]
 
-                # # get structure transition function
-                # self.structure = self.get_empty_structure(nb_states)
-                # self.structure = self.add_trans_from_data(self.structure, d_data)
-                # self._count(d_data)
-                # self._build_model()
-                # self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
-                # print("found structure")
+                # get structure transition function
+                self.structure = self.get_empty_structure(nb_states)
+                self.structure = self.add_trans_from_data(self.structure, d_data)
+                self._count(d_data)
+                self._build_model()
+                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
+                print("found structure")
                 
-                # # Calculate Shield                
-                # self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
-                # self.estimator.calculate_intervals()
-                # self.intervals = self.estimator.get_intervals()                
+                # Calculate Shield                
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()                
                 
-                # print("Calculating Shield") 
-                # # print(m.R_df) 
-                # self.shielder = ShieldLunarLander(self.structure, traps, goal, self.intervals, self.initial_state)
-                # self.shielder.calculateShield()
-                # # self.shielder.printShield()
+                print("Calculating Shield") 
+                # print(m.R_df) 
+                self.shielder = ShieldLunarLander(self.structure, traps, goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
                 
-                # # # Run the algoirhtm
-                # self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states, d_data)
+                # # Run the algoirhtm
+                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states, d_data)
 
-                # print("Running Algorithms")
-                # self._run_algorithms()
+                print("Running Algorithms")
+                self._run_algorithms()
                 
+                # ----------------------------- GreedyCut ----------------------------------
+                self.data = self.data_cont
+                self.discretization_method = 'GreedyCut'
+                bounds = [(-4.8, 4.8),(-3.0, 3.0),(-0.41887903, 0.41887903),(-3.5, 3.5)]
+                self.discretizer = GreedyCut(
+                    state_dim = self.dimensions,
+                    trajectories=self.data,
+                    B=10,
+                    bounds=bounds
+                )
+                self.predictor = self.discretizer.Greedy()
+                print(self.predictor)
+                d_data = self.discretizer.get_discretized_dataset()
+                self.data = d_data
+                with open("trajectories.txt", "w") as f:
+                    for i, traj in enumerate(d_data):
+                        f.write(f"Trajectory {i}:\n")
+                        for transition in traj:
+                            action, state, next_state, reward = transition
+                            f.write(f"{action}, {state}, {next_state}, {reward}\n")
+                        f.write("\n")
+                        
+                with open("trajectories_grid.txt", "w") as f:
+                    for i, traj in enumerate(data_grid):
+                        f.write(f"Trajectory {i}:\n")
+                        for transition in traj:
+                            action, state, next_state, reward = transition
+                            f.write(f"{action}, {state}, {next_state}, {reward}\n")
+                        f.write("\n")
+                nb_states = self.discretizer.get_num_regions(self.predictor)
+                self.nb_states = nb_states
+                print("nb_states = ", nb_states)
+                # get structure transition function
+                self.structure = self.get_empty_structure(nb_states)
+                self.structure = self.add_trans_from_data(self.structure, d_data)
+                self._count(d_data)
                 
+                self._build_model()           
+                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
+                self.initial_state = d_data[0][0][1]
+                
+                # Calculate Shield                
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator.calculate_intervals()
+                self.intervals = self.estimator.get_intervals()                
+                
+                print("Calculating Shield") 
+                # print(m.R_df) 
+                goal = []
+                # option 1: Any region that has at least one trap is considered to be a trap state
+                traps = []
+                for traj in d_data:
+                    final_transition = traj[-1]
+                    s, a, s_next, r = final_transition
+                    if  r==0 and s_next not in traps:
+                        traps.append(s_next)
+                print(traps)
+                # option 2: Use the known parameters to set the traps based on the centres. Any state for which the centre is outside the
+                self.shielder = ShieldCartpole(self.structure, traps, goal, self.intervals, self.initial_state)
+                self.shielder.calculateShield()
+                # self.shielder.printShield()
+                
+                # # Run the algoirhtm
+                self.pi_b = cartPolePolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states)
+                print("Running Algorithms")
+                self._run_algorithms()
                 # # ----------------------------- GRID ---------------------------------
                 # self.discretization_method = 'grid'
                 # self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
@@ -1219,15 +1370,15 @@ class GymLunarLanderExperiment(Experiment):
                 # # self.shielder.printShield()
                 # print("Running Algorithms")
                 # self._run_algorithms()
-                # # ----------------------------- SPIBB-DQN ----------------------------------
+                # ----------------------------- SPIBB-DQN ----------------------------------
                 # self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
                 # self.discretization_method = 'SPIBB-DQN'
                 # self.data = self.data_cont
                 # self._run_spibb_dqn('SPIBB-DQN')
                 # ----------------------------- CQL-DQN ----------------------------------
-                self.discretization_method = 'CQL-DQN'
-                self.data = self.data_cont
-                self._run_cql_dqn()
+                # self.discretization_method = 'CQL-DQN'
+                # self.data = self.data_cont
+                # self._run_cql_dqn()
                 
     def write_discrete_data_to_txt(self, data_disc, filename="discrete_trajectories.txt"):
         """
@@ -1648,109 +1799,109 @@ class GymFrozenLakeExperiment(Experiment):
                 #         f.write("\n")
                 self.data_df = trajToDF(self.data_cont, self.dimensions, self.data_cont[0][0][3])
                 
-                # # ------------------------ MRL --------------------------
-                # self.discretization_method = 'mrl'
-                # # Get discretization
-                # m = MRL_model()
-                # m.fit(
-                #     self.data_df,
-                #     pfeatures=self.dimensions,
-                #     h = -1,
-                #     gamma = 0.95,
-                #     max_k = 55,
-                #     distance_threshold=None,
-                #     th = 5,
-                #     eta = 25,
-                #     precision_thresh = -0.5,
-                #     classification = 'DecisionTreeClassifier',
-                #     split_classifier_params = {'random_state':0, 'max_depth':4},
-                #     clustering = 'Agglomerative',
-                #     n_clusters = 2,
-                #     random_state = 0,
-                #     plot=True,
-                #     verbose=False,
-                #     stochastic=True
-                # )
-                # print("Trained the model!!")
+                # ------------------------ MRL --------------------------
+                self.discretization_method = 'mrl'
+                # Get discretization
+                m = MRL_model()
+                m.fit(
+                    self.data_df,
+                    pfeatures=self.dimensions,
+                    h = -1,
+                    gamma = 0.95,
+                    max_k = 75,
+                    distance_threshold=None,
+                    th = 5,
+                    eta = 25,
+                    precision_thresh = -0.5,
+                    classification = 'DecisionTreeClassifier',
+                    split_classifier_params = {'random_state':0, 'max_depth':4},
+                    clustering = 'Agglomerative',
+                    n_clusters = 2,
+                    random_state = 0,
+                    plot=True,
+                    verbose=False,
+                    stochastic=True
+                )
+                print("Trained the model!!")
                 
-                # # discretize data
-                # self.predictor = predict_cluster(m.df_trained, self.dimensions)
-                # d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
-                # nb_states = m.df_trained["CLUSTER"].max()+1 
-                # self.nb_states = nb_states
-                # self.data = d_data
-                # print("nb states = ", nb_states)  
-                # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-                #     print(m.R_df)    
+                # discretize data
+                self.predictor = predict_cluster(m.df_trained, self.dimensions)
+                d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
+                nb_states = m.df_trained["CLUSTER"].max()+1 
+                self.nb_states = nb_states
+                self.data = d_data
+                print("nb states = ", nb_states)  
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print(m.R_df)    
                       
-                # # get discrete reward function
-                # self.R_state_state = np.zeros((nb_states, nb_states))
-                # traps = []
-                # goal = []
-                # for state in range(len(self.R_state_state)):
-                #     r = m.R_df.get(state, 0.0)
-                #     self.R_state_state[:, state] = r
-                #     if r < -1.0:
-                #         traps.append(state)
-                #     if r > 1.0:
-                #         goal.append(state)
+                # get discrete reward function
+                self.R_state_state = np.zeros((nb_states, nb_states))
+                traps = []
+                goal = []
+                for state in range(len(self.R_state_state)):
+                    r = m.R_df.get(state, 0.0)
+                    self.R_state_state[:, state] = r
+                    if r < -1.0:
+                        traps.append(state)
+                    if r > 1.0:
+                        goal.append(state)
 
-                # # get structure transition function
-                # self.structure = self.get_empty_structure(nb_states)
-                # self.structure = self.add_trans_from_data(self.structure, d_data)
-                # self._count(d_data)
-                # self._build_model()           
-                # self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
-                # self.initial_state = d_data[0][0][1]
-                # # # with open("data_d.txt", "w") as f:
-                # # #     for item in d_data:
-                # # #         f.write(item)
-                # # #         f.write("\n")
-                # # # print(d_data)
-                
-                # # Calculate Shield                
-                # self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
-                # self.estimator.calculate_intervals()
-                # self.intervals = self.estimator.get_intervals()   
-                             
-                
-                # print("Calculating Shield") 
-                # # print(m.R_df) 
-                # self.shielder = ShieldFrozenLake(self.structure, traps, goal, self.intervals)
-                # self.shielder.calculateShield()
-                # # self.shielder.printShield()
-                
-                # # # Run the algoirhtm
-                # self.pi_b = self.env.compute_baseline_policy_size(size=nb_states, epsilon=epsilon_baseline)
-
-                # print("Running Algorithms")
-                # self._run_algorithms()
-                
-                # ----------------------------- GRID ---------------------------------
-                self.discretization_method = 'grid'
-                self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
-                self.nb_states = self.env.get_nb_states()
-                self.data = data_grid
-                self.R_state_state = self.env.get_reward_function()
-                self.initial_state_cont, self.initial_state = self.env.get_init_state()
-                
-                print("Estimating Intervals")            
-                self._count(self.data)
-                self._build_model()
+                # get structure transition function
+                self.structure = self.get_empty_structure(nb_states)
+                self.structure = self.add_trans_from_data(self.structure, d_data)
+                self._count(d_data)
+                self._build_model()           
                 self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
-                self.structure = self._tm_to_next_states()
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                self.initial_state = d_data[0][0][1]
+                # # with open("data_d.txt", "w") as f:
+                # #     for item in d_data:
+                # #         f.write(item)
+                # #         f.write("\n")
+                # # print(d_data)
+                
+                # Calculate Shield                
+                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()   
+                             
                 
-                
-                print("Calculating Shield")  
-                # self.structure = self.build_transition_matrix()
-                self.shielder = ShieldFrozenLake(self.structure, self.traps, self.goal, self.intervals)
+                print("Calculating Shield") 
+                # print(m.R_df) 
+                self.shielder = ShieldFrozenLake(self.structure, traps, goal, self.intervals)
                 self.shielder.calculateShield()
-                # self.shielder.printShield()
+                self.shielder.printShield()
+                
+                # # Run the algoirhtm
+                self.pi_b = self.env.compute_baseline_policy_size(size=nb_states, epsilon=epsilon_baseline)
+
                 print("Running Algorithms")
                 self._run_algorithms()
+                
+                # # ----------------------------- GRID ---------------------------------
+                # self.discretization_method = 'grid'
+                # self.pi_b = self.env.get_baseline_policy(epsilon=epsilon_baseline)
+                # self.nb_states = self.env.get_nb_states()
+                # self.data = data_grid
+                # self.R_state_state = self.env.get_reward_function()
+                # self.initial_state_cont, self.initial_state = self.env.get_init_state()
+                
+                # print("Estimating Intervals")            
+                # self._count(self.data)
+                # self._build_model()
+                # self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
+                # self.structure = self._tm_to_next_states()
+                # self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                # self.estimator.calculate_intervals()
+                # self.intervals = self.estimator.get_intervals()   
+                
+                
+                # print("Calculating Shield")  
+                # # self.structure = self.build_transition_matrix()
+                # self.shielder = ShieldFrozenLake(self.structure, self.traps, self.goal, self.intervals)
+                # self.shielder.calculateShield()
+                # # self.shielder.printShield()
+                # print("Running Algorithms")
+                # self._run_algorithms()
                 # # ----------------------------- SPIBB-DQN ----------------------------------
                 # self.discretization_method = 'SPIBB-DQN'
                 # self.data = self.data_cont

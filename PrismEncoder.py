@@ -125,7 +125,9 @@ def encodeCartPole(transition_matrix, intervals, trap):
     if valid_initial_states:
         init_condition = " | ".join(f"(s={s})" for s in sorted(valid_initial_states))
         prism_lines.append(f"init {init_condition} endinit")
-    prism_lines.append(f'label "trap" = s={trap[0]};')
+    prism_lines.append(
+        f'label "trap" = ' + ' | '.join(f's={t}' for t in trap) + ';'
+    )
     # Return the PRISM MDP as a string
     return "\n".join(prism_lines)
 
@@ -268,7 +270,9 @@ def encodeFrozenLake(transition_matrix, intervals, trap, goal):
     
     prism_lines.append("endmodule")
     prism_lines.append(f"init s<={num_states} endinit")
-    prism_lines.append(f'label "hole" = s={trap[0]};')
+    prism_lines.append(
+        f'label "hole" = ' + ' | '.join(f's={t}' for t in trap) + ';'
+    )
     if goal:
         prism_lines.append(f'label "goal" = s={goal[0]};')
     # Return the PRISM MDP as a string

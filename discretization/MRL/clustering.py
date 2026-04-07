@@ -965,7 +965,7 @@ def plot_discretization(
     max_k,
     grid_size=(8, 8),
     save_dir="MRL_lake",
-    max_clusters_to_label=20
+    max_clusters_to_label=55
 ):
     os.makedirs(save_dir, exist_ok=True)
 
@@ -1017,13 +1017,35 @@ def plot_discretization(
 
     plt.title(f"Discretization at Iteration {iteration}")
 
-    if len(unique_clusters) <= max_clusters_to_label:
-        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    # if len(unique_clusters) <= max_clusters_to_label:
+        # plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 
     plt.tight_layout()
 
     save_path = os.path.join(save_dir, f"split_{iteration}.png")
     plt.savefig(save_path, dpi=150)
+    
+    # After plotting (before plt.close())
+
+    handles, labels = plt.gca().get_legend_handles_labels()
+
+    # Save main plot WITHOUT legend
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
+
+    # Create separate legend figure
+    fig_legend = plt.figure(figsize=(6, 8))
+    fig_legend.legend(
+        handles,
+        labels,
+        loc='center',
+        ncol=3,
+        fontsize=8
+    )
+
+    legend_path = os.path.join(save_dir, f"legend_{iteration}.png")
+    fig_legend.savefig(legend_path, dpi=150, bbox_inches='tight')
+    plt.close(fig_legend)
     plt.close()
 # Splitter algorithm with Group K-fold cross-validation (number of folds from param cv)
 # Returns dataframes of incoherences, errors, and splitter split-scores; these
