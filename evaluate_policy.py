@@ -27,6 +27,24 @@ def infer_action_SPIBB_DQN(state, ai):
 def infer_action_CQL_DQN(state, ai):
     return ai.get_action(state, epsilon=0.0)[0]
 
+def infer_action_grid_CQL_DQN(state, ai, env):
+    region = env.state2region(state)
+    if region == env.partition["terminal_idx"]:
+        # print("WHAT? You shouldn't be taking an action here")
+        return ai.get_action(state, epsilon=0.0)[0]
+    elif  region == env.partition["goal_idx"]:
+        print("And deff not here...")
+    centre = env.partition["center"][region]
+    # print(type(state))
+    # print(state)
+    # print(type(centre))
+    # print(centre)
+    return ai.get_action(centre, epsilon=0.0)[0]
+
+def infer_action_heuristic(state, env):
+    return env.heuristic(state)
+
+    
 def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
                     disc_method, noise_factor=1.0, predictor=None, dimensions=0,
                     ai=None, env_name="cartpole", generate_gif=False,
@@ -83,7 +101,10 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
                 action = infer_action_CQL_DQN(last_state, ai)
             elif disc_method == 'GreedyCut':
                 action = infer_action_greedy_cut(last_state, predictor, policy, ai)
-
+            elif disc_method == 'test':
+                action = infer_action_grid_CQL_DQN(last_state, ai, current_env)
+            elif disc_method == 'heuristic':
+                action = infer_action_heuristic(last_state, current_env)
             _, _, reward = current_env.step(action)
 
             term = current_env.is_done()
@@ -125,10 +146,13 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
         elif env_name == "lunar_lander":
             if reward == -100:
                 failure_count += 1
-            if reward != 100:
+            if reward != -100:
                 avoid_count += 1
             if reward == 100:
                 success_count += 1
+            if disc_method=='heuristic':
+                if reward != -100 and reward != 100:
+                    print(f"heuristic reward = {reward}")
 
         elif env_name == "frozen_lake_cont":
             if reward < 0:

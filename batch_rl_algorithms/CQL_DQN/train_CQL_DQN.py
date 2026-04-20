@@ -61,11 +61,12 @@ def train_cql_dqn(
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     dataset = [val for sublist in dataset_raw for val in sublist]
     if env_name=='lunar_lander':
-        max_updates=100000000
+        max_updates=500000
     else:
         max_updates=100000
     updates_per_epoch = len(dataset) // batch_size
-    nb_epochs = min(max(15, max_updates // updates_per_epoch),100)
+    nb_epochs = min(max(1, max_updates // updates_per_epoch),10)
+    # nb_epochs = 10
     print(len(dataset))
     print(nb_epochs)
     # Agent

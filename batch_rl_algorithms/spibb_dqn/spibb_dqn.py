@@ -34,7 +34,7 @@ class spibb_dqn:
 
         # How many passes we need to hit ~target_updates
         passes_on_dataset = max(10, target_updates // updates_per_epoch)
-        # passes_on_dataset = 100
+        passes_on_dataset = 20
         for epoch in range(number_of_epochs):
             begin = time.time()
             print('=' * 30, flush=True)
