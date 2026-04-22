@@ -640,7 +640,7 @@ def splitter(
     nc = k  # number of clusters
 
     df_new = deepcopy(df)
-    df_new.to_csv("file2origin.csv")
+    # df_new.to_csv("file2origin.csv")
     if plot:
         plot_discretization(df_new, 0, max_k)
     # storing optimal df
@@ -916,7 +916,7 @@ def splitter(
     df_incoherences = pd.DataFrame(
         list(zip(its, incoherences)), columns=["Clusters", "Incoherences"]
     )
-    best_df.to_csv("file2final.csv")
+    # best_df.to_csv("file2final.csv")
     if testing and not stochastic:
         df_test_error = pd.DataFrame(
             list(zip(its, testing_error)), columns=["Clusters", "Error"]

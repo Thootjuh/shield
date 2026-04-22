@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import RandomMDPsExperiment, GymCartPoleExperiment, GymCrashingMountainCar, GymMazeExperiment,GymLunarLanderExperiment, GymFrozenLakeExperiment
+from experiment import GymCartPoleExperiment, GymCrashingMountainCar, GymMazeExperiment,GymLunarLanderExperiment, GymFrozenLakeExperiment, MovingObstaclesExperiment
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
@@ -42,9 +42,9 @@ def run_experiment(seed):
     elif environment == 'mountaincar':
         experiment = GymCrashingMountainCar(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
-    elif environment == 'random_mdps':
-        experiment = RandomMDPsExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
-                                          machine_specific_experiment_directory=machine_specific_experiment_directory)
+    # elif environment == 'random_mdps':
+    #     experiment = RandomMDPsExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+    #                                       machine_specific_experiment_directory=machine_specific_experiment_directory)
     elif environment == 'maze':
         experiment = GymMazeExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
@@ -53,6 +53,9 @@ def run_experiment(seed):
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
     elif environment == 'frozen_lake_cont':
         experiment = GymFrozenLakeExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+                                          machine_specific_experiment_directory=machine_specific_experiment_directory)
+    elif environment == 'moving_obstacles':
+        experiment = MovingObstaclesExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
     else:
         print(f"COULD NOT FIND THE SPECIFIED ENVIRONMENT {environment}")

@@ -47,6 +47,94 @@ def encodeMDP(transition_matrix):
     # Return joined lines as a PRISM module string
     return "\n".join(prism_lines)
 
+def encodeMovingObstacles(transition_matrix, intervals, trap, goal):
+    actions = [
+        "up",
+        "right",
+        "down",
+        "left"
+    ]
+    
+    num_states, num_actions = transition_matrix.shape
+
+    # Initialize the PRISM MDP module 
+    prism_lines = ["mdp", "", "module CartPole"]
+    
+    # Add statespace
+    prism_lines.append(f"    s : [0..{num_states - 1}];  // state")
+    
+    # Track states that have at least one real successor
+    valid_initial_states = set()
+    
+    # Add transitions
+    for state in range(num_states):
+        state_has_successor = False
+        prism_lines.append(f"    // State {state}")
+        for action in range(num_actions):
+            # Extract possible next states
+            next_states = transition_matrix[state, action]
+            
+            # Remove invalid transitions (e.g., -1 to indicate no transition)
+            valid_next_states = [int(s) for s in next_states if s >= 0]
+            
+            # if len(valid_next_states):
+            #     # Uniform probability for each next state
+            #     # uniform_prob = 1 / len(valid_next_states)
+            if len(valid_next_states) == 1:
+                if valid_next_states[0] != state:
+                    state_has_successor = True
+                default_interval = (1.0, 1.0)
+                probabilities = [
+                    f"[{default_interval[0]}," 
+                    f" {default_interval[1]}]"
+                    for next_state in valid_next_states
+                ]               
+            elif len(valid_next_states) > 1:
+                state_has_successor = True
+                # print(f"state {state} is not like the other states")
+                # print(valid_next_states, " ", len(valid_next_states), " >1")
+                default_interval = (4.999999999999449e-05, 0.9999999)
+                probabilities = [
+                    f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
+                    f" {intervals.get((state, action, next_state), default_interval)[1]}]"
+                    for next_state in valid_next_states
+                ]
+            else:
+                # If there is no transition, loop 
+                default_interval = (1.0, 1.0)
+                probabilities = [
+                    f"[{default_interval[0]}," 
+                    f" {default_interval[1]}]"
+                    for next_state in [state]
+                ]  
+                valid_next_states = [state]
+            # Create PRISM transition command
+            transitions = " + ".join(
+                f"{prob}:(s'={next_state})" for prob, next_state in zip(probabilities, valid_next_states)
+            )
+            action_label = actions[action]
+            prism_lines.append(f"    [{action_label}] s={state} -> {transitions};")
+            
+        if state_has_successor:
+            valid_initial_states.add(state)
+        
+                
+    # End the module
+    prism_lines.append("endmodule")
+    valid_initial_states = compute_initial_states(transition_matrix, valid_initial_states)
+    if valid_initial_states:
+        init_condition = " | ".join(f"(s={s})" for s in sorted(valid_initial_states))
+        prism_lines.append(f"init {init_condition} endinit")
+    prism_lines.append(
+        f'label "trap" = ' + ' | '.join(f's={t}' for t in trap) + ';'
+    )
+    prism_lines.append(
+        f'label "goal" = ' + ' | '.join(f's={t}' for t in goal) + ';'
+    )
+    # Return the PRISM MDP as a string
+    return "\n".join(prism_lines)
+
+
 
 def encodeCartPole(transition_matrix, intervals, trap):
     actions = [
@@ -119,7 +207,6 @@ def encodeCartPole(transition_matrix, intervals, trap):
         
                 
     # End the module
-    
     prism_lines.append("endmodule")
     valid_initial_states = compute_initial_states(transition_matrix, valid_initial_states)
     if valid_initial_states:

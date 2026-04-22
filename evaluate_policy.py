@@ -25,6 +25,8 @@ def infer_action_SPIBB_DQN(state, ai):
     return int(action)
 
 def infer_action_CQL_DQN(state, ai):
+    if not isinstance(state, np.ndarray):
+            state = np.array(state)
     return ai.get_action(state, epsilon=0.0)[0]
 
 def infer_action_grid_CQL_DQN(state, ai, env):
@@ -155,6 +157,14 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
                     print(f"heuristic reward = {reward}")
 
         elif env_name == "frozen_lake_cont":
+            if reward < 0:
+                failure_count += 1
+            if reward >= 0:
+                avoid_count += 1
+            if reward > 0:
+                success_count += 1
+        
+        elif env_name == "moving_obstacles":
             if reward < 0:
                 failure_count += 1
             if reward >= 0:
