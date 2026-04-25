@@ -578,7 +578,7 @@ class MovingObstaclesExperiment(Experiment):
                 # d_data = self.discretize_data(self.data_cont, self.predictor)
                 d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
                 self.data = d_data
-                nb_states = m.df_trained["CLUSTER"].nunique()
+                nb_states = m.df_trained["CLUSTER"].max()+1
                 self.nb_states = nb_states
                 print("nb states = ", nb_states)                
                 # get discrete reward function
