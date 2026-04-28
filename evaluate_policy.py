@@ -61,7 +61,8 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
     all_discounted_rewards = []
 
     frames = []
-
+    if env_name == "moving_obstacles":
+        goal_counts = [0] * len(env.goal_region)
     if generate_gif:
         gif_folder = os.path.join("gifs", env_name)
         os.makedirs(gif_folder, exist_ok=True)
@@ -165,18 +166,35 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
                 success_count += 1
         
         elif env_name == "moving_obstacles":
+            # Failure Count
             if reward < 0:
                 failure_count += 1
             if reward >= 0:
                 avoid_count += 1
             if reward > 0:
                 success_count += 1
+                
+            # Check what goal zone was reached
+            if reward > 0:
+                agent_x, agent_y = last_state[0], last_state[1]
+
+                for n, region in enumerate(env.goal_region):
+                    (x_min, y_min), (x_max, y_max) = region
+
+                    if x_min <= agent_x <= x_max and y_min <= agent_y <= y_max:
+                        goal_region = n
+                goal_counts[goal_region] += 1
 
         all_rewards.append(current_reward)
         all_discounted_rewards.append(discounted_reward)
 
         if generate_gif and episode == 0 and len(frames) > 0:
             imageio.mimsave(gif_path, frames, fps=30)
+     
+     
+    if env_name == "moving_obstacles":
+        with open("goal_counts.txt", "a") as f:
+            f.write(f"{gif_name} : {goal_counts}\n")           
 
     return (
         np.mean(all_rewards),

@@ -14,9 +14,16 @@ ACTION_TRANSLATOR = {
     'LEFT': np.array([-0.1, 0]),
 }
 
+
+# Standard
 GOAL_REWARD = 10
 TRAP_REWARD = -10
 STEP_REWARD = 0
+
+## Variant
+# GOAL_REWARD = 10
+# TRAP_REWARD = -1
+# STEP_REWARD = -0.1
 
 
 class RewardDict(Mapping):
@@ -48,7 +55,7 @@ class MovingObstacles:
         self.init = copy.deepcopy(self.state)
         self.obstacle_start = [[0.3, 0.6], [0.4, 0.3]]
         self.goal_region = [[[0.35, 0.35], [0.5, 0.5]], [[0.85, 0.85],[1.0, 1.0]]]
-        self.obstacle_width = 0.2
+        self.obstacle_width = 0.1
         # self.goal_region = [[[0.35, 0.5],[1.0, 1.0]]]
         self.partition_states()
         self.trap = []
