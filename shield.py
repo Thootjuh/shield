@@ -168,7 +168,7 @@ class Shield:
         
 
         
-    def calculateShieldPrism(self, prism_txt, prop, export_dir="./shield", java_mem=8):
+    def calculateShieldPrism(self, prism_txt, prop, export_dir="./shield", java_mem=16):
         """
         Compute per-state-action property satisfaction probabilities using PRISM,
         when the model is provided as a string.
@@ -593,12 +593,175 @@ class ShieldLunarLander(Shield):
         """
         # self.model_builder = IntervalMDPBuilderPrism(transition_matrix, intervals, goal, traps) 
         print("start encoding")
-        self.prism_text = encodeLunarLander(transition_matrix, intervals, traps, goal, init)
+        self.prism_text, self.state_map = encodeLunarLander(transition_matrix, intervals, traps, goal, init)
         # self.model_builder = IntervalMDPBuilderLunarLander(transition_matrix, intervals, goal, traps)
         print("end encoding")
 
         super().__init__(transition_matrix, traps, goal, intervals)
         
+    def calculateShieldPrism(
+        self,
+        prism_txt,
+        prop,
+        state_map,
+        export_dir="./shield",
+        java_mem=16
+    ):
+        """
+        Compute per-state-action property satisfaction probabilities using PRISM,
+        when the model is provided as a string.
+
+        Now supports compact PRISM encoding via state_map:
+            original_state -> prism_state
+        """
+        print("HELLO, YOU HAVE CHOSEN TO RUN THE SUPER COOL SHIELDING METHOD!! THANK YOU FOR YOUR PARTICIPATION, $5000 WILL BE TAKEN FROM YOUR BANK ACCOUNT!!!")
+        start_total_time = time.time()
+        prism_executable = "/internship/prism/prism/bin/prism"
+
+        os.makedirs(export_dir, exist_ok=True)
+
+        # ------------------------------------------------------------
+        # Reverse mapping: PRISM state -> original state
+        # ------------------------------------------------------------
+        reverse_state_map = {
+            prism_state: original_state
+            for original_state, prism_state in state_map.items()
+        }
+
+        # Write PRISM model to file
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".prism",
+            delete=False,
+            dir=export_dir
+        ) as tmp_file:
+            tmp_file.write(prism_txt)
+            model_file = tmp_file.name
+
+        # Write property file
+        with tempfile.NamedTemporaryFile(
+            "w",
+            suffix=".pctl",
+            delete=False,
+            dir=export_dir
+        ) as f:
+            filter_expr = f"filter(printall, {prop}, true)"
+            f.write(filter_expr)
+            prop_file = f.name
+
+        results_file = os.path.join(export_dir, "state_values.txt")
+
+        # ------------------------------------------------------------
+        # Run PRISM
+        # ------------------------------------------------------------
+        cmd = (
+            f"{prism_executable} -explicit -sparse -gs -javamaxmem {java_mem}g "
+            f"{model_file} {prop_file} "
+            f"| awk '/Results \\(including zeros\\) for filter true:/ {{flag=1; next}} "
+            f"flag && /^Range of values/ {{exit}} flag {{print}}' "
+            f"> {results_file}"
+        )
+
+        subprocess.Popen(cmd, shell=True).wait()
+
+        # ------------------------------------------------------------
+        # Parse PRISM output
+        # ------------------------------------------------------------
+        state_values = defaultdict(float)
+
+        # PRISM format:  "index:(state)=value"
+        pattern = re.compile(r"^\d+:\((\d+)\)=([0-9eE+\-.]+)$")
+
+        with open(results_file, "r") as f:
+            for line in f:
+
+                line = line.strip()
+
+                match = pattern.match(line)
+                if not match:
+                    continue
+
+                prism_state = int(match.group(1))
+                value = float(match.group(2))
+
+                # Convert PRISM state -> original abstraction state
+                original_state = reverse_state_map.get(prism_state)
+
+                if original_state is not None:
+                    state_values[original_state] = value
+
+        # ------------------------------------------------------------
+        # Build transition probabilities
+        # ------------------------------------------------------------
+        transition_probs = {}
+
+        for (s, a, s_next), (lower, upper) in self.intervals.items():
+            transition_probs.setdefault((s, a), {})[s_next] = {
+                "lower": lower,
+                "upper": upper
+            }
+
+        # Ensure every (state, action) has at least one transition
+        for state in range(self.num_states):
+            for action in range(self.num_actions):
+                if (state, action) not in transition_probs or len(transition_probs[(state, action)]) == 0:
+                    transition_probs[(state, action)] = {
+                        state: {"lower": 1.0, "upper": 1.0}
+                    }
+
+        # ------------------------------------------------------------
+        # Build shield
+        # ------------------------------------------------------------
+        for state in range(self.num_states):
+            for action in range(self.num_actions):
+
+                trans = transition_probs[(state, action)]
+
+                worst_case_transitions = {}
+                for next_state, trans_prob in trans.items():
+                    worst_case_transitions[next_state] = trans_prob["lower"]
+
+                remaining_states = list(worst_case_transitions.keys())
+                total_mass = sum(worst_case_transitions.values())
+
+                while total_mass < 1 and len(remaining_states) >= 1:
+
+                    worst_next_state = min(
+                        remaining_states,
+                        key=lambda i: state_values.get(i, 0.0)
+                    )
+
+                    remaining_states = [
+                        s for s in remaining_states if s != worst_next_state
+                    ]
+
+                    bounds = trans[worst_next_state]
+                    difference = bounds["upper"] - bounds["lower"]
+
+                    added_mass = min(difference, 1 - total_mass)
+
+                    total_mass += added_mass
+                    worst_case_transitions[worst_next_state] += added_mass
+
+                value = 0.0
+
+                for next_state, trans_prob in worst_case_transitions.items():
+                    value += trans_prob * state_values.get(next_state, 0.0)
+
+                self.shield[state][action] = max(
+                    min(1.0, 1 - value),
+                    0.0
+                )
+
+        # ------------------------------------------------------------
+        # Cleanup
+        # ------------------------------------------------------------
+        # os.remove(model_file)
+        # os.remove(prop_file)
+        # os.remove(results_file)
+
+        end_total_time = time.time()
+        print("Total time needed to create the Shield:", end_total_time - start_total_time)   
     def calculateShield(self):
         """
         calculate the probability of violating the safety specification for the Random MDPs environment
@@ -613,7 +776,7 @@ class ShieldLunarLander(Shield):
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
         # super().calculateShieldInterval(prop, self.model_builder.build_model())
         # super().calulateShieldPrism()
-        super().calculateShieldPrism(self.prism_text, prop)
+        self.calculateShieldPrism(self.prism_text, prop, self.state_map)
         self.shield = self.shield
         
     def get_safe_actions_from_shield(self, state, threshold=0.0, buffer = 0.05):

@@ -24,7 +24,7 @@ class spibb_dqn:
     def learn(self, number_of_epochs=1, steps_per_test=10000, exp_id=0, passes_on_dataset=100, **kwargs):
 
         # filename = os.path.join(self.folder_name, "spibb_{}_{}.csv".format(exp_id, self.ai.minimum_count))
-        target_updates=10000
+        target_updates=50000
         total_steps, updates = 0, 0
         minibatch_size = self.ai.minibatch_size
 
@@ -33,8 +33,8 @@ class spibb_dqn:
         updates_per_epoch = len(self.dataset) // minibatch_size
 
         # How many passes we need to hit ~target_updates
-        passes_on_dataset = max(10, target_updates // updates_per_epoch)
-        passes_on_dataset = 20
+        # passes_on_dataset = max(10, target_updates // updates_per_epoch)
+        passes_on_dataset = 10
         for epoch in range(number_of_epochs):
             begin = time.time()
             print('=' * 30, flush=True)

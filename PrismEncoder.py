@@ -531,85 +531,185 @@ def encodeLunarLander(transition_matrix, intervals, trap, goal, init):
         "Right",
         "Left"
     ]
-    
+
     num_states, num_actions = transition_matrix.shape
 
-    prism_lines = ["mdp", "", "module Maze"]
-    
-    # Add state space
-    prism_lines.append(f"    s : [0..{num_states - 1}];  // state")
+    # ------------------------------------------------------------------
+    # Determine visited states
+    # A state is visited if it appears as successor of another state
+    # (excluding self-loops)
+    # ------------------------------------------------------------------
+    visited_states = set()
 
-    # Track states that have at least one real successor
+    for state in range(num_states):
+        for action in range(num_actions):
+
+            next_states = transition_matrix[state, action]
+            if len(next_states) > 1:
+                visited_states.add(state)
+            elif len(next_states) == 1 and next_states[0] != state:
+                visited_states.add(state)
+            for next_state in next_states:
+
+                next_state = int(next_state)
+
+                if next_state < 0:
+                    continue
+
+                if next_state != state:
+                    visited_states.add(next_state)
+
+    # Include init state if needed
+    if init is not None:
+        visited_states.add(init)
+
+    visited_states = sorted(visited_states)
+
+    # ------------------------------------------------------------------
+    # Compact mapping
+    # ------------------------------------------------------------------
+    state_map = {
+        original_state: prism_state
+        for prism_state, original_state in enumerate(visited_states)
+    }
+
+    prism_lines = ["mdp", "", "module Maze"]
+
+    prism_lines.append(
+        f"    s : [0..{len(visited_states)-1}];"
+    )
+
     valid_initial_states = set()
 
-    # Add transitions
-    for state in range(num_states):
-        prism_lines.append(f"    // State {state}")
+    # ------------------------------------------------------------------
+    # Generate transitions
+    # ------------------------------------------------------------------
+    for original_state in visited_states:
+
+        prism_state = state_map[original_state]
+
+        prism_lines.append(
+            f"    // Original State {original_state}"
+        )
+
         state_has_successor = False
 
         for action in range(num_actions):
 
-            next_states = transition_matrix[state, action]
-            valid_next_states = [int(s) for s in next_states if s >= 0]
+            next_states = transition_matrix[original_state, action]
 
-            if len(valid_next_states) == 1:
-                if valid_next_states[0] != state:
+            valid_next_states = [
+                int(s)
+                for s in next_states
+                if s >= 0 and int(s) in state_map
+            ]
+
+            mapped_next_states = [
+                state_map[s]
+                for s in valid_next_states
+            ]
+
+            if len(mapped_next_states) == 1:
+
+                if mapped_next_states[0] != prism_state:
                     state_has_successor = True
+
                 default_interval = (1.0, 1.0)
+
                 probabilities = [
                     f"[{default_interval[0]}, {default_interval[1]}]"
-                    for _ in valid_next_states
+                    for _ in mapped_next_states
                 ]
 
-            elif len(valid_next_states) > 1:
+            elif len(mapped_next_states) > 1:
+
                 state_has_successor = True
-                default_interval = (4.999999999999449e-05, 0.9999999)
+
+                default_interval = (
+                    4.999999999999449e-05,
+                    0.9999999
+                )
+
                 probabilities = [
-                    f"[{intervals.get((state, action, next_state), default_interval)[0]}, "
-                    f"{intervals.get((state, action, next_state), default_interval)[1]}]"
+                    f"[{intervals.get((original_state, action, next_state), default_interval)[0]}, "
+                    f"{intervals.get((original_state, action, next_state), default_interval)[1]}]"
                     for next_state in valid_next_states
                 ]
 
             else:
-                # No transition = self-loop
+                # No transition -> self-loop
+                mapped_next_states = [prism_state]
+
                 default_interval = (1.0, 1.0)
-                valid_next_states = [state]
+
                 probabilities = [
                     f"[{default_interval[0]}, {default_interval[1]}]"
                 ]
 
             transitions = " + ".join(
                 f"{prob}:(s'={next_state})"
-                for prob, next_state in zip(probabilities, valid_next_states)
+                for prob, next_state in zip(
+                    probabilities,
+                    mapped_next_states
+                )
             )
 
             action_label = actions[action]
+
             prism_lines.append(
-                f"    [{action_label}] s={state} -> {transitions};"
+                f"    [{action_label}] s={prism_state} -> {transitions};"
             )
 
         if state_has_successor:
-            valid_initial_states.add(state)
+            valid_initial_states.add(prism_state)
 
     prism_lines.append("endmodule")
 
-    # Initial states = all states with at least one successor
-    valid_initial_states = compute_initial_states(transition_matrix, valid_initial_states)
+    # ------------------------------------------------------------------
+    # Initial states
+    # ------------------------------------------------------------------
+    valid_initial_states = compute_initial_states(
+        transition_matrix,
+        valid_initial_states
+    )
+
     if valid_initial_states:
-        init_condition = " | ".join(f"(s={s})" for s in sorted(valid_initial_states))
-        prism_lines.append(f"init {init_condition} endinit")
 
-    # Trap label
-    if trap:
-        add_label(prism_lines, "crash", trap)
+        init_condition = " | ".join(
+            f"(s={s})"
+            for s in sorted(valid_initial_states)
+        )
 
-    # Goal label
-    if goal:
-        add_label(prism_lines, "goal", goal)
+        prism_lines.append(
+            f"init {init_condition} endinit"
+        )
+
+    # ------------------------------------------------------------------
+    # Labels
+    # ------------------------------------------------------------------
+    remapped_trap = [
+        state_map[s]
+        for s in trap
+        if s in state_map
+    ] if trap else []
+
+    remapped_goal = [
+        state_map[s]
+        for s in goal
+        if s in state_map
+    ] if goal else []
+
+    if remapped_trap:
+        add_label(prism_lines, "crash", remapped_trap)
+
+    if remapped_goal:
+        add_label(prism_lines, "goal", remapped_goal)
     else:
         prism_lines.append('label "goal" = false;')
 
-    return "\n".join(prism_lines)
+    prism_program = "\n".join(prism_lines)
+
+    return prism_program, state_map
 
 def compute_initial_states(transition_matrix, relevant_states):
     """

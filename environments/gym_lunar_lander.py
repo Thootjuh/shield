@@ -4,6 +4,7 @@ import numpy as np
 import environments
 import random
 import discretization.grid.partition as prt
+from discretization.constructed.lunarLanderDisc import region2centre
 from collections import defaultdict
 from collections.abc import Mapping
 
@@ -104,14 +105,14 @@ class LunarLander:
         for _ in range(max_attempts):
 
             # ----- Sample position first -----
-            x = np.random.uniform(-0.1, 0.1)  # enforce |x| < 1 strictly
+            x = np.random.uniform(-1.0, 1.0)  # enforce |x| < 1 strictly
             y = np.random.uniform(0.1, 1.5)    # reasonable vertical band
 
             angle = np.random.uniform(-0.1, 0.1)  # restrict tilt
 
-            vx = np.random.uniform(-0.1, 0.1)
-            vy = np.random.uniform(-1.0, 1.0)
-            omega = np.random.uniform(-0.1, 0.1)
+            vx = np.random.uniform(-5.0, 5.0)
+            vy = np.random.uniform(-5.0, 5.0)
+            omega = np.random.uniform(-3.0, 3.0)
 
             # Convert normalized → world pose
             pos_x = x * (W / 2) + (W / 2)
@@ -166,8 +167,8 @@ class LunarLander:
     def partition_states(self):
         # Non-terminal region definitions for LunarLander
         # (coarse discretization example; adjust as needed)
-        nrPerDim = [8, 8, 4, 4, 8, 2, 2, 2]
-        # nrPerDim = [8, 8, 6, 6, 8, 2, 2, 2]
+        # nrPerDim = [2, 10, 2, 10, 12, 12, 2, 2]
+        nrPerDim = [8, 8, 6, 6, 8, 2, 2, 2]
         # Approximate observation bounds used for partitioning
         regionWidth = [
             2.0 / nrPerDim[0],        # x position ∈ [-1.0, 1.0]
@@ -599,6 +600,17 @@ class LunarLanderPolicy:
         pi_b = (1 - self.epsilon) * pi_h + self.epsilon * pi_r
         return pi_b
     
+    def compute_baseline_custom(self, nb_states):
+        pi_r = np.ones((nb_states, self.nb_actions)) / self.nb_actions
+        
+        pi_h = np.zeros((nb_states, self.nb_actions))
+        for state in range(nb_states-2):
+            center = region2centre(state)
+            action = self.heuristic(center)
+            pi_h[state][action] = 1.0
+
+        pi_b = (1 - self.epsilon) * pi_h + self.epsilon * pi_r
+        return pi_b
     
     
     

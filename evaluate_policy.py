@@ -6,6 +6,7 @@ from discretization.MRL.helper_functions import state2region
 # from discretization.greedyCut.greedyCut import GreedyCut
 import imageio
 import os
+import discretization.constructed.lunarLanderDisc as LLDisc
 
 def infer_action_greedy_cut(state, predictor, policy, gc):
     region = gc.state2region(state, predictor)
@@ -42,6 +43,11 @@ def infer_action_grid_CQL_DQN(state, ai, env):
     # print(type(centre))
     # print(centre)
     return ai.get_action(centre, epsilon=0.0)[0]
+def infer_action_custom(state, policy):
+    region = LLDisc.state2region(state)
+    print(policy[region])
+    # print(int(np.random.choice(policy.shape[1], p=policy[region])))
+    return int(np.random.choice(policy.shape[1], p=policy[region]))
 
 def infer_action_heuristic(state, env):
     return env.heuristic(state)
@@ -108,6 +114,8 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
                 action = infer_action_grid_CQL_DQN(last_state, ai, current_env)
             elif disc_method == 'heuristic':
                 action = infer_action_heuristic(last_state, current_env)
+            elif disc_method == 'custom':
+                action = infer_action_custom(last_state, policy)
             _, _, reward = current_env.step(action)
 
             term = current_env.is_done()
