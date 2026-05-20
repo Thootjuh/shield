@@ -192,7 +192,8 @@ class PACIntervalEstimator:
         m = self.structure.size 
         n  = self.state_action_counts[(state, action)] + self.alpha * self.nb_actions #Grows with number of observations
         alph = (self.error_tolerance*(1/m))/self.nb_actions
-        delta = math.sqrt(math.log(2/alph)/(2*n ))
+        delta = math.sqrt(math.log(2/alph)/(2*n))
+        # delta = math.sqrt((8/n)*(m*math.log(2)+math.log(1/self.error_tolerance)))
         return delta
     
     def get_intervals(self):

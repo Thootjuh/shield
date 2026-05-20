@@ -106,7 +106,7 @@ class LunarLander:
 
             # ----- Sample position first -----
             x = np.random.uniform(-1.0, 1.0)  # enforce |x| < 1 strictly
-            y = np.random.uniform(0.1, 1.5)    # reasonable vertical band
+            y = np.random.uniform(0.1, 1.0)    # reasonable vertical band
 
             angle = np.random.uniform(-0.1, 0.1)  # restrict tilt
 
