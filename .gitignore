@@ -30,3 +30,8 @@ gifs/
 stormvogel/
 shield/
 build/
+
+# Re-include specific results folder
+!internship/shield/results_mac/lander/shielded/spibb_test/final/
+!internship/shield/results_mac/lander/shielded/spibb_test/final/*.txt
+!internship/shield/results_mac/lander/shielded/spibb_test/final/*.csv
