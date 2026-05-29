@@ -1581,7 +1581,7 @@ class GymLunarLanderExperiment(Experiment):
                     pfeatures=self.dimensions,
                     h = -1,
                     gamma = 1,
-                    max_k = 75,
+                    max_k = 100,
                     distance_threshold=None,
                     th = 10,
                     eta = 25,
@@ -1621,7 +1621,7 @@ class GymLunarLanderExperiment(Experiment):
                 goal = []
                 print(m.R_df)
                 for state in range(len(self.R_state_state)):
-                    r = m.R_df[state]
+                    r = max(-100, min(100, m.R_df[state]))
                     self.R_state_state[:, state] = r
                     if r <= -95:
                         traps.append(state)

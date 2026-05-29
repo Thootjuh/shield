@@ -756,9 +756,9 @@ class ShieldLunarLander(Shield):
         # ------------------------------------------------------------
         # Cleanup
         # ------------------------------------------------------------
-        # os.remove(model_file)
-        # os.remove(prop_file)
-        # os.remove(results_file)
+        os.remove(model_file)
+        os.remove(prop_file)
+        os.remove(results_file)
 
         end_total_time = time.time()
         print("Total time needed to create the Shield:", end_total_time - start_total_time)   
