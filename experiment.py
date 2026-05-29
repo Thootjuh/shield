@@ -1570,187 +1570,187 @@ class GymLunarLanderExperiment(Experiment):
                 print(len(self.data_df.index))
                 
 
-                # ------------------------ MRL --------------------------
-                print("getting abstraction")
-                self.discretization_method = 'mrl'
+                # # ------------------------ MRL --------------------------
+                # print("getting abstraction")
+                # self.discretization_method = 'mrl'
                 
-                # Get discretization
-                m = MDP_model()
-                m.fit(
-                    self.data_df,
-                    pfeatures=self.dimensions,
-                    h = -1,
-                    gamma = 1,
-                    max_k = 100,
-                    distance_threshold=None,
-                    th = 10,
-                    eta = 25,
-                    precision_thresh = 1e-14,
-                    classification = 'DecisionTreeClassifier',
-                    split_classifier_params = {'random_state':0, 'max_depth':5},
-                    clustering = 'KMeans',
-                    n_clusters = 10,
-                    random_state = 0,
-                    plot=False,
-                    verbose=False,
-                    stochastic=False
-                )
-                print("Trained the model!!")
+                # # Get discretization
+                # m = MDP_model()
+                # m.fit(
+                #     self.data_df,
+                #     pfeatures=self.dimensions,
+                #     h = -1,
+                #     gamma = 1,
+                #     max_k = 100,
+                #     distance_threshold=None,
+                #     th = 10,
+                #     eta = 25,
+                #     precision_thresh = 1e-14,
+                #     classification = 'DecisionTreeClassifier',
+                #     split_classifier_params = {'random_state':0, 'max_depth':5},
+                #     clustering = 'KMeans',
+                #     n_clusters = 10,
+                #     random_state = 0,
+                #     plot=False,
+                #     verbose=False,
+                #     stochastic=False
+                # )
+                # print("Trained the model!!")
                 
-                # discretize data
-                self.predictor = predict_cluster(m.df_trained, self.dimensions)
-                # d_data = self.discretize_data(self.data_cont, self.predictor)
-                print("start discretization")
-                tb = time.time()
-                d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
-                self.data = d_data
-                ta = time.time()
-                print("time for discretization = ", ta-tb)
-                # tfile = open('data_df_trained.txt', 'a')
-                # tfile.write(m.df_trained.to_string())
-                # tfile.close()
+                # # discretize data
+                # self.predictor = predict_cluster(m.df_trained, self.dimensions)
+                # # d_data = self.discretize_data(self.data_cont, self.predictor)
+                # print("start discretization")
+                # tb = time.time()
+                # d_data = self.discretize_data_from_df(self.data_cont, m.df_trained)
+                # self.data = d_data
+                # ta = time.time()
+                # print("time for discretization = ", ta-tb)
+                # # tfile = open('data_df_trained.txt', 'a')
+                # # tfile.write(m.df_trained.to_string())
+                # # tfile.close()
                 
-                # self.write_discrete_data_to_txt(d_data, "data_d.txt")
-                nb_states = m.df_trained["CLUSTER"].nunique()
-                self.nb_states = nb_states
-                print("nb states = ", nb_states)                
-                # get discrete reward function
-                self.R_state_state = np.zeros((nb_states, nb_states))
-                #TODO fix this for this environment, also maybe write some stuff so that this does not have te be done manually
-                traps = []
-                goal = []
-                print(m.R_df)
-                for state in range(len(self.R_state_state)):
-                    r = max(-100, min(100, m.R_df[state]))
-                    self.R_state_state[:, state] = r
-                    if r <= -95:
-                        traps.append(state)
-                    if r >= 95:
-                        goal.append(state)
-                print("traps = ", traps)
-                print("goal = ", goal)
-                self.initial_state = d_data[0][0][1]
-
-                # get structure transition function
-                self.structure = self.get_empty_structure(nb_states)
-                self.structure = self.add_trans_from_data(self.structure, d_data)
-                self._count(d_data)
-                self._build_model()
-                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
-                print("found structure")
-                
-                # Calculate Shield                
-                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, d_data, self.nb_actions)
-                self.estimator.calculate_intervals()
-                self.intervals = self.estimator.get_intervals()                
-                
-                print("Calculating Shield") 
-                # print(m.R_df) 
-                self.shielder = ShieldLunarLander(self.structure, traps, goal, self.intervals, self.initial_state)
-                self.shielder.calculateShield()
-                # self.shielder.printShield()
-                
-                # # Run the algoirhtm
-                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states, d_data)
-
-                print("Running Algorithms")
-                self._run_algorithms()
-                
-                # ----------------------------- GreedyCut ----------------------------------
-                self.data = self.data_cont
-                self.discretization_method = 'GreedyCut'
-                bounds = [(-1.0,1.0),(-2.5,2.5),(-10,10),(-10,10),(-7.5,7.5),(-10,10),(0,1),(0,1)]
-                self.discretizer = GreedyCut(
-                    state_dim = self.dimensions,
-                    trajectories=self.data,
-                    B=10,
-                    bounds=bounds,
-                    initial_splits=[3,8,3,8,8,8,2,2],
-                    binary_dims=[6,7]
-                    # success_reward=100
-                    
-                )
-                self.predictor = self.discretizer.Greedy()
-                print(self.predictor)
-                d_data = self.discretizer.get_discretized_dataset()
-                self.data = d_data
-                # with open("trajectories.txt", "w") as f:
-                #     for i, traj in enumerate(d_data):
-                #         f.write(f"Trajectory {i}:\n")
-                #         for transition in traj:
-                #             action, state, next_state, reward = transition
-                #             f.write(f"{action}, {state}, {next_state}, {reward}\n")
-                #         f.write("\n")
-                        
-                # with open("trajectories_grid.txt", "w") as f:
-                #     for i, traj in enumerate(data_grid):
-                #         f.write(f"Trajectory {i}:\n")
-                #         for transition in traj:
-                #             action, state, next_state, reward = transition
-                #             f.write(f"{action}, {state}, {next_state}, {reward}\n")
-                #         f.write("\n")
-                nb_states = self.discretizer.get_num_regions(self.predictor)
-                self.nb_states = nb_states
-                print("nb_states = ", nb_states)
-                # get structure transition function
-                print("Build Model")
-                # print(m.R_df) 
-                goal = []
-                traps = []
-                for traj in d_data:
-                    final_transition = traj[-1]
-                    s, a, s_next, r = final_transition
-                    if  r==-100 and s_next not in traps:
-                        traps.append(s_next)
-                    if  r==100 and s_next not in goal:
-                        goal.append(s_next)    
-                print(traps)
-                print(goal)
-                
-                # R_state_state (as a RewardDict)
+                # # self.write_discrete_data_to_txt(d_data, "data_d.txt")
+                # nb_states = m.df_trained["CLUSTER"].nunique()
+                # self.nb_states = nb_states
+                # print("nb states = ", nb_states)                
+                # # get discrete reward function
                 # self.R_state_state = np.zeros((nb_states, nb_states))
-                reward_per_next = {}
-                for next_state in range(self.nb_states):
-                    if next_state in traps:
-                        reward_per_next[next_state] = -100
-                    elif next_state in goal:
-                        reward_per_next[next_state] = 100
-                    else:
-                        center = self.discretizer.region2centre(next_state)
-                        r = self.env.get_reward_from_centre(center)
-                        reward_per_next[next_state] = r
+                # #TODO fix this for this environment, also maybe write some stuff so that this does not have te be done manually
+                # traps = []
+                # goal = []
+                # print(m.R_df)
+                # for state in range(len(self.R_state_state)):
+                #     r = max(-100, min(100, m.R_df[state]))
+                #     self.R_state_state[:, state] = r
+                #     if r <= -95:
+                #         traps.append(state)
+                #     if r >= 95:
+                #         goal.append(state)
+                # print("traps = ", traps)
+                # print("goal = ", goal)
+                # self.initial_state = d_data[0][0][1]
+
+                # # get structure transition function
+                # self.structure = self.get_empty_structure(nb_states)
+                # self.structure = self.add_trans_from_data(self.structure, d_data)
+                # self._count(d_data)
+                # self._build_model()
+                # self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
+                # print("found structure")
+                
+                # # Calculate Shield                
+                # self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, d_data, self.nb_actions)
+                # self.estimator.calculate_intervals()
+                # self.intervals = self.estimator.get_intervals()                
+                
+                # print("Calculating Shield") 
+                # # print(m.R_df) 
+                # self.shielder = ShieldLunarLander(self.structure, traps, goal, self.intervals, self.initial_state)
+                # self.shielder.calculateShield()
+                # # self.shielder.printShield()
+                
+                # # # Run the algoirhtm
+                # self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_size(nb_states, d_data)
+
+                # print("Running Algorithms")
+                # self._run_algorithms()
+                
+                # # ----------------------------- GreedyCut ----------------------------------
+                # self.data = self.data_cont
+                # self.discretization_method = 'GreedyCut'
+                # bounds = [(-1.0,1.0),(-2.5,2.5),(-10,10),(-10,10),(-7.5,7.5),(-10,10),(0,1),(0,1)]
+                # self.discretizer = GreedyCut(
+                #     state_dim = self.dimensions,
+                #     trajectories=self.data,
+                #     B=10,
+                #     bounds=bounds,
+                #     initial_splits=[3,8,3,8,8,8,2,2],
+                #     binary_dims=[6,7]
+                #     # success_reward=100
+                    
+                # )
+                # self.predictor = self.discretizer.Greedy()
+                # print(self.predictor)
+                # d_data = self.discretizer.get_discretized_dataset()
+                # self.data = d_data
+                # # with open("trajectories.txt", "w") as f:
+                # #     for i, traj in enumerate(d_data):
+                # #         f.write(f"Trajectory {i}:\n")
+                # #         for transition in traj:
+                # #             action, state, next_state, reward = transition
+                # #             f.write(f"{action}, {state}, {next_state}, {reward}\n")
+                # #         f.write("\n")
+                        
+                # # with open("trajectories_grid.txt", "w") as f:
+                # #     for i, traj in enumerate(data_grid):
+                # #         f.write(f"Trajectory {i}:\n")
+                # #         for transition in traj:
+                # #             action, state, next_state, reward = transition
+                # #             f.write(f"{action}, {state}, {next_state}, {reward}\n")
+                # #         f.write("\n")
+                # nb_states = self.discretizer.get_num_regions(self.predictor)
+                # self.nb_states = nb_states
+                # print("nb_states = ", nb_states)
+                # # get structure transition function
+                # print("Build Model")
+                # # print(m.R_df) 
+                # goal = []
+                # traps = []
+                # for traj in d_data:
+                #     final_transition = traj[-1]
+                #     s, a, s_next, r = final_transition
+                #     if  r==-100 and s_next not in traps:
+                #         traps.append(s_next)
+                #     if  r==100 and s_next not in goal:
+                #         goal.append(s_next)    
+                # print(traps)
+                # print(goal)
+                
+                # # R_state_state (as a RewardDict)
+                # # self.R_state_state = np.zeros((nb_states, nb_states))
+                # reward_per_next = {}
+                # for next_state in range(self.nb_states):
+                #     if next_state in traps:
+                #         reward_per_next[next_state] = -100
+                #     elif next_state in goal:
+                #         reward_per_next[next_state] = 100
+                #     else:
+                #         center = self.discretizer.region2centre(next_state)
+                #         r = self.env.get_reward_from_centre(center)
+                #         reward_per_next[next_state] = r
             
                 
-                self.R_state_state = RewardDict(
-                    nb_states=self.nb_states,
-                    terminal_states=traps,
-                    goal_states=goal,
-                    reward_per_next=reward_per_next,
-                )
-                self.structure = self.get_empty_structure(nb_states)
-                self.structure = self.add_trans_from_data(self.structure, d_data)
-                self._count(d_data)
-                self._build_model()           
-                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
-                self.initial_state = d_data[0][0][1]
+                # self.R_state_state = RewardDict(
+                #     nb_states=self.nb_states,
+                #     terminal_states=traps,
+                #     goal_states=goal,
+                #     reward_per_next=reward_per_next,
+                # )
+                # self.structure = self.get_empty_structure(nb_states)
+                # self.structure = self.add_trans_from_data(self.structure, d_data)
+                # self._count(d_data)
+                # self._build_model()           
+                # self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
+                # self.initial_state = d_data[0][0][1]
                 
-                # Calculate Shield                
-                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, d_data, self.nb_actions)
-                self.estimator.calculate_intervals()
-                self.intervals = self.estimator.get_intervals()                
+                # # Calculate Shield                
+                # self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, d_data, self.nb_actions)
+                # self.estimator.calculate_intervals()
+                # self.intervals = self.estimator.get_intervals()                
                 
-                print("Calculating Shield") 
-                # 1: Loop through all state-next_state pairs in the abstraction
-                # 2
-                # option 2: Use the known parameters to set the traps based on the centres. Any state for which the centre is outside the
-                self.shielder = ShieldLunarLander(self.structure, traps, goal, self.intervals, self.initial_state)
-                self.shielder.calculateShield()
-                # self.shielder.printShield()
+                # print("Calculating Shield") 
+                # # 1: Loop through all state-next_state pairs in the abstraction
+                # # 2
+                # # option 2: Use the known parameters to set the traps based on the centres. Any state for which the centre is outside the
+                # self.shielder = ShieldLunarLander(self.structure, traps, goal, self.intervals, self.initial_state)
+                # self.shielder.calculateShield()
+                # # self.shielder.printShield()
                 
-                # # Run the algoirhtm
-                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_greedy(nb_states, self.discretizer)
-                print("Running Algorithms")
-                self._run_algorithms()
+                # # # Run the algoirhtm
+                # self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_greedy(nb_states, self.discretizer)
+                # print("Running Algorithms")
+                # self._run_algorithms()
                 # ----------------------------- Custom ----------------------------------
                 self.data = self.data_cont
                 self.discretization_method = 'custom'
@@ -1844,39 +1844,39 @@ class GymLunarLanderExperiment(Experiment):
                 self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).compute_baseline_custom(nb_states)
                 print("Running Algorithms")
                 self._run_algorithms()
-                # ----------------------------- GRID ---------------------------------
-                self.discretization_method = 'grid'
-                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
-                self.initial_state_cont, self.initial_state = self.env.get_init_state()
-                print("The baseline has length:", len(self.pi_b))
-                self.nb_states = self.env.get_nb_states()
-                self.data = data_grid
-                self.R_state_state = self.R_state_state_grid
+                # # ----------------------------- GRID ---------------------------------
+                # self.discretization_method = 'grid'
+                # self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
+                # self.initial_state_cont, self.initial_state = self.env.get_init_state()
+                # print("The baseline has length:", len(self.pi_b))
+                # self.nb_states = self.env.get_nb_states()
+                # self.data = data_grid
+                # self.R_state_state = self.R_state_state_grid
                 
-                print("Estimating Intervals")            
-                self._count(self.data)
-                self._build_model()
-                self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
-                self.structure = self._tm_to_next_states()
-                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, d_data, self.nb_actions)
-                self.estimator.calculate_intervals()
-                self.intervals = self.estimator.get_intervals()   
-                # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
-                # self.intervals = self.estimator.get_intervals()
+                # print("Estimating Intervals")            
+                # self._count(self.data)
+                # self._build_model()
+                # self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
+                # self.structure = self._tm_to_next_states()
+                # self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, d_data, self.nb_actions)
+                # self.estimator.calculate_intervals()
+                # self.intervals = self.estimator.get_intervals()   
+                # # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
+                # # self.intervals = self.estimator.get_intervals()
                 
                 
-                print("Calculating Shield")  
-                # self.structure = self.build_transition_matrix()
-                self.shielder = ShieldLunarLander(self.structure, self.traps, self.goal, self.intervals, self.initial_state)
-                self.shielder.calculateShield()
-                # self.shielder.printShield()
-                print("Running Algorithms")
-                self._run_algorithms()
-                # ----------------------------- SPIBB-DQN ----------------------------------
-                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
-                self.discretization_method = 'SPIBB-DQN'
-                self.data = self.data_cont
-                self._run_spibb_dqn('SPIBB-DQN')
+                # print("Calculating Shield")  
+                # # self.structure = self.build_transition_matrix()
+                # self.shielder = ShieldLunarLander(self.structure, self.traps, self.goal, self.intervals, self.initial_state)
+                # self.shielder.calculateShield()
+                # # self.shielder.printShield()
+                # print("Running Algorithms")
+                # self._run_algorithms()
+                # # ----------------------------- SPIBB-DQN ----------------------------------
+                # self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
+                # self.discretization_method = 'SPIBB-DQN'
+                # self.data = self.data_cont
+                # self._run_spibb_dqn('SPIBB-DQN')
                 # ----------------------------- CQL-DQN ----------------------------------
                 self.discretization_method = 'CQL-DQN'
                 self.data = self.data_cont
