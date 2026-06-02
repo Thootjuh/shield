@@ -541,6 +541,8 @@ class MovingObstaclesExperiment(Experiment):
             self.to_append_run_one_iteration = self.to_append_run + [epsilon_baseline,
                                                                         0]
             for nb_trajectories in self.nb_trajectories_list:
+                with open("goal_counts.txt", "a") as f:
+                    f.write(f"{nb_trajectories}\n")           
                 print(
                     f'Process with seed {self.seed} starting with nb_trajectories {nb_trajectories} out of '
                     f'{self.nb_trajectories_list}')
@@ -571,7 +573,7 @@ class MovingObstaclesExperiment(Experiment):
                     pfeatures=self.dimensions,
                     h = -1,
                     gamma = 1,
-                    max_k = 100,
+                    max_k = 50,
                     distance_threshold=0.5,
                     th = 10,
                     eta = 25,
@@ -620,7 +622,7 @@ class MovingObstaclesExperiment(Experiment):
                 self.initial_state = d_data[0][0][1]
                 
                 # Calculate Shield                
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, d_data, self.nb_actions)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()                
                 
@@ -651,7 +653,7 @@ class MovingObstaclesExperiment(Experiment):
                 self._build_model()
                 self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
                 self.structure = self._tm_to_next_states()
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, self.data, self.nb_actions)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()   
                 # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
@@ -709,7 +711,7 @@ class MovingObstaclesExperiment(Experiment):
                 self.initial_state = d_data[0][0][1]
                 
                 # Calculate Shield                
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, d_data, self.nb_actions, alpha=5)
+                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, d_data, self.nb_actions)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()                
                 

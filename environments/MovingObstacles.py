@@ -6,6 +6,7 @@ import discretization.grid.partition as prt
 from collections import defaultdict
 from collections.abc import Mapping
 import copy
+import pygame   # ADDED
 
 ACTION_TRANSLATOR = {
     'UP': np.array([0, 0.1]),
@@ -49,14 +50,27 @@ class RewardDict(Mapping):
     def __len__(self):
         return self.nb_states * self.nb_states
 
+
 class MovingObstacles:
-    def __init__(self):
+    def __init__(self, render=False):
         self.state = [0, 0, 0, 0] #Agent X-pos, Agent Y-pos, Vertical offset of obstacle 1, Horizontal offset of obstacle 2
         self.init = copy.deepcopy(self.state)
-        self.obstacle_start = [[0.3, 0.6], [0.4, 0.3]]
+        self.obstacle_start = [[0.3, 0.5], [0.5, 0.3]]
         self.goal_region = [[[0.35, 0.35], [0.5, 0.5]], [[0.85, 0.85],[1.0, 1.0]]]
         self.obstacle_width = 0.1
+        
+        # self.obstacle_start = [[0.3, 0.6], [0.4, 0.3]]
+        # self.goal_region = [[[0.35, 0.35], [0.5, 0.5]], [[0.85, 0.85],[1.0, 1.0]]]
+        # self.obstacle_width = 0.1
+        self.env = self
         # self.goal_region = [[[0.35, 0.5],[1.0, 1.0]]]
+
+        self.render_env = render  
+
+        self.window = None
+        self.clock = None
+        self.window_size = 600
+
         self.partition_states()
         self.trap = []
         self.goal = []
@@ -67,6 +81,9 @@ class MovingObstacles:
     def reset(self):
         self.state = [0, 0, 0, 0]
         self.terminated = False
+
+        if self.render_env: 
+            self.render()
         
     def partition_states(self):
             # Non-terminal region definitions for LunarLander
@@ -141,11 +158,17 @@ class MovingObstacles:
         # Check if agent is on an obstacle or goal (if both obstacle and goal, its still considered a failure)
         if self.check_trap(new_state):
             self.terminated = True
-            return old_state, new_state, TRAP_REWARD
+            reward = TRAP_REWARD
         elif self.check_goal(new_state):
             self.terminated = True
-            return old_state, new_state, GOAL_REWARD
-        return old_state, new_state, STEP_REWARD
+            reward = GOAL_REWARD
+        else:
+            reward = STEP_REWARD
+
+        if self.render_env: 
+            self.render()
+
+        return old_state, new_state, reward
     
     def check_trap(self, state):
         agent_x, agent_y = state[0], state[1]
@@ -218,9 +241,68 @@ class MovingObstacles:
     
     def get_init_state(self):
         return self.init, self.state2region(self.init)
-    
-    
-    
+
+    def render(self):
+        if self.window is None:
+            pygame.init()
+            self.window = pygame.display.set_mode((self.window_size, self.window_size))
+            pygame.display.set_caption("Moving Obstacles")
+            self.clock = pygame.time.Clock()
+
+        canvas = pygame.Surface((self.window_size, self.window_size))
+        canvas.fill((255, 255, 255))
+
+        def to_screen(x, y):
+            return int(x * self.window_size), int((1 - y) * self.window_size)
+
+        # Goals (blue)
+        for (xmin, ymin), (xmax, ymax) in self.goal_region:
+            x1, y1 = to_screen(xmin, ymax)
+            x2, y2 = to_screen(xmax, ymin)
+            pygame.draw.rect(canvas, (0, 0, 255), (x1, y1, x2-x1, y2-y1))
+
+        # Trajectories (dashed)
+        def dashed(start, end):
+            x1, y1 = to_screen(*start)
+            x2, y2 = to_screen(*end)
+            for i in range(0, 20, 2):
+                p1 = (x1 + (x2-x1)*i/20, y1 + (y2-y1)*i/20)
+                p2 = (x1 + (x2-x1)*(i+1)/20, y1 + (y2-y1)*(i+1)/20)
+                pygame.draw.line(canvas, (0,0,0), p1, p2, 1)
+
+        base1 = self.obstacle_start[0]
+        base2 = self.obstacle_start[1]
+
+        dashed((base1[0], base1[1]-0.2), (base1[0], base1[1]+0.2))
+        dashed((base2[0]-0.2, base2[1]), (base2[0]+0.2, base2[1]))
+
+        # Obstacles (red)
+        half = self.obstacle_width / 2
+        traps = [
+            (base1[0], base1[1] + self.state[2]),
+            (base2[0] + self.state[3], base2[1])
+        ]
+
+        for ox, oy in traps:
+            x1, y1 = to_screen(ox-half, oy+half)
+            x2, y2 = to_screen(ox+half, oy-half)
+            pygame.draw.rect(canvas, (255,0,0), (x1, y1, x2-x1, y2-y1))
+
+        # Agent (black)
+        px, py = to_screen(self.state[0], self.state[1])
+        pygame.draw.circle(canvas, (0,0,0), (px, py), 5)
+
+        self.window.blit(canvas, (0, 0))
+        pygame.event.pump()
+        pygame.display.update()
+        self.clock.tick(10)
+
+        frame = pygame.surfarray.array3d(self.window)
+        frame = np.transpose(frame, (1, 0, 2)) 
+
+        return frame
+
+
 class MovingObstaclesPolicy:
     def __init__(self, env, epsilon):
         self.nb_states = env.nb_states
