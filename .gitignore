@@ -30,3 +30,16 @@ gifs/
 stormvogel/
 shield/
 build/
+
+# Re-include this specific directory tree
+!internship/
+!internship/shield/
+!internship/shield/results_mac/
+!internship/shield/results_mac/lander/
+!internship/shield/results_mac/lander/shielded/
+!internship/shield/results_mac/lander/shielded/spibb_test/
+!internship/shield/results_mac/lander/shielded/spibb_test/final/
+
+# Re-include txt/csv files there
+!internship/shield/results_mac/lander/shielded/spibb_test/final/*.txt
+!internship/shield/results_mac/lander/shielded/spibb_test/final/*.csv
