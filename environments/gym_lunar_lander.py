@@ -168,7 +168,7 @@ class LunarLander:
         # Non-terminal region definitions for LunarLander
         # (coarse discretization example; adjust as needed)
         # nrPerDim = [2, 10, 2, 10, 12, 12, 2, 2]
-        nrPerDim = [8, 8, 6, 6, 8, 2, 2, 2]
+        nrPerDim = [10, 8, 8, 8, 10, 4, 2, 2]
         # Approximate observation bounds used for partitioning
         regionWidth = [
             2.0 / nrPerDim[0],        # x position ∈ [-1.0, 1.0]

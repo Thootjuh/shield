@@ -1143,7 +1143,7 @@ class GymCartPoleExperiment(Experiment):
                 # self.shielder.calculateShield()
                 # self.shielder.printShield()
                 print("NEW")                        
-                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, d_data, self.nb_actions)
+                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.1, d_data, self.nb_actions)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()  
                 
@@ -1180,7 +1180,7 @@ class GymCartPoleExperiment(Experiment):
                 self._build_model()
                 self.R_s_a = self.compute_r_state_action(self.transition_model, self.R_state_state)
                 self.structure = self._tm_to_next_states()
-                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.2, self.data, self.nb_actions)
+                self.estimator = PACIntervalEstimatorAbs(self.structure, 0.1, self.data, self.nb_actions)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()   
                 # self.estimator = imdp_builder(self.data, self.count_state_action_state, self.count_state_action, self.episodic, beta=1e-4, kstep=1)
@@ -1796,8 +1796,8 @@ class GymLunarLanderExperiment(Experiment):
                     for transition in traj:
                         s, a, s_next, r = transition
                         observed_rewards[s_next].append(r)
-                print(traps)
-                print(goal)
+                print("traps = ", traps)
+                print("goal = ", goal)
                 
                 # R_state_state (as a RewardDict)
                 # self.R_state_state = np.zeros((nb_states, nb_states))
@@ -1874,11 +1874,11 @@ class GymLunarLanderExperiment(Experiment):
                 # self.shielder.printShield()
                 print("Running Algorithms")
                 self._run_algorithms()
-                # ----------------------------- SPIBB-DQN ----------------------------------
-                self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
-                self.discretization_method = 'SPIBB-DQN'
-                self.data = self.data_cont
-                self._run_spibb_dqn('SPIBB-DQN')
+                # # ----------------------------- SPIBB-DQN ----------------------------------
+                # self.pi_b = LunarLanderPolicy(self.env, epsilon=epsilon_baseline).pi
+                # self.discretization_method = 'SPIBB-DQN'
+                # self.data = self.data_cont
+                # self._run_spibb_dqn('SPIBB-DQN')
                 # ----------------------------- CQL-DQN ----------------------------------
                 self.discretization_method = 'CQL-DQN'
                 self.data = self.data_cont
@@ -1964,7 +1964,7 @@ class GymLunarLanderExperiment(Experiment):
             trajectorY = []
             trajectorY_cont = []
             env.reset()
-            env.set_random_state()
+            # env.set_random_state()
             state, region = env.get_init_state()
             is_done = False
             reached_max_it = False

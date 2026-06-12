@@ -45,7 +45,7 @@ def infer_action_grid_CQL_DQN(state, ai, env):
     return ai.get_action(centre, epsilon=0.0)[0]
 def infer_action_custom(state, policy):
     region = LLDisc.state2region(state)
-    print(policy[region])
+    # print(policy[region])
     # print(int(np.random.choice(policy.shape[1], p=policy[region])))
     return int(np.random.choice(policy.shape[1], p=policy[region]))
 
