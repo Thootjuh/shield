@@ -74,7 +74,6 @@ def plot_data(data, filename, color_map):
     plt.savefig(filename)
     plt.show()
     
-# MAIN
 directory_path = sys.argv[1]
 
 # Optional method filter

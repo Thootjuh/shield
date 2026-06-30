@@ -115,32 +115,38 @@ def get_method_style_map():
 
         style_map[f"SPIBB_{variant}"] = {
             "color": spibb_color,
-            "linestyle": "-"
+            "linestyle": "-",
+            "markers": "o"
         }
 
         style_map[f"shield-SPIBB_{variant}"] = {
             "color": spibb_color,
-            "linestyle": "--"
+            "linestyle": "--",
+            "markers": "X"
         }
 
         style_map[f"baseline_{variant}"] = {
             "color": baseline_color,
-            "linestyle": "-"
+            "linestyle": "-",
+            "markers": "."
         }
 
         style_map[f"shielded_baseline_{variant}"] = {
             "color": baseline_color,
-            "linestyle": "--"
+            "linestyle": "--",
+            "markers": "x"
         }
 
     style_map["spibb_dqn"] = {
         "color": cmap(7),
-        "linestyle": "-"
+        "linestyle": "-",
+        "markers": "o"
     }
 
     style_map["cql_dqn"] = {
         "color": cmap(9),
-        "linestyle": "-"
+        "linestyle": "-",
+        "markers": "o"
     }
 
     return style_map
@@ -274,14 +280,28 @@ def build_custom_legend(style_map, data):
 
 
 # Plotting
-def create_combined_plot(data, output_file, env_name):
+def create_combined_plot(
+    data,
+    output_file,
+    env_name,
+    comparison_method,
+):
+    # Keep only supported methods plus the comparison method
+    allowed = set(ALLOWED_METHODS)
+    allowed.add(comparison_method)
 
-    # Keep only supported methods
-    data = data[
-        data["method"].isin(ALLOWED_METHODS)
-    ].copy()
+    data = data[data["method"].isin(allowed)].copy()
 
     style_map = get_method_style_map()
+
+    # Give the comparison method a default style if needed
+    if comparison_method not in style_map:
+        cmap = plt.get_cmap("Paired")
+        style_map[comparison_method] = {
+            "color": cmap(11),
+            "linestyle": "-",
+            "markers": "s",
+        }
 
     grouped = (
         data.groupby(
@@ -295,115 +315,165 @@ def create_combined_plot(data, output_file, env_name):
         2,
         2,
         figsize=(16, 10),
-        sharex=True
+        sharex=True,
     )
 
     ax_perf = axes[0, 0]
-    ax_legend = axes[0, 1]
+    ax_dqn = axes[0, 1]
     ax_success = axes[1, 0]
     ax_avoid = axes[1, 1]
+
     fig.suptitle(
         env_name,
         fontsize=22,
-        fontweight="bold"
+        fontweight="bold",
     )
-    plot_specs = [
-        (
-            ax_perf,
-            "method_perf",
-            "Average Method Performance",
-            "Performance"
-        ),
-        (
-            ax_success,
-            "success_rate",
-            "Success Rate",
-            "Success Rate"
-        ),
-        (
-            ax_avoid,
-            "avoid_rate",
-            "Avoid Rate",
-            "Avoid Rate"
-        )
-    ]
 
     dqn_methods = [
         "spibb_dqn",
-        "cql_dqn"
+        "cql_dqn",
     ]
 
     spibb_methods = [
-        m for m in ALLOWED_METHODS
+        m for m in allowed
         if m not in dqn_methods
     ]
 
-    for ax, metric, ylabel, title in plot_specs:
+    #
+    # Top-left: Performance (exclude DQN methods)
+    #
+    for method in spibb_methods:
 
-        # Plot DQN first
-        for method in dqn_methods:
+        method_data = grouped[
+            grouped["method"] == method
+        ]
 
-            method_data = grouped[
-                grouped["method"] == method
-            ]
+        if method_data.empty:
+            continue
 
-            if method_data.empty:
-                continue
+        style = style_map[method]
 
-            style = style_map[method]
+        ax_perf.plot(
+            method_data["length_trajectory"],
+            method_data["method_perf"],
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["markers"],
+            linewidth=2.5,
+        )
 
-            ax.plot(
-                method_data["length_trajectory"],
-                method_data[metric],
-                color=style["color"],
-                linestyle=style["linestyle"],
-                linewidth=2.5,
-                zorder=1
-            )
+    ax_perf.set_title("Average Method Performance")
+    ax_perf.set_xlabel("Number of Trajectories")
+    ax_perf.set_ylabel("Performance")
+    ax_perf.grid(True, alpha=0.3)
 
-        # Plot SPIBB variants
-        for method in spibb_methods:
+    #
+    # Top-right: DQN comparison
+    #
+    for method in [
+        "spibb_dqn",
+        "cql_dqn",
+        comparison_method,
+    ]:
 
-            method_data = grouped[
-                grouped["method"] == method
-            ]
+        method_data = grouped[
+            grouped["method"] == method
+        ]
 
-            if method_data.empty:
-                continue
+        if method_data.empty:
+            continue
 
-            style = style_map[method]
+        style = style_map[method]
 
-            ax.plot(
-                method_data["length_trajectory"],
-                method_data[metric],
-                color=style["color"],
-                linestyle=style["linestyle"],
-                linewidth=2.5,
-                zorder=3
-            )
+        ax_dqn.plot(
+            method_data["length_trajectory"],
+            method_data["method_perf"],
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["markers"],
+            linewidth=2.5,
+        )
 
-        ax.set_title(title)
-        ax.set_xlabel("Number of Trajectories")
-        ax.set_ylabel(ylabel)
-        ax.grid(True, alpha=0.3)
+    ax_dqn.set_title("DQN Comparison")
+    ax_dqn.set_xlabel("Number of Trajectories")
+    ax_dqn.set_ylabel("Performance")
+    ax_dqn.grid(True, alpha=0.3)
 
+    #
+    # Bottom-left: Success Rate (all methods)
+    #
+    for method in allowed:
+
+        method_data = grouped[
+            grouped["method"] == method
+        ]
+
+        if method_data.empty:
+            continue
+
+        style = style_map[method]
+
+        ax_success.plot(
+            method_data["length_trajectory"],
+            method_data["success_rate"],
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["markers"],
+            linewidth=2.5,
+        )
+
+    ax_success.set_title("Success Rate")
+    ax_success.set_xlabel("Number of Trajectories")
+    ax_success.set_ylabel("Success Rate")
+    ax_success.grid(True, alpha=0.3)
+
+    #
+    # Bottom-right: Avoid Rate (all methods)
+    #
+    for method in allowed:
+
+        method_data = grouped[
+            grouped["method"] == method
+        ]
+
+        if method_data.empty:
+            continue
+
+        style = style_map[method]
+
+        ax_avoid.plot(
+            method_data["length_trajectory"],
+            method_data["avoid_rate"],
+            color=style["color"],
+            linestyle=style["linestyle"],
+            marker=style["markers"],
+            linewidth=2.5,
+        )
+
+    ax_avoid.set_title("Avoid Rate")
+    ax_avoid.set_xlabel("Number of Trajectories")
+    ax_avoid.set_ylabel("Avoid Rate")
+    ax_avoid.grid(True, alpha=0.3)
+
+    #
+    # Legend outside the plots
+    #
     handles = build_custom_legend(style_map, data)
 
-    ax_legend.axis("off")
-
-    ax_legend.legend(
+    fig.legend(
         handles=handles,
-        loc="center",
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
         frameon=True,
-        fontsize=14
+        fontsize=14,
     )
 
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 0.82, 1])
 
     plt.savefig(
         output_file,
         dpi=300,
-        bbox_inches="tight"
+        bbox_inches="tight",
     )
 
     plt.show()
@@ -525,15 +595,17 @@ def create_discounted_performance_plot(data, output_file, env_name):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print(
             "Usage:\n"
-            "python plot.py <csv_file_or_directory> <environment_name>"
+            "python plot.py <csv_file_or_directory> "
+            "<environment_name> <comparison_method>"
         )
         sys.exit(1)
 
     path = sys.argv[1]
     env_name = sys.argv[2]
+    comparison_method = sys.argv[3]
 
     if os.path.isdir(path):
         data = read_data_from_directory(path)
@@ -543,7 +615,8 @@ if __name__ == "__main__":
     create_combined_plot(
         data,
         f"plot_combined_results_{env_name}.png",
-        env_name
+        env_name,
+        comparison_method
     )
 
     create_discounted_performance_plot(
