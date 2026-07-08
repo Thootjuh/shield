@@ -868,10 +868,18 @@ class SimplifiedPacmanExperiment(Experiment):
                          data=[[]], R=self.R_state_state, episodic=self.episodic, P=self.P)
         pi_star.fit()    
         pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
-        pi_star_perf = self._policy_evaluation_exact(pi_star.pi)
         pi_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star.pi)
         pi_star_succ_rate, pi_star_avoid_rate = self.policy_evaluation_success_rate(pi_star.pi)
         self.fixed_params_exp_list.extend([pi_star_perf, pi_star_perf_no_neg, pi_star_succ_rate, pi_star_avoid_rate])
+
+        pi_star_no_neg = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                         data=[[]], R=self.R_state_state_no_neg, episodic=self.episodic, P=self.P)
+        pi_star_no_neg.fit()
+        pi_star_no_neg_perf = self._policy_evaluation_exact(pi_star_no_neg.pi)
+        pi_star_no_neg_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_no_neg.pi)
+        pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate = self.policy_evaluation_success_rate(pi_star_no_neg.pi)
+        self.fixed_params_exp_list.extend([pi_star_no_neg_perf, pi_star_no_neg_perf_no_neg, pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate])
+
         
         # pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
         # self.pi_b_perf = self._policy_evaluation_exact(pi_b)
