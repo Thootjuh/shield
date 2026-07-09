@@ -54,16 +54,19 @@ class Shield:
         env.solver_environment.minmax_solver_environment.method = stormpy.MinMaxMethod.value_iteration
         task = stormpy.CheckTask(properties[0].raw_formula, only_initial_states=False)
         task.set_produce_schedulers()
+        task.set_uncertainty_resolution_mode(stormpy.UncertaintyResolutionMode.MINIMIZE)
         result = stormpy.check_interval_mdp(model, task, env)
+        policy = result.scheduler
+        self.pistar = np.zeros((self.num_states, self.num_actions), dtype=float)
         
         probs = result.get_values()
         transition_probs = {}
-        transition_probs = {}
         for state in model.states:
+            action_index = policy.get_choice(state.id).get_deterministic_choice()
+            self.pistar[state.id][action_index] = 1
             for action in state.actions:
                 transitions = {}
                 for transition in action.transitions:
-                    transition.value
                     transitions[transition.column] = transition.value()
                 transition_probs[(state.id, action.id)] = transitions
         return probs, transition_probs
@@ -117,7 +120,8 @@ class Shield:
         end_total_time = time.time()
         
 
-        print("Total time needed to create the Shield:", end_total_time - start_total_time)     
+        print("Total time needed to create the Shield:", end_total_time - start_total_time)
+        return state_probabilities, transition_probabilities
                         
     def calculateShieldPrism(self, prism_txt, prop, export_dir="./shield", java_mem=8):
         """
@@ -277,7 +281,7 @@ class ShieldRandomMDP(Shield):
         # prop2 = "Pmax=? [F \"goal\" & !F<4 \"trap\"]"
         # prop2 = "Pmax=? [F \"reach\" & !F \"trap\"]"
         # prop3 = "Pmin=? [F<=5 \"reach\"]"
-        super().calculateShieldInterval(prop, self.model_builder.build_model())
+        return super().calculateShieldInterval(prop, self.model_builder.build_model())
         
     def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         """
@@ -395,15 +399,7 @@ class ShieldWetChicken(Shield):
         # prop = "Pmax=? [  G <15 !\"waterfall\"]"
         
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
-        super().calculateShieldInterval(prop, self.model_builder.build_model())
-        # print("storm shield")
-        # self.printShield()
-        
-        # self.shield = np.full((self.num_states, self.num_actions), -1, dtype=np.float64) #reset
-        # super().calculateShieldPrism(self.prism_text, prop)
-        # print("prism shield")
-        self.shield = self.shield
-        # self.printShield()
+        return super().calculateShieldInterval(prop, self.model_builder.build_model())
         
         
     def get_safe_actions_from_shield(self, state, threshold=0.1, buffer = 0.01):
@@ -462,7 +458,7 @@ class ShieldAirplane(Shield):
         prop = "Pmax=? [  !\"crash\" U \"success\"]"
         # prop = "Pmin=? [  F\"waterfall\"]"
         # prop = "Pmax=? [  !F<2\"waterfall\"]"
-        super().calculateShieldInterval(prop, self.model_builder.build_model())
+        return super().calculateShieldInterval(prop, self.model_builder.build_model())
         
     def decode_int(self, state_int):   
         """
@@ -568,7 +564,7 @@ class ShieldSlipperyGridworld(Shield):
         # prop = "Pmax=? [!\"trap\"U\"save\"]"
         # prop = "Pmax=? [!\"save\"U\"trap\"]"
         
-        super().calculateShieldInterval(prop, self.model_builder.build_model())
+        return super().calculateShieldInterval(prop, self.model_builder.build_model())
         # self.shield = 1-self.shield
     
     def get_safe_actions_from_shield(self, state, threshold=0.1, buffer = 0.1):
@@ -676,7 +672,7 @@ class ShieldSimplifiedPacman(Shield):
         # prop = "Pmax=? [!\"eaten\"U\"goal\"]"
         prop = self.prop
         
-        super().calculateShieldInterval(prop, self.model_builder.build_model())
+        return super().calculateShieldInterval(prop, self.model_builder.build_model())
     
     
     def get_safe_actions_from_shield(self, state, threshold=0.01, buffer = 0.05):
@@ -755,12 +751,8 @@ class ShieldTaxi(Shield):
         """
         # How likely are we to step into a trap
         prop = "Pmax=? [!\"crash\"U\"goal\"]"
-    
-        # self.printShield()
-        # self.shield[:] = 0
-        super().calculateShieldInterval(prop, self.model_builder.build_model())
-        # self.printShield()
-        # self.printShield()
+
+        return super().calculateShieldInterval(prop, self.model_builder.build_model())
     
     def get_safe_actions_from_shield(self, state, threshold=0.3, buffer = 0.05):
         """
@@ -873,12 +865,7 @@ class ShieldFrozenLake(Shield):
         # How likely are we to step into a trap
         # prop = "Pmax=? [!\"hole\"U\"goal\"]"
         prop = self.prop
-        
-        # self.printShield()
-        # self.shield[:] = 0
-        super().calculateShieldInterval(prop, self.model_builder.build_model())
-        # self.printShield()
-        # self.printShield()
+        return super().calculateShieldInterval(prop, self.model_builder.build_model())
     
     def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.02):
         """
@@ -969,12 +956,8 @@ class ShieldPrism(Shield):
         """
         # How likely are we to step into a trap
         prop = "Pmax=? [!\"trap\"U\"goal\"]"
-        
-        # self.printShield()
-        # self.shield[:] = 0
-        super().calculateShieldInterval(prop, self.model_builder.build_model())
-        # self.printShield()
-        # self.printShield()
+
+        return super().calculateShieldInterval(prop, self.model_builder.build_model())
     
     def get_safe_actions_from_shield(self, state, threshold=0.2, buffer = 0.05):
         """

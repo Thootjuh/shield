@@ -2,6 +2,7 @@ import numpy as np
 from . import spibb
 from . import spibb_utils
 from collections import defaultdict, deque
+import random
 
 class Garnets:
     def __init__(self, nb_states, nb_actions, nb_next_state_transition, env_type=1, self_transitions=0, nb_traps = 0, gamma=0.95):
@@ -102,7 +103,7 @@ class Garnets:
         return int(self.current_state)
 
     def sample_action(self):
-        return int(np.random.choice(self.nb_actions, 1))
+        return int(random.choice(self.nb_actions))
 
     def _get_reward(self, state, action, next_state):
         if next_state == self.final_state:
@@ -119,8 +120,7 @@ class Garnets:
             print("egg: ", easter_egg)
             print("final state = ", self.final_state)
             print("trap: ", self.traps)
-        next_state = np.random.choice(self.nb_states, 1,
-                                      p=self.transition_function[int(self.current_state), action, :].squeeze())
+        next_state = random.choices(range(self.nb_states), k=1, weights=self.transition_function[int(self.current_state), action, :].squeeze())[0]
         reward = self._get_reward(self.current_state, action, next_state)
         if self.env_type == 2 and next_state == easter_egg:  # easter
             reward = 1

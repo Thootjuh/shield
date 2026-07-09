@@ -216,7 +216,9 @@ class ConstSPIBBAgent():
 
                 prob = cp.Problem(cp.Maximize(pi @ QL[s]), constraints)
 
-                prob.solve(solver=cp.ECOS, warm_start=True, canon_backend="NUMPY")
+                # prob.solve(verbose=True)
+
+                prob.solve(solver=cp.ECOS, warm_start=True, canon_backend="SCIPY")
 
                 if pi.value is not None:
                     new_pi[s] = pi.value

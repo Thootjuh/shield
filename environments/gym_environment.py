@@ -251,6 +251,5 @@ class gymIce:
         # for next_state in range(self.nb_states):
         #     choice = scheduler.get_choice(next_state).get_deterministic_choice()
         #     pi_sched[next_state][choice] = 1
-        
         pi = (1-epsilon) * pi_b + epsilon * pi_r
         return pi_r

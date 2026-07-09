@@ -51,7 +51,9 @@ def policy_evaluation_exact(pi, r, p, gamma):
     # multiply p by pi by broadcasting pi, then sum second axis
     # result is an array of shape |S| x |S|
     p_pi = np.einsum('ijk, ij->ik', p, pi)
-    v = np.dot(np.linalg.inv((np.eye(p_pi.shape[0]) - gamma * p_pi)), r_pi)
+    # New calculation to make it more stable
+     # v = np.dot(np.linalg.inv((np.eye(p_pi.shape[0]) - gamma * p_pi)), r_pi)
+    v = np.linalg.solve((np.eye(p_pi.shape[0]) - gamma * p_pi), r_pi)
     return v, r + gamma*np.einsum('i, jki->jk', v, p)
 
 

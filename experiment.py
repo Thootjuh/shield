@@ -74,7 +74,7 @@ class Experiment:
         np.random.seed(seed)
         self.experiment_config = experiment_config
         self.machine_specific_experiment_directory = machine_specific_experiment_directory
-
+        self.delta_imdp = 0.1
         self.filename_header = f'results_{seed}'
         self.nb_iterations = nb_iterations
         self.safety_deltas = ast.literal_eval(self.experiment_config['META']['safety_deltas'])
@@ -90,6 +90,7 @@ class Experiment:
         self.speed_up = bool(util.strtobool(self.experiment_config['META']['speed_up']))
         self.set_up_speed_up_dict()
         self._set_env_params()
+
 
     def run(self):
         """
@@ -797,7 +798,10 @@ class Experiment:
             result = defaultdict(float)
 
             for (i, j, k), p_val in P.items():
-                r_val = R.get((i, k), 0.0)
+                if isinstance(R, dict):
+                    r_val = R.get((i, k), 0.0)
+                else:
+                    r_val = R[i, k]
                 result[(i, j)] += p_val * r_val
 
             # Convert result to dense NumPy array
@@ -879,7 +883,6 @@ class SimplifiedPacmanExperiment(Experiment):
         pi_star_no_neg_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_no_neg.pi)
         pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate = self.policy_evaluation_success_rate(pi_star_no_neg.pi)
         self.fixed_params_exp_list.extend([pi_star_no_neg_perf, pi_star_no_neg_perf_no_neg, pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate])
-
         
         # pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
         # self.pi_b_perf = self._policy_evaluation_exact(pi_b)
@@ -946,7 +949,7 @@ class SimplifiedPacmanExperiment(Experiment):
 
           
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                self.estimator = PACIntervalEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height, self.prop)
@@ -955,7 +958,7 @@ class SimplifiedPacmanExperiment(Experiment):
                 
                 
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                self.estimator = PointEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height, self.prop)
@@ -1089,7 +1092,7 @@ class SlipperyGridworldExperiment(Experiment):
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
+                self.estimator = PACIntervalEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 
@@ -1199,7 +1202,7 @@ class AirplaneExperiment(Experiment):
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
+                self.estimator = PACIntervalEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 self.shielder = ShieldAirplane(self.structure, self.crash, self.success, self.intervals, self.maxX, self.maxY)
@@ -1263,7 +1266,10 @@ class AirplaneExperiment(Experiment):
 class WetChickenExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'length', 'width', 'max_turbulence', 'max_velocity', 'baseline_method',
-                                'pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate']
+                                'pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate',
+                                    'pi_star_no_neg_perf', 'pi_star_no_neg_perf_no_neg', 'pi_star_no_neg_succ_rate', 'pi_star_no_neg_avoid_rate',
+                                   'pi_safety_star_perf', 'pi_safety_star_perf_no_neg', 'pi_safety_star_succ_rate', 'pi_safety_star_avoid_rate'
+                                ]
     
     def _set_env_params(self):
         """
@@ -1287,6 +1293,8 @@ class WetChickenExperiment(Experiment):
         self.goal = [self.env.get_state_int()]
         self.traps = [self.nb_states-1]
         self.P = self.env.get_transition_function()
+        self.structure = self.reduce_transition_matrix(self.P)
+        self.goal = self.find_closest_states(list(range(len(self.structure))), self.length)
         self.R_state_state = self.env.get_reward_function()
         self.R_state_action = self.compute_r_state_action(self.P, self.R_state_state)
         
@@ -1317,6 +1325,37 @@ class WetChickenExperiment(Experiment):
         pi_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star.pi)
         pi_star_succ_rate, pi_star_avoid_rate = self.policy_evaluation_success_rate(pi_star.pi)
         self.fixed_params_exp_list.extend([pi_star_perf, pi_star_perf_no_neg, pi_star_succ_rate, pi_star_avoid_rate])
+
+        pi_star_no_neg = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                         data=[[]], R=self.R_state_state_no_neg, episodic=self.episodic, P=self.P)
+        pi_star_no_neg.fit()
+        pi_star_no_neg_perf = self._policy_evaluation_exact(pi_star_no_neg.pi)
+        pi_star_no_neg_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_no_neg.pi)
+        pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate = self.policy_evaluation_success_rate(pi_star_no_neg.pi)
+        self.fixed_params_exp_list.extend([pi_star_no_neg_perf, pi_star_no_neg_perf_no_neg, pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate])
+
+        interval_ground_truth_prob = {
+            key : (value, value) for key, value in self.P.items()
+        }
+
+        self.structure = self.reduce_transition_matrix(self.P)   
+
+        pi_star_shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, interval_ground_truth_prob, self.prop, self.initial_state)
+        state_probabilities, transition_probabilities = pi_star_shielder.calculateShield()
+
+        pi_safety_star_perf = self._policy_evaluation_exact(pi_star_shielder.pistar)
+        pi_safety_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_shielder.pistar)
+        pi_safety_star_succ_rate, pi_safety_star_avoid_rate = self.policy_evaluation_success_rate(pi_star_shielder.pistar)
+        self.fixed_params_exp_list.extend([pi_safety_star_perf, pi_safety_star_perf_no_neg, pi_safety_star_succ_rate, pi_safety_star_avoid_rate])
+
+
+        print(transition_probabilities)
+        print(state_probabilities)
+        print(state_probabilities[self.initial_state])
+        print(pi_star_shielder.pistar)
+        print("pisafe", pi_safety_star_perf, pi_safety_star_perf_no_neg, pi_safety_star_succ_rate, pi_safety_star_avoid_rate)
+        print("pinoneg", pi_star_no_neg_perf, pi_star_no_neg_perf_no_neg, pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate)
+        print("pistar", pi_star_perf, pi_star_perf_no_neg, pi_star_succ_rate, pi_star_avoid_rate)
 
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
         self.lengths_trajectory = ast.literal_eval(self.experiment_config['BASELINE']['lengths_trajectory'])
@@ -1349,15 +1388,13 @@ class WetChickenExperiment(Experiment):
                     print(f'Starting with length_trajectory {length_trajectory} out of {self.lengths_trajectory}.')
                     self.data = self.generate_batch(length_trajectory, self.env, self.pi_b)
                     self.to_append = self.to_append_run_one_iteration + [length_trajectory]
-                    self.structure = self.reduce_transition_matrix(self.P)
-                    self.goal = self.find_closest_states(list(range(len(self.structure))), self.length)
-                    self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                    self.estimator = PACIntervalEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=10)
                     self.intervals = self.estimator.get_intervals()
                     self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, self.initial_state)
                     self.shielder.calculateShield()
                     self._run_algorithms()
                     
-                    self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=10)
+                    self.estimator = PointEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=10)
                     self.intervals = self.estimator.get_intervals()
                     self.shielder = ShieldWetChicken(self.structure, self.width, self.length, self.goal, self.intervals, self.prop, self.initial_state)
                     self.shielder.calculateShield()
@@ -1452,7 +1489,11 @@ class RandomMDPsExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma', 'nb_states', 'nb_actions', 'nb_next_state_transition']
     variable_params_exp_columns = ['iteration', 'softmax_target_perf_ratio',  'baseline_target_perf_ratio',
-                                   'threshold', 'baseline_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate','nb_trajectories']
+                                   'threshold', 'baseline_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'pi_rand_perf', 
+                                   'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate',
+                                   'pi_star_no_neg_perf', 'pi_star_no_neg_perf_no_neg', 'pi_star_no_neg_succ_rate', 'pi_star_no_neg_avoid_rate',
+                                   'pi_safety_star_perf', 'pi_safety_star_perf_no_neg', 'pi_safety_star_succ_rate', 'pi_safety_star_avoid_rate',
+                                   'nb_trajectories']
 
     def _set_env_params(self):
         """
@@ -1509,7 +1550,6 @@ class RandomMDPsExperiment(Experiment):
                     
                 self.R_state_state = self.garnet.compute_reward()
                 self.R_state_state_no_neg = np.maximum(self.R_state_state, 0)
-                
 
                 if self.train_without_neg_values:
                     self.R_state_state_train = self.R_state_state_no_neg
@@ -1524,6 +1564,10 @@ class RandomMDPsExperiment(Experiment):
                 for trp in self.traps:
                     self.P[trp, :, :] = 0.0
                     # self.P[trp, :, trp] = 1.0
+                self.structure = self.reduce_transition_matrix(self.P)  
+                self.P = {
+                    idx: val for idx, val in np.ndenumerate(self.P) if val > 0
+                }
                 C = np.zeros_like(self.R_state_state)
                 C[:, self.traps] = 10.0
                 self.C_state_state = C
@@ -1538,9 +1582,31 @@ class RandomMDPsExperiment(Experiment):
                 pi_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star.pi)
                 pi_star_succ_rate, pi_star_avoid_rate = self.policy_evaluation_success_rate(pi_star.pi)
                 self.to_append_run_one_iteration += [theta, self.pi_b_perf, pi_b_succ_rate, pi_b_avoid_rate, self.pi_rand_perf, self.pi_star_perf, pi_star_perf_no_neg, pi_star_succ_rate, pi_star_avoid_rate]
-                
 
-                
+
+                pi_star_no_neg = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                                data=[[]], R=self.R_state_state_no_neg, episodic=self.episodic, P=self.P)
+                pi_star_no_neg.fit()
+                pi_star_no_neg_perf = self._policy_evaluation_exact(pi_star_no_neg.pi)
+                pi_star_no_neg_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_no_neg.pi)
+                pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate = self.policy_evaluation_success_rate(pi_star_no_neg.pi)
+                self.to_append_run_one_iteration += [pi_star_no_neg_perf, pi_star_no_neg_perf_no_neg, pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate]
+
+                interval_ground_truth_prob = {
+                    key : (value, value) for key, value in self.P.items()
+                }
+
+                # interval_ground_truth_prob = {
+                    # idx: (val, val) for idx, val in np.ndenumerate(self.P) if val > 0
+                # } 
+
+                pi_star_shielder = ShieldRandomMDP(self.structure, self.traps, self.goal, interval_ground_truth_prob, self.prop)
+                state_probabilities, transition_probabilities = pi_star_shielder.calculateShield()
+
+                pi_safety_star_perf = self._policy_evaluation_exact(pi_star_shielder.pistar)
+                pi_safety_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_shielder.pistar)
+                pi_safety_star_succ_rate, pi_safety_star_avoid_rate = self.policy_evaluation_success_rate(pi_star_shielder.pistar)
+                self.to_append_run_one_iteration +=  [pi_safety_star_perf, pi_safety_star_perf_no_neg, pi_safety_star_succ_rate, pi_safety_star_avoid_rate]
                 
                 for nb_trajectories in self.nb_trajectories_list:
                     print(
@@ -1552,8 +1618,8 @@ class RandomMDPsExperiment(Experiment):
                     self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
                     # Generate the shield: First, we compute the PAC estimate IMDP, then we compute the shield
-                    self.structure = self.reduce_transition_matrix(self.P)
-                    self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                    # self.structure = self.reduce_transition_matrix(self.P)
+                    self.estimator = PACIntervalEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=5)
                     self.estimator.calculate_intervals()
                     self.intervals = self.estimator.get_intervals()
                     
@@ -1562,7 +1628,7 @@ class RandomMDPsExperiment(Experiment):
                     self._run_algorithms()
                     
                     
-                    self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=5)
+                    self.estimator = PointEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=5)
                     self.estimator.calculate_intervals()
                     self.intervals = self.estimator.get_intervals()
                     
@@ -1766,7 +1832,7 @@ class PrismExperiment(Experiment):
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=2)
+                self.estimator = PACIntervalEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=2)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 self.shielder = ShieldPrism(self.structure, self.traps, self.goal, self.intervals)
@@ -1924,7 +1990,7 @@ class GymTaxiExperiment(Experiment):
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
                 self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.15, self.data, self.nb_actions, alpha=10)
+                self.estimator = PACIntervalEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 self.shielder = ShieldTaxi(self.structure, self.traps, self.goal, self.intervals)
@@ -2000,7 +2066,11 @@ class GymTaxiExperiment(Experiment):
     
 class GymFrozenLakeExperiment(Experiment):
     # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
-    fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method','pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate', 'baseline_success_rate', 'baseline_avoid_rate']
+    fixed_params_exp_columns = ['seed', 'gamma', 'baseline_method',
+                                'pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate', 
+                                'pi_star_no_neg_perf', 'pi_star_no_neg_perf_no_neg', 'pi_star_no_neg_succ_rate', 'pi_star_no_neg_avoid_rate',
+                                'pi_safety_star_perf', 'pi_safety_star_perf_no_neg', 'pi_safety_star_succ_rate', 'pi_safety_star_avoid_rate',
+                                'baseline_success_rate', 'baseline_avoid_rate']
     
     def compute_r_state_action(self, P, R):
         result = defaultdict(float)
@@ -2072,10 +2142,33 @@ class GymFrozenLakeExperiment(Experiment):
                 file.write(f"{item}\n")
         
 
+        pi_star_no_neg = PiStar(pi_b=None, gamma=self.gamma, nb_states=self.nb_states, nb_actions=self.nb_actions,
+                         data=[[]], R=self.R_state_state_no_neg, episodic=self.episodic, P=self.P)
+        pi_star_no_neg.fit()
+        pi_star_no_neg_perf = self._policy_evaluation_exact(pi_star_no_neg.pi)
+        pi_star_no_neg_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_no_neg.pi)
+        pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate = self.policy_evaluation_success_rate(pi_star_no_neg.pi)
+        self.fixed_params_exp_list.extend([pi_star_no_neg_perf, pi_star_no_neg_perf_no_neg, pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate])
+
+        interval_ground_truth_prob = {
+            key : (value, value) for key, value in self.P.items()
+        }
+
+        self.structure = self.reduce_transition_matrix(self.P)   
+
+        pi_star_shielder = ShieldFrozenLake(self.structure, self.traps, self.goal, interval_ground_truth_prob, self.prop)
+        state_probabilities, transition_probabilities = pi_star_shielder.calculateShield()
+
+        pi_safety_star_no_neg_perf = self._policy_evaluation_exact(pi_star_shielder.pistar)
+        pi_safety_star_no_neg_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_shielder.pistar)
+        pi_safety_star_no_neg_succ_rate, pi_safety_star_no_neg_avoid_rate = self.policy_evaluation_success_rate(pi_star_shielder.pistar)
+        self.fixed_params_exp_list.extend([pi_safety_star_no_neg_perf, pi_safety_star_no_neg_perf_no_neg, pi_safety_star_no_neg_succ_rate, pi_safety_star_no_neg_avoid_rate])
 
         
         self.epsilons_baseline = ast.literal_eval(self.experiment_config['BASELINE']['epsilons_baseline'])
-        pi_base_perf = self._policy_evaluation_exact(self.env.get_baseline_policy(self.epsilons_baseline[0]))
+        eps = self.epsilons_baseline[0]
+        self.pi_b = self.env.get_baseline_policy(epsilon=eps)
+        pi_base_perf = self._policy_evaluation_exact(self.pi_b)
         self.nb_trajectories_list = ast.literal_eval(self.experiment_config['BASELINE']['nb_trajectories_list'])
         if self.baseline_method == 'heuristic':
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'pi_b_perf', 'length_trajectory']
@@ -2084,12 +2177,6 @@ class GymFrozenLakeExperiment(Experiment):
             self.variable_params_exp_columns = ['i', 'epsilon_baseline', 'learning_rate', 'pi_b_perf',
                                                 'length_trajectory']
         self.estimate_baseline=bool((util.strtobool(self.experiment_config['META']['estimate_baseline'])))
-        
-        
-        
-        self.pi_b = self.env.get_baseline_policy(epsilon=0.5)
-
-        
         pi_b_succ_rate, pi_b_avoid_rate = self.policy_evaluation_success_rate(self.pi_b)
         self.fixed_params_exp_list.append(pi_b_succ_rate)
         self.fixed_params_exp_list.append(pi_b_avoid_rate)
@@ -2110,8 +2197,7 @@ class GymFrozenLakeExperiment(Experiment):
                 self.data, batch_traj = self.generate_batch(nb_trajectories, self.env, self.pi_b)
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-                self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PACIntervalEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
+                self.estimator = PACIntervalEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=20)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # # print(intervals)
@@ -2119,10 +2205,8 @@ class GymFrozenLakeExperiment(Experiment):
                 self.shielder.calculateShield()
                 # self.shielder.printShield()
                 self._run_algorithms()
-                
-                
-                self.structure = self.reduce_transition_matrix(self.P)   
-                self.estimator = PointEstimator(self.structure, 0.1, self.data, self.nb_actions, alpha=20)
+
+                self.estimator = PointEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=20)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 # # print(intervals)

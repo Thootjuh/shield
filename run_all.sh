@@ -15,4 +15,5 @@ for env in random_mdps wet_chicken frozen_lake pacman
 do
     echo "Running experiments on $env"
     python3 run_experiments.py ${env}_shield.ini experiment_results $SEED $NUM_THREADS $NUM_ITERATION_PER_THREAD
+    python3 run_experiments.py ${env}_shield_no_negative_rewards.ini experiment_results $SEED $NUM_THREADS $NUM_ITERATION_PER_THREAD
 done
