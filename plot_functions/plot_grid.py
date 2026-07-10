@@ -69,6 +69,7 @@ def extract_data(data):
     Returns:
         pd.DataFrame: Filtered DataFrame with selected columns only.
     """
+    print("columns", data.columns)
     relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time', 'pi_b_perf', 'pi_star_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'method_succ_rate', 'method_avoid_rate']]
     return relevant_data_new
 
@@ -648,6 +649,7 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
 
         for idx, subdir in enumerate(subdirs):
             data = read_data_from_directory(subdir)
+            print(idx, subdir, data)
             data = extract_data(data)
             data_list = group_by_methods(data)
             if monolithic:
@@ -740,7 +742,7 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
     
 
     
-def main(parent_directory):
+def main(parent_directory, environments):
     # Seaborn style settings
     sns.set_context("paper", font_scale=2.5)  # Can be adjusted (e.g., "paper", "poster")
     sns.set_style("whitegrid")
@@ -748,7 +750,7 @@ def main(parent_directory):
     # plt.rcParams['font.family'] = 'serif'
     subdirs = sorted([os.path.join(parent_directory, d) for d in os.listdir(parent_directory) if os.path.isdir(os.path.join(parent_directory, d))])
     
-    if len(subdirs) != 4:
+    if len(subdirs) != len(environments):
         print("Error: Expected exactly 4 subdirectories in the provided parent directory.")
         return
 
@@ -805,6 +807,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python plot_grid.py <parent_directory>")
         sys.exit(1)
-    environments = sorted(["Random MDPs","Wet Chicken", "Pacman", "Frozen Lake"])
+    # environments = sorted(["Random MDPs","Wet Chicken", "Pacman", "Frozen Lake"])
+    environments = sorted(["Random MDPs","Wet Chicken", "Frozen Lake"])
     parent_dir = sys.argv[1]
-    main(parent_dir)
+    main(parent_dir, environments)

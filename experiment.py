@@ -818,7 +818,11 @@ class Experiment:
 
 
 class SimplifiedPacmanExperiment(Experiment):
-    fixed_params_exp_columns = ['seed', 'gamma', 'width', 'height', 'lag_p', 'ghost_opt_chance', 'pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate']   
+    fixed_params_exp_columns = ['seed', 'gamma', 'width', 'height', 'lag_p', 'ghost_opt_chance', 
+    'pi_rand_perf', 'pi_star_perf', 'pi_star_perf_no_neg', 'pi_star_succ_rate', 'pi_star_avoid_rate',
+    'pi_star_no_neg_perf', 'pi_star_no_neg_perf_no_neg', 'pi_star_no_neg_succ_rate', 'pi_star_no_neg_avoid_rate',
+    'pi_safety_star_perf', 'pi_safety_star_perf_no_neg', 'pi_safety_star_succ_rate', 'pi_safety_star_avoid_rate'
+    ]   
     variable_params_exp_columns = ['iteration', 'epsilon_baseline', 'pi_b_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'nb_trajectories'] 
     
     def _set_env_params(self):
@@ -883,7 +887,25 @@ class SimplifiedPacmanExperiment(Experiment):
         pi_star_no_neg_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_no_neg.pi)
         pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate = self.policy_evaluation_success_rate(pi_star_no_neg.pi)
         self.fixed_params_exp_list.extend([pi_star_no_neg_perf, pi_star_no_neg_perf_no_neg, pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate])
-        
+
+        interval_ground_truth_prob = {
+            key : (value, value) for key, value in self.P.items()
+        }
+
+        self.structure = self.reduce_transition_matrix(self.P)   
+
+        pi_star_shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, interval_ground_truth_prob, self.width, self.height, self.prop)
+        state_probabilities, transition_probabilities = pi_star_shielder.calculateShield()
+
+        pi_safety_star_perf = self._policy_evaluation_exact(pi_star_shielder.pistar)
+        pi_safety_star_perf_no_neg = self._policy_evaluation_exact_no_neg(pi_star_shielder.pistar)
+        pi_safety_star_succ_rate, pi_safety_star_avoid_rate = self.policy_evaluation_success_rate(pi_star_shielder.pistar)
+        self.fixed_params_exp_list.extend([pi_safety_star_perf, pi_safety_star_perf_no_neg, pi_safety_star_succ_rate, pi_safety_star_avoid_rate])
+
+        print("pisafe", pi_safety_star_perf, pi_safety_star_perf_no_neg, pi_safety_star_succ_rate, pi_safety_star_avoid_rate)
+        print("pinoneg", pi_star_no_neg_perf, pi_star_no_neg_perf_no_neg, pi_star_no_neg_succ_rate, pi_star_no_neg_avoid_rate)
+        print("pistar", pi_star_perf, pi_star_perf_no_neg, pi_star_succ_rate, pi_star_avoid_rate)
+
         # pi_b = PacmanBaselinePolicy(env=self.env, epsilon=0).pi
         # self.pi_b_perf = self._policy_evaluation_exact(pi_b)
         # print("pi_b_perf = ", self.pi_b_perf)
@@ -946,18 +968,13 @@ class SimplifiedPacmanExperiment(Experiment):
                 self.data = trajectories
                 self.to_append = self.to_append_run_one_iteration + [nb_trajectories]
 
-
-          
-                self.structure = self.reduce_transition_matrix(self.P)   
                 self.estimator = PACIntervalEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
                 self.shielder = ShieldSimplifiedPacman(self.structure, self.traps, self.goal, self.intervals, self.width, self.height, self.prop)
                 self.shielder.calculateShield()
                 self._run_algorithms()
-                
-                
-                self.structure = self.reduce_transition_matrix(self.P)   
+
                 self.estimator = PointEstimator(self.structure, self.delta_imdp, self.data, self.nb_actions, alpha=10)
                 self.estimator.calculate_intervals()
                 self.intervals = self.estimator.get_intervals()
