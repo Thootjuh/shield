@@ -3,6 +3,7 @@ __pycache__/
 SPIBBmaster/__pycache__/
 batch_rl_algorithms/__pycache__/
 *.py[cod]git 
+__pycache__
 
 
 # Ignore specific files
@@ -20,7 +21,6 @@ shielded.txt
 *.pdf
 *.nm
 *.html
-*.csv
 *.tex
 # Ignore everything in the results folder
 results/
