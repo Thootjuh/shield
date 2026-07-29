@@ -12,11 +12,55 @@ import numpy as np
 import math
 import scipy.stats
 
+
+linestyle_tuple = [
+    ('loosely dotted',        (0, (1, 10))),
+    ('dotted',                (0, (1, 5))),
+    ('densely dotted',        (0, (1, 1))),
+
+    ('long dash with offset', (5, (10, 3))),
+    ('loosely dashed',        (0, (5, 10))),
+    ('dashed',                (0, (5, 5))),
+    ('densely dashed',        (0, (5, 1))),
+
+    ('loosely dashdotted',    (0, (3, 10, 1, 10))),
+    ('dashdotted',            (0, (3, 5, 1, 5))),
+    ('densely dashdotted',    (0, (3, 1, 1, 1))),
+
+    ('dashdotdotted',         (0, (3, 5, 1, 5, 1, 5))),
+    ('loosely dashdotdotted', (0, (3, 10, 1, 10, 1, 10))),
+    ('densely dashdotdotted', (0, (3, 1, 1, 1, 1, 1)))]
+
+loosely = (0, (3, 10, 1, 10, 1, 10))
+densely = (0, (3, 1, 1, 1, 1, 1))
+
 OPTIMAL_CLR = "#D6A400"
+SAFETY_OPTIMAL_CLR = "#c4aead"
 BASELIN_CLR = "black"
 SHIELDB_CLR = "blue"
-BASELINES_LINESIZE = 2
+BASELINES_LINESIZE = 1
 SKIP_DUIPI = False
+
+NO_NEG_EVAL = False
+
+perf          = "method_perf"
+
+PLOT_LABELS = False
+
+if NO_NEG_EVAL:
+    perf          += "_no_neg"
+    baseline_perf = "pi_b_perf"
+    pistar_perf   = "pi_star_perf_no_neg"  
+else:
+    baseline_perf = "pi_b_perf"
+    pistar_perf   = "pi_star_perf"
+
+def get_threshold(env_name : str):
+    if "pacman" in env_name.lower():
+        return 1-0.01
+    else:
+        return 1-0.2 
+
 
 class ColorManager:
 
@@ -55,7 +99,7 @@ def read_data_from_directory(directory_path):
         data = data.rename(columns={'baseline_succ_rate': 'baseline_success_rate'})
         data = data.rename(columns={'pi_b_succ_rate': 'baseline_success_rate'})
         data = data.rename(columns={'pi_b_avoid_rate': 'baseline_avoid_rate'})
-        data = data.rename(columns={'baseline_perf': 'pi_b_perf'})
+        data = data.rename(columns={'baseline_perf': baseline_perf})
         combined_data = pd.concat([combined_data, data], ignore_index=True)
     return combined_data
 
@@ -69,8 +113,7 @@ def extract_data(data):
     Returns:
         pd.DataFrame: Filtered DataFrame with selected columns only.
     """
-    print("columns", data.columns)
-    relevant_data_new = data[['method', 'length_trajectory', 'method_perf', 'run_time', 'pi_b_perf', 'pi_star_perf', 'baseline_success_rate', 'baseline_avoid_rate', 'method_succ_rate', 'method_avoid_rate']]
+    relevant_data_new = data[['method', 'length_trajectory', perf, 'run_time', baseline_perf, pistar_perf, 'pi_star_avoid_rate', 'pi_star_succ_rate', 'baseline_success_rate', 'baseline_avoid_rate', 'pi_safety_star_perf', 'pi_safety_star_succ_rate', 'pi_safety_star_avoid_rate', 'method_succ_rate', 'method_avoid_rate']]
     return relevant_data_new
 
 def group_by_methods(data):
@@ -101,7 +144,7 @@ def calculate_cvar(data, alpha=0.1):
 
     Args:
         data (pd.DataFrame): The input DataFrame with performance data.
-        alpha (float, optional): The quantile level to compute CVaR. Default is 0.01 (1%).
+        alpha (float, optional): The quantile level to compute CVaR. Default is 0.1 (10%).
 
     Returns:
         pd.DataFrame: DataFrame with CVaR values per method and trajectory length.
@@ -110,13 +153,17 @@ def calculate_cvar(data, alpha=0.1):
     for method in data['method'].unique():
         method_data = data[data['method'] == method]
         for traj in method_data['length_trajectory'].unique():
-            traj_data = method_data[method_data['length_trajectory'] == traj]['method_perf']
+            traj_data = method_data[method_data['length_trajectory'] == traj][perf]
             if len(traj_data) > 0:
                 threshold = np.percentile(traj_data, alpha * 100)
                 cvar = traj_data[traj_data <= threshold].mean()
                 std = traj_data[traj_data <= threshold].std()
-                ci = scipy.stats.t.interval(0.95, len(traj_data[traj_data <= threshold])-1, loc=np.mean(traj_data[traj_data <= threshold]), scale=scipy.stats.sem(traj_data[traj_data <= threshold]))
-                ci = np.abs((ci - cvar)[0])
+                assert alpha * 100 in {10, 100}
+                t = 2.28 if alpha * 100 == 10 else 1.96
+                # print(alpha, t, len(traj_data <= threshold))
+                ci = t * scipy.stats.sem(traj_data[traj_data <= threshold]) # 1.96 is 95% z-value for sample size > 30, 2.28 is 95% t-value for sample size = 10
+                # ci = scipy.stats.t.interval(0.95, len(traj_data[traj_data <= threshold])-1, loc=np.mean(traj_data[traj_data <= threshold]), scale=scipy.stats.sem(traj_data[traj_data <= threshold]))
+                # ci = np.abs((ci - cvar)[0])
                 cvar_results.append({'method': method, 'length_trajectory': traj, 'cvar': cvar, 'std': std, 'ci' : ci})
     return pd.DataFrame(cvar_results)
 
@@ -134,8 +181,8 @@ def plot_all_methods_cvar(data, env_name, ax):
         None
     """
     grouped_data = data.groupby(['method', 'length_trajectory']).agg(
-        method_perf_mean=('method_perf', 'mean'),
-        method_perf_std=('method_perf', 'std')  # calculate std deviation
+        method_perf_mean=(perf, 'mean'),
+        method_perf_std=(perf, 'std')  # calculate std deviation
     ).reset_index()
     
     sorted_methods = sorted(grouped_data['method'].unique(), key=lambda x: (x.replace('shield-', ''), 'shield-' in x))
@@ -162,7 +209,7 @@ def plot_all_methods_cvar(data, env_name, ax):
         if method == 'shielded_baseline':
             method_data = grouped_data[grouped_data['method'] == method]
             ax.plot(x, y,
-                    label=method, linestyle='--', linewidth=BASELINES_LINESIZE, color=SHIELDB_CLR)
+                    label=method, linestyle='solid', linewidth=BASELINES_LINESIZE, color=SHIELDB_CLR)
         else:  
             marker = get_marker(method)
             method_data = grouped_data[grouped_data['method'] == method]
@@ -182,16 +229,17 @@ def plot_all_methods_cvar(data, env_name, ax):
             ax.errorbar(cvar_data['length_trajectory'], cvar_data['cvar'], yerr=err,
                     label=method+' (cvar)', linestyle='--', color=color, marker=marker, capsize=4, markersize=8)
 
-    if 'pi_star_perf' in data.columns:
-        grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
-        ax.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', linewidth=BASELINES_LINESIZE, color=OPTIMAL_CLR, label='optimal policy')
-    if 'pi_b_perf' in data.columns:
-        grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
-        ax.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', linewidth=BASELINES_LINESIZE, color=BASELIN_CLR, label='baseline policy')
+    if pistar_perf in data.columns:
+        grouped = data.groupby('length_trajectory')[pistar_perf].mean().reset_index()
+        ax.plot(grouped['length_trajectory'], grouped[pistar_perf], linestyle='solid', linewidth=BASELINES_LINESIZE, color=OPTIMAL_CLR, label='optimal policy')
+    if baseline_perf in data.columns:
+        grouped = data.groupby('length_trajectory')[baseline_perf].mean().reset_index()
+        ax.plot(grouped['length_trajectory'], grouped[baseline_perf], linestyle='solid', linewidth=BASELINES_LINESIZE, color=BASELIN_CLR, label='baseline policy')
         
     ax.set_xscale('log')
-    ax.set_xlabel('Dataset Size')
-    ax.set_ylabel('Avg. 1%-CVaR')
+    if PLOT_LABELS:
+        ax.set_xlabel('Dataset size')
+        ax.set_ylabel('Avg. 10%-CVaR')
     ax.set_title(f'{env_name}')
     ax.grid(True)
     
@@ -209,8 +257,8 @@ def plot_all_methods_avg(data, env_name, ax):
         None
     """
     grouped_data = data.groupby(['method', 'length_trajectory']).agg(
-        method_perf_mean=('method_perf', 'mean'),
-        method_perf_std=('method_perf', 'std')  # calculate std deviation
+        method_perf_mean=(perf, 'mean'),
+        method_perf_std=(perf, 'std')  # calculate std deviation
     ).reset_index()
     
     sorted_methods = sorted(grouped_data['method'].unique(), key=lambda x: (x.replace('shield-', ''), 'shield-' in x))
@@ -237,7 +285,9 @@ def plot_all_methods_avg(data, env_name, ax):
         if method == 'shielded_baseline':
             method_data = grouped_data[grouped_data['method'] == method]
             ax.plot(x, y,
-                    label=method, linestyle='--', linewidth=BASELINES_LINESIZE, color=SHIELDB_CLR)
+                    label=method, 
+                    linestyle='solid', 
+                    linewidth=BASELINES_LINESIZE, color=SHIELDB_CLR)
         else:  
             marker = get_marker(method)
             method_data = grouped_data[grouped_data['method'] == method]
@@ -251,44 +301,22 @@ def plot_all_methods_avg(data, env_name, ax):
             ax.errorbar(cvar_data['length_trajectory'], cvar_data['cvar'], yerr=cvar_data['ci'],
                     label=method+' (cvar)', linestyle='--', color=color, marker=marker, capsize=4, markersize=8)
 
-    if 'pi_star_perf' in data.columns:
-        grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
-        ax.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', color=OPTIMAL_CLR, label='optimal policy')
-    if 'pi_b_perf' in data.columns:
-        grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
-        ax.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', color=BASELIN_CLR, label='baseline policy')
+    if pistar_perf in data.columns:
+        grouped = data.groupby('length_trajectory')[pistar_perf].mean().reset_index()
+        ax.plot(grouped['length_trajectory'], grouped[pistar_perf], linestyle='solid', color=OPTIMAL_CLR, label='optimal policy')
+    if baseline_perf in data.columns:
+        grouped = data.groupby('length_trajectory')[baseline_perf].mean().reset_index()
+        ax.plot(grouped['length_trajectory'], grouped[baseline_perf], linestyle='solid', color=BASELIN_CLR, label='baseline policy')
         
     ax.set_xscale('log')
-    ax.set_xlabel('Dataset Size')
-    ax.set_ylabel('Avg. Performance')
+    if PLOT_LABELS:
+        ax.set_xlabel('Dataset size')
+        ax.set_ylabel('Avg. Performance')
     ax.set_title(f'{env_name}')
     ax.grid(True)
 
-def plot_results_old(subdirs, environments, plot_func, title, filename_prefix):
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    axes = axes.flatten()
-
-    for idx, subdir in enumerate(subdirs):
-        data = read_data_from_directory(subdir)
-        data = extract_data(data)
-        data_list = group_by_methods(data)
-        plot_func(data, environments[idx], axes[idx])
-
-    handles, labels = axes[0].get_legend_handles_labels()
-    labels = [
-        'DUIPI', 'DUIPI (CVaR)', 'Shielded-DUIPI', 'Shielded-DUIPI (CVaR)',
-        'SPIBB', 'SPIBB (CVaR)', 'Shielded-SPIBB', 'Shielded-SPIBB (CVaR)',
-        'Shielded Baseline', 'Optimal', 'Baseline'
-    ]
-    fig.legend(handles, labels, loc='right center', ncol=3, fontsize='15', title='Methods')
-    fig.suptitle(title)
-    plt.subplots_adjust(hspace=0.4, wspace=0.3, bottom=0.23)
-    plt.savefig(f"{filename_prefix}.png", format='png')
-    plt.savefig(f"{filename_prefix}.pdf", format='pdf')
-    plt.show()
-
 def get_marker(method : str) -> str:
-    return '*' if 'shield-' in method else '.'
+    return '*' if 'shield-' in method else ("s" if 'mo' in method.lower() else 'o')
     
 def plot_all_methods(data, env_name, ax, plot_x_axis=True):
     """
@@ -304,7 +332,7 @@ def plot_all_methods(data, env_name, ax, plot_x_axis=True):
         None
     """
     grouped_data = data.groupby(['method', 'length_trajectory'])
-    grouped_data = grouped_data.method_perf.mean().reset_index()
+    grouped_data = grouped_data[perf].mean().reset_index()
     
     sorted_methods = sorted(grouped_data['method'].unique(), key=lambda x: (x.replace('shield-', ''), 'shield-' in x))
     
@@ -325,8 +353,8 @@ def plot_all_methods(data, env_name, ax, plot_x_axis=True):
         if "duipi" in method.lower() and SKIP_DUIPI: continue
         if method == 'shielded_baseline':
             method_data = grouped_data[grouped_data['method'] == method]
-            ax.plot(method_data['length_trajectory'], method_data['method_perf'],
-                    label=method, linestyle='--', linewidth=BASELINES_LINESIZE, color=SHIELDB_CLR)
+            ax.plot(method_data['length_trajectory'], method_data[perf],
+                    label=method, linestyle='solid', linewidth=BASELINES_LINESIZE, color=SHIELDB_CLR)
         else:  
             marker = get_marker(method)
             method_data = grouped_data[grouped_data['method'] == method]
@@ -337,33 +365,33 @@ def plot_all_methods(data, env_name, ax, plot_x_axis=True):
             # print(method_data_raw['length_trajectory'])
             # exit()
             
-            # ax.plot(method_data['length_trajectory'], method_data['method_perf'],
+            # ax.plot(method_data['length_trajectory'], method_data[perf],
                     # label=method, linestyle='-', color=color, marker=marker, markersize=8)
 
             cvar_data = calculate_cvar(method_data_raw, 1)
             ax.errorbar(cvar_data['length_trajectory'], cvar_data['cvar'], yerr=cvar_data['ci'],
-                    label=method, linestyle='-', color=color, marker=marker, capsize=4, markersize=8)
+                    label=method, linestyle='solid', color=color, marker=marker, capsize=4, markersize=8)
             
-            cvar_data = calculate_cvar(method_data_raw, 0.1 if 'pacman' in env_name.lower() else 0.01) 
+            cvar_data = calculate_cvar(method_data_raw, 0.1) 
             ax.errorbar(cvar_data['length_trajectory'], cvar_data['cvar'], yerr=cvar_data['ci'],
                     label=method+' (cvar)', linestyle='--', color=color, marker=marker, capsize=4, markersize=8)
 
-    if 'pi_star_perf' in data.columns:
-        grouped = data.groupby('length_trajectory')['pi_star_perf'].mean().reset_index()
-        ax.plot(grouped['length_trajectory'], grouped['pi_star_perf'], linestyle=':', linewidth=BASELINES_LINESIZE, color=OPTIMAL_CLR, label='optimal policy')
-    if 'pi_b_perf' in data.columns:
-        grouped = data.groupby('length_trajectory')['pi_b_perf'].mean().reset_index()
-        ax.plot(grouped['length_trajectory'], grouped['pi_b_perf'], linestyle='dashdot', linewidth=BASELINES_LINESIZE, color=BASELIN_CLR, label='baseline policy')
+    if pistar_perf in data.columns:
+        grouped = data.groupby('length_trajectory')[pistar_perf].mean().reset_index()
+        ax.plot(grouped['length_trajectory'], grouped[pistar_perf], linestyle='solid', linewidth=BASELINES_LINESIZE, color=OPTIMAL_CLR, label='optimal policy')
+    if baseline_perf in data.columns:
+        grouped = data.groupby('length_trajectory')[baseline_perf].mean().reset_index()
+        ax.plot(grouped['length_trajectory'], grouped[baseline_perf], linestyle='solid', linewidth=BASELINES_LINESIZE, color=BASELIN_CLR, label='baseline policy')
     
     ymin, ymax = ax.get_ylim()
     if env_name == 'Wet Chicken':
         ax.set_ylim(bottom=-35, top=ymax)
     elif env_name == 'Random MDPs':
-        ax.set_ylim(bottom=-3.2, top=ymax)   
+        ax.set_ylim(bottom=-1.5, top=ymax)   
     elif env_name == 'Frozen Lake':
         ax.set_ylim(bottom=-5, top=ymax)
     ax.set_xscale('log')
-    ax.set_xlabel('Dataset Size')
+    ax.set_xlabel('Dataset size')
     if plot_x_axis: ax.set_ylabel('Performance')
     ax.set_title(f'{env_name}')
     ax.grid(True)
@@ -412,7 +440,7 @@ def plot_all_methods_success(data, env_name, ax, plot_x_axis=True):
             ax.plot(
                 method_data['length_trajectory'],
                 method_data['method_succ_rate'],
-                linestyle='--',
+                linestyle=densely,
                 linewidth=BASELINES_LINESIZE,
                 color=SHIELDB_CLR,
                 label=method
@@ -424,7 +452,7 @@ def plot_all_methods_success(data, env_name, ax, plot_x_axis=True):
             ax.plot(
                 method_data['length_trajectory'],
                 method_data['method_succ_rate'],
-                linestyle='-',
+                linestyle=densely,
                 marker=marker,
                 markersize=8,
                 color=color,
@@ -438,22 +466,21 @@ def plot_all_methods_success(data, env_name, ax, plot_x_axis=True):
         ax.plot(
             grouped['length_trajectory'],
             grouped['baseline_success_rate'],
-            linestyle='dashdot',
+            linestyle=densely,
             linewidth=BASELINES_LINESIZE,
             color=BASELIN_CLR,
             label='baseline policy'
         )
 
     ax.set_xscale('log')
-    ax.set_xlabel('Dataset Size')
+    ax.set_xlabel('Dataset size')
     if plot_x_axis:
         ax.set_ylabel('Success')
     ax.set_title(f'{env_name}')
     ax.grid(True)
 
 def plot_all_methods_avoid(data, env_name, ax, plot_x_axis=True):
-    grouped_data = data.groupby(['method', 'length_trajectory']) \
-                       .method_avoid_rate.mean().reset_index()
+    grouped_data = data.groupby(['method', 'length_trajectory']).method_avoid_rate.mean().reset_index()
 
     sorted_methods = sorted(
         grouped_data['method'].unique(),
@@ -483,7 +510,7 @@ def plot_all_methods_avoid(data, env_name, ax, plot_x_axis=True):
             ax.plot(
                 method_data['length_trajectory'],
                 method_data['method_avoid_rate'],
-                linestyle='--',
+                linestyle=loosely,
                 linewidth=BASELINES_LINESIZE,
                 color=SHIELDB_CLR,
                 label=method
@@ -495,12 +522,23 @@ def plot_all_methods_avoid(data, env_name, ax, plot_x_axis=True):
             ax.plot(
                 method_data['length_trajectory'],
                 method_data['method_avoid_rate'],
-                linestyle='-',
+                linestyle=loosely,
                 marker=marker,
                 markersize=8,
                 color=color,
                 label=method
             )
+    if 'pi_safety_star_avoid_rate' in data.columns:
+        grouped = data.groupby('length_trajectory')['pi_safety_star_avoid_rate'] \
+                      .mean().reset_index()
+        ax.plot(
+            grouped['length_trajectory'],
+            grouped['pi_safety_star_avoid_rate'],
+            linestyle=loosely,
+            linewidth=BASELINES_LINESIZE,
+            color=SAFETY_OPTIMAL_CLR,
+            label='safety optimal policy'
+        )
 
     if 'baseline_avoid_rate' in data.columns:
         grouped = data.groupby('length_trajectory')['baseline_avoid_rate'] \
@@ -509,20 +547,44 @@ def plot_all_methods_avoid(data, env_name, ax, plot_x_axis=True):
         ax.plot(
             grouped['length_trajectory'],
             grouped['baseline_avoid_rate'],
-            linestyle='dashdot',
+            linestyle=loosely,
             linewidth=BASELINES_LINESIZE,
             color=BASELIN_CLR,
             label='baseline policy'
         )
 
     ax.set_xscale('log')
-    ax.set_xlabel('Dataset Size')
+    ax.set_xlabel('Dataset size')
     if plot_x_axis:
         ax.set_ylabel('Avoid')
     ax.set_title(f'{env_name}')
     ax.grid(True)
 
 def plot_all_methods_safety(data, env_name, ax, plot_x_axis=True):
+
+    # if 'pi_safety_star_avoid_rate' in data.columns:
+    #     grouped = data.groupby('length_trajectory')['pi_safety_star_avoid_rate'] \
+    #                   .mean().reset_index()
+    #     ax.plot(
+    #         grouped['length_trajectory'],
+    #         grouped['pi_safety_star_avoid_rate'],
+    #         linestyle='--',
+    #         linewidth=BASELINES_LINESIZE,
+    #         color=SAFETY_OPTIMAL_CLR,
+    #         label='safety optimal policy'
+    #     )
+
+    # if 'pi_safety_star_succ_rate' in data.columns:
+    #     grouped = data.groupby('length_trajectory')['pi_safety_star_succ_rate'] \
+    #                   .mean().reset_index()
+    #     ax.plot(
+    #         grouped['length_trajectory'],
+    #         grouped['pi_safety_star_succ_rate'],
+    #         linestyle='-',
+    #         linewidth=BASELINES_LINESIZE,
+    #         color=SAFETY_OPTIMAL_CLR,
+    #         # label='safety optimal policy'
+    #     )
 
     grouped_data = data.groupby(['method', 'length_trajectory']).agg(
         method_succ_rate=('method_succ_rate', 'mean'),
@@ -555,7 +617,7 @@ def plot_all_methods_safety(data, env_name, ax, plot_x_axis=True):
             ax.plot(
                 method_data['length_trajectory'],
                 method_data['method_succ_rate'],
-                linestyle='-',
+                linestyle=densely,
                 linewidth=BASELINES_LINESIZE,
                 color=SHIELDB_CLR,
                 label='shielded_baseline'
@@ -564,7 +626,7 @@ def plot_all_methods_safety(data, env_name, ax, plot_x_axis=True):
             ax.plot(
                 method_data['length_trajectory'],
                 method_data['method_avoid_rate'],
-                linestyle='--',
+                linestyle=loosely,
                 linewidth=BASELINES_LINESIZE,
                 color=SHIELDB_CLR
             )
@@ -576,7 +638,7 @@ def plot_all_methods_safety(data, env_name, ax, plot_x_axis=True):
             ax.plot(
                 method_data['length_trajectory'],
                 method_data['method_succ_rate'],
-                linestyle='-',
+                linestyle=densely,
                 marker=marker,
                 markersize=8,
                 color=color,
@@ -586,7 +648,7 @@ def plot_all_methods_safety(data, env_name, ax, plot_x_axis=True):
             ax.plot(
                 method_data['length_trajectory'],
                 method_data['method_avoid_rate'],
-                linestyle='--',
+                linestyle=loosely,
                 marker=marker,
                 markersize=8,
                 color=color
@@ -601,7 +663,7 @@ def plot_all_methods_safety(data, env_name, ax, plot_x_axis=True):
         ax.plot(
             baseline_grouped['length_trajectory'],
             baseline_grouped['baseline_success_rate'],
-            linestyle='-',
+            linestyle=densely,
             linewidth=BASELINES_LINESIZE,
             color=BASELIN_CLR,
             label='baseline policy'
@@ -610,15 +672,17 @@ def plot_all_methods_safety(data, env_name, ax, plot_x_axis=True):
         ax.plot(
             baseline_grouped['length_trajectory'],
             baseline_grouped['baseline_avoid_rate'],
-            linestyle='--',
+            linestyle=loosely,
             linewidth=BASELINES_LINESIZE,
             color=BASELIN_CLR
         )
+    
+        ax.plot(baseline_grouped['length_trajectory'], [get_threshold(env_name) for x in baseline_grouped['length_trajectory']], linestyle="-", color='red', label="threshold")
 
     ax.set_xscale('log')
-    ax.set_xlabel('Dataset Size')
+    ax.set_xlabel('Dataset size')
     if plot_x_axis:
-        ax.set_ylabel('Safety')
+        ax.set_ylabel('Safety probabilities')
     ax.set_title(f'{env_name}')
     ax.grid(True)
     
@@ -660,13 +724,17 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
                 ax = fig.gca()
                 plot_func(data, environments[idx], ax)
                 plt.tight_layout()
-                # plt.savefig(f"./out/{filename_prefix}-{idx}.png", format='png', bbox_inches='tight', pad_inches=0.0)
-                plt.savefig(f"./out/{filename_prefix}-{idx}.pdf", format='pdf', bbox_inches='tight', pad_inches=0)
-                plt.savefig(f"./out/{filename_prefix}-{idx}.tex", format='pgf', bbox_inches='tight', pad_inches=0.0)
+                sns.despine()
+                outfile = f"./out/{filename_prefix}-{environments[idx].replace(" ", "").lower()}"
+                # plt.savefig(f"{outfile}.png", format='png', bbox_inches='tight', pad_inches=0.0)
+                plt.savefig(f"{outfile}.pdf", format='pdf', bbox_inches='tight', pad_inches=0)
+                plt.savefig(f"{outfile}.tex", format='pgf', bbox_inches='tight', pad_inches=0.0)
+                plt.close(fig)
 
         mapper = {
                 'duipi_bayesian' : 'DUIPI', 'shield-duipi_bayesian' : 'Shielded-DUIPI', 
-                'spibb' : 'SPIBB', 'shield-spibb' : 'Shielded-SPIBB', 
+                'spibb' : 'SPIBB', 'shield-spibb' : 'Shielded SPIBB', # r'SPIBB$_{\mathbb{S}}$', 
+                'threshold' : "Threshold", # r'$\theta$',
                 'mo_spibb' : 'MO-SPIBB',
                 'shielded_baseline' : 'Shielded Baseline', 
                 'optimal policy': 'Optimal', 
@@ -688,21 +756,19 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
                 labels = [labels[i] for i in idxs]
                 l = [(handle, mapper[label.lower()]) for handle, label in zip(handles, labels) if 'cvar' not in label.lower()]
                 handles, labels = [list(t) for t in zip(*l)]
-                lavg = matplotlib.lines.Line2D([0], [0], linestyle='solid', color='black')
-                lvar = matplotlib.lines.Line2D([0], [0], linestyle='dotted', color='black')
 
                 red_patch = matplotlib.patches.Patch(color='red', label='The red data', visible=False)
-
+                print(labels)
                 if filename_prefix == "safety_grid_plot":
-                    labels.insert(-num_baselines, "Success")
-                    handles.insert(-num_baselines, lavg)
+                    labels.insert(-num_baselines, "Reach-avoid")
+                    handles.insert(-num_baselines, matplotlib.lines.Line2D([0], [0], linestyle=densely, color='grey'))
                     labels.insert(-num_baselines, "Avoid")
-                    handles.insert(-num_baselines, lvar)
+                    handles.insert(-num_baselines, matplotlib.lines.Line2D([0], [0], linestyle=loosely, color='grey'))
                 else:
                     labels.insert(-num_baselines, "Average")
-                    handles.insert(-num_baselines, lavg)
-                    labels.insert(-num_baselines, "1%-CVAR")
-                    handles.insert(-num_baselines, lvar)
+                    handles.insert(-num_baselines, matplotlib.lines.Line2D([0], [0], linestyle='solid', color='grey'))
+                    labels.insert(-num_baselines, "10%-CVaR")
+                    handles.insert(-num_baselines, matplotlib.lines.Line2D([0], [0], linestyle='dotted', color='grey'))
                 
                 labels.insert(num_methods, '')
                 handles.insert(num_methods, red_patch)
@@ -712,10 +778,21 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
                 labels.insert(0, 'Methods')
                 handles.insert(0, red_patch)
 
-                labels.insert(-num_baselines, 'Baselines')
+                labels.insert(-num_baselines, 'References')
                 handles.insert(-num_baselines, red_patch)
                 labels.insert(-(num_baselines+1), '')
                 handles.insert(-(num_baselines+1), red_patch)
+
+                if filename_prefix == "safety_grid_plot":
+                    idx = labels.index("Threshold")
+                    threslabel = labels[idx]
+                    threshandl = handles[idx]
+                    labels.remove(threslabel)
+                    handles.remove(threshandl)
+                    labels.append(threslabel)
+                    handles.append(threshandl)
+                    # labels = labels[3:]
+                    # handles = handles[3:]
 
                 print(handles)
                 print(labels)
@@ -724,6 +801,7 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
             # fig.suptitle(title)
             # plt.subplots_adjust(hspace=0.4, wspace=0.3, bottom=0.23)
             plt.tight_layout()
+            sns.despine()
             # plt.savefig(f"./out/{filename_prefix}.png", format='png')
             plt.savefig(f"./out/{filename_prefix}.pdf", format='pdf')
             plt.savefig(f"./out/{filename_prefix}.tex", format='pgf')
@@ -744,20 +822,23 @@ def plot_results(subdirs, environments, plot_func, title, filename_prefix, save_
     
 def main(parent_directory, environments):
     # Seaborn style settings
-    sns.set_context("paper", font_scale=2.5)  # Can be adjusted (e.g., "paper", "poster")
-    sns.set_style("whitegrid")
+    # sns.set_context("paper", font_scale=2.5)  # Can be adjusted (e.g., "paper", "poster")
+    # plt.rcParams['text.usetex'] = True
+    # plt.rcParams["text.latex.preamble"] = r"\usepackage{amsmath,amssymb}"
+    sns.set_theme(style="whitegrid", context="paper", font_scale=2, font="Nimbus Roman")
+    # sns.set_style("whitegrid")
     sns.set_palette("muted")
     # plt.rcParams['font.family'] = 'serif'
     subdirs = sorted([os.path.join(parent_directory, d) for d in os.listdir(parent_directory) if os.path.isdir(os.path.join(parent_directory, d))])
     
     if len(subdirs) != len(environments):
-        print("Error: Expected exactly 4 subdirectories in the provided parent directory.")
+        print(f"Error: Expected exactly {len(environments)} subdirectories ({environments}) in the provided parent directory. Found: {len(subdirs)}")
         return
 
     print(subdirs)
     
     for func, filename, export_legend in zip([plot_all_methods, plot_all_methods_avg, plot_all_methods_cvar],["results_grid_plot", "avg", "cvar"], [True, False, False]):
-        continue
+        # continue
         plot_results(
             subdirs, environments, func,
             title="Method performance plotted against dataset size",
@@ -808,6 +889,6 @@ if __name__ == "__main__":
         print("Usage: python plot_grid.py <parent_directory>")
         sys.exit(1)
     # environments = sorted(["Random MDPs","Wet Chicken", "Pacman", "Frozen Lake"])
-    environments = sorted(["Random MDPs","Wet Chicken", "Frozen Lake"])
+    environments = sorted(["Random MDPs","Waterfall", "Frozen Lake", "Pacman"])
     parent_dir = sys.argv[1]
     main(parent_dir, environments)

@@ -243,6 +243,142 @@ class Shield:
         np.set_printoptions(suppress=True, precision=6)
         print(sorted_arr)
         print(self.traps)
+    
+    def mip_shield(self, threshold):
+        model, x, y = self.build_dual_milp_encoding(threshold=threshold)
+        model.optimize()
+        if model.Status != GRB.OPTIMAL:
+            raise RuntimeError(f"{label} did not solve to optimality; status={model.Status}")
+
+        policy = {
+            s: {a for a in range(self.num_actions) if y[s, a].X >= 0.5}
+            for s in range(self.num_states)
+        }
+
+    def _base_reachability_model(
+        self,
+        threshold: float,
+        name: str,
+        output_flag: int,
+    ) -> Tuple[gp.Model, gp.tupledict, gp.tupledict]:
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError("threshold must lie in [0, 1]")
+
+        model = gp.Model(name)
+        model.Params.OutputFlag = output_flag
+
+        self.state_actions = tuple((s, a) for s in range(self.num_states) for a in range(self.num_actions))
+
+        # x_s in [0,1]: minimal robust reachability probability.
+        x = model.addVars(range(self.num_states), lb=0.0, ub=1.0, vtype=GRB.CONTINUOUS, name="x")
+        # y_{s,a}: whether action a is admitted by the multi-strategy.
+        y = model.addVars(state_actions, vtype=GRB.BINARY, name="y")
+
+        # (1a)/(2a)
+        model.setObjective(gp.quicksum(y[s, a] for s, a in state_actions), GRB.MAXIMIZE)
+
+        # (1b)/(2b)
+        for s in self.structure:
+            model.addConstr(
+                gp.quicksum(y[s, a] for a in range(self.num_actions)) >= 1,
+                name=f"nonempty[{s}]",
+            )
+
+        # (1c)/(2c)
+        model.addConstr(x[self.initial] >= threshold, name="threshold")
+
+        # (1d)/(2d)
+        for s in self.goal:
+            model.addConstr(x[s] == 1.0, name=f"target[{s}]")
+
+        # Reach-avoid extension (not an additional paper constraint for pure reachability).
+        for s in self.traps:
+            model.addConstr(x[s] == 0.0, name=f"unsafe[{s}]")
+
+        return model, x, y
+
+    def build_dual_milp_encoding(
+        self,
+        threshold: float,
+        *,
+        big_m: float = 1.0,
+        output_flag: int = 0,
+    ) -> Tuple[gp.Model, gp.tupledict, gp.tupledict]:
+        """Build Encoding 2: dualized robust constraints, equations (2a)-(2h).
+
+        As displayed in Encoding 2, constraints (2e)-(2h) are instantiated for
+        every state-action pair.  This is exactly equivalent to Encoding 1 when
+        target states are absorbing, as in the example and standard reachability
+        preprocessing.
+        """
+
+        if big_m < 1.0:
+            raise ValueError("big_m must be at least 1 for reachability variables")
+
+        model, x, y = self._base_reachability_model(
+            threshold, "encoding_2_dualization", output_flag
+        )
+
+        sas = tuple((s, a, sp) for s, a in self.state_actions for sp in range(self.num_states))
+
+        # Paper notation: \hat u >= 0, \check u >= 0, lambda free, eta auxiliary.
+        u_upper = model.addVars(sas, lb=0.0, vtype=GRB.CONTINUOUS, name="u_upper")
+        u_lower = model.addVars(sas, lb=0.0, vtype=GRB.CONTINUOUS, name="u_lower")
+        lambda_ = model.addVars(
+            imdp.state_actions, 
+            # lb=-GRB.INFINITY, 
+            vtype=GRB.CONTINUOUS, name="lambda"
+        )
+        eta = model.addVars(
+            self.state_actions, 
+            # lb=-GRB.INFINITY,            
+            vtype=GRB.CONTINUOUS, name="eta"
+        )
+
+        for s, a in self.state_actions:
+            # (2e): dual feasibility.
+            for sp in range(self.num_states):
+                model.addConstr(
+                    lambda_[s, a] - u_upper[s, a, sp] + u_lower[s, a, sp] <= x[sp],
+                    name=f"dual_feas[{s},{a},{sp}]",
+                )
+
+            dual_objective_without_lambda = gp.quicksum(
+                self.intervals(s, a, sp)[0] * u_lower[s, a, sp]
+                - self.intervals(s, a, sp)[1] * u_upper[s, a, sp]
+                for sp in range(self.num_states)
+            )
+
+            # (2f): core robust inequality.
+            model.addConstr(
+                x[s]
+                <= big_m * (1 - y[s, a])
+                + eta[s, a]
+                + dual_objective_without_lambda,
+                name=f"robust_dual[{s},{a}]",
+            )
+
+            # (2g): eta = 0 when y = 0, and |eta| <= M when y = 1.
+            model.addConstr(eta[s, a] >= -big_m * y[s, a], name=f"eta_lb[{s},{a}]")
+            model.addConstr(eta[s, a] <= big_m * y[s, a], name=f"eta_ub[{s},{a}]")
+
+            # (2h): eta = lambda when y = 1.
+            model.addConstr(
+                eta[s, a] >= lambda_[s, a] - big_m * (1 - y[s, a]),
+                name=f"product_lb[{s},{a}]",
+            )
+            model.addConstr(
+                eta[s, a] <= lambda_[s, a] + big_m * (1 - y[s, a]),
+                name=f"product_ub[{s},{a}]",
+            )
+
+        # Retain references for inspection without changing the primary return API.
+        model._u_upper = u_upper  # type: ignore[attr-defined]
+        model._u_lower = u_lower  # type: ignore[attr-defined]
+        model._lambda = lambda_  # type: ignore[attr-defined]
+        model._eta = eta  # type: ignore[attr-defined]
+
+        return model, x, y
 
 
 class ShieldRandomMDP(Shield):
