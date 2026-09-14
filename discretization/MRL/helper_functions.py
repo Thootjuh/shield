@@ -1,5 +1,5 @@
 import pandas as pd
-
+# This file was adapted from the MRL implementation from https://github.com/MohammedAmine-Bennouna/MRL
 # Function that transforms the dataset into the right format
 # Trajectories to Dataframe
 

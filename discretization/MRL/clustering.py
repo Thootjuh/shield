@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-This file contains the functions to generate and perform the MDP clustering
-
-Created on Sun Mar  1 18:48:20 2020
-
-@author: omars
-"""
+# This file was adapted from the MRL implementation from https://github.com/MohammedAmine-Bennouna/MRL
 
 # Load Libraries
 from typing import Tuple, List, Dict, Union
@@ -162,8 +156,6 @@ def initializeClusters(
     df.loc[df["ID"] != df["ID"].shift(-1), "NEXT_CLUSTER"] = "None"
     
     k = df["CLUSTER"].nunique()  # initial number of clusters
-    print(df["CLUSTER"].unique())
-    print("n_clusters = ", k)
     # change end state to 'end'
     # so here end state is when no action is taken. Otherwise the next state is 'None'
     df.loc[df["ACTION"] == "None", "NEXT_CLUSTER"] = "End"
@@ -405,9 +397,7 @@ def splitStochastic(
         subcluster_stds.append(
             (y_preds[target_groups == i_subcluster].std(axis=0) * weights).sum()
         )
-    # print("subcluster stds", subcluster_stds)
 
-    # print("Saving presmooth labels")
 
     # Step 4. Reassign clusters
     m = parse_classifier(classification, split_classifier_params)
@@ -498,7 +488,6 @@ def split_postlabel(
 
     # labeled_part.to_pickle("saved_models/df_debug_presmoothsplit.pkl")
     # unlabeled_parts.to_pickle("saved_models/df_debug_postsmoothsplit.pkl")
-    # print("Saving presmooth labels")
 
     for cluster_index in range(1, n_classes):
         ids = labeled_part.loc[labeled_part["LABEL"] == cluster_index].index.values
@@ -512,14 +501,10 @@ def split_postlabel(
                 ids = np.concatenate((ids, id2))
 
         # update the clusters and next_cluster of previous ids
-        # print(df.groupby(['CLUSTER', 'NEXT_CLUSTER']).count())
         assert (
             df.loc[df.index.isin(ids), "CLUSTER"] == init_cluster
         ).all(), "trying to reassign cluster to points out of original cluster"
         cluster_update(df, ids, k + cluster_index - 1)
-    # print(i,a,c)
-    # print(df.groupby(['CLUSTER', 'NEXT_CLUSTER']).count())
-    # raise Exception
     return df, score
 
 
@@ -535,7 +520,6 @@ def intercluster_std(df, p_feats):
     mlp = MLPClassifier((10,), "relu", alpha=0.05, learning_rate_init=0.2, tol=1e-3)
     mlp.fit(X_regr, y_regr)
 
-    # print(X_regr, y_regr)
 
     # Step 2. The variances in the predicted probabilities is used to measure how much variation the cluster has
     y_preds = mlp.predict_proba(X_regr)
@@ -636,7 +620,6 @@ def splitter(
         grid = False
 
     k = df["CLUSTER"].nunique()  # initial number of clusters
-    print("n_clusters = ", k)
     nc = k  # number of clusters
 
     df_new = deepcopy(df)
@@ -668,18 +651,7 @@ def splitter(
         if not stochastic:
             c, a = findContradiction(df_new, th)
         else:
-            # c, a = findContradictionStochasticNew(df_new, th, pfeatures)
-            # print(f"new version:  ({c}, {a})")
-            # c, a = findContradictionStochastic(df_new, th, pfeatures)
-            # print("old:", " ", c,a)
-            # c, a = findContradictionStochastic(df_new, th, pfeatures)
-            # print("old:", " ", c,a)
             c, a = findContradictionStochastic(df_new, th, pfeatures)
-            # print("new:", c2, " ", a2)
-            # c, a = findContradiction(df_new, th)
-            # print(f"correct version:  ({c}, {a})")
-            # c, a = findContradictionStochastic(df_new, th, pfeatures)
-            # print(f"correct version:  ({c}, {a})")
 
         if verbose:
             print(f"Found contradiction in {time.time()-st}!")

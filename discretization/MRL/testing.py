@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-This file is intended to perform various testing measurements on the output of 
-
-the MDP Clustering mrl.
-
-Created on Sun Apr 26 23:13:09 2020
-
-@author: Amine
-"""
+# This file was adapted from the MRL implementation from https://github.com/MohammedAmine-Bennouna/MRL
 #################################################################
 # Load Libraries
 

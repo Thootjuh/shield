@@ -219,12 +219,6 @@ class Shield:
         #     # f"> {results_file}"
         # )
         
-        # print(repr(model_file))
-        # print(repr(prop_file))
-        # print(repr(trans_file))
-        # print(repr(results_file))
-        # print("CMD:", cmd)
-        # print(repr(cmd))
         subprocess.Popen(cmd, shell=True).wait()
 
         # Parse state values
@@ -301,7 +295,7 @@ class Shield:
                 for next_state, trans_prob in worst_case_transitions.items():                        
                     value += trans_prob*state_values.get(next_state, 0.0)
                 self.shield[state][action] = max(min(1.0, 1-value), 0.0)
-        # print(self.shield)
+
         # Clean up temporary files
         os.remove(model_file)  
         os.remove(prop_file)   

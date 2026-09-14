@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# This file was adapted from the MRL implementation from https://github.com/MohammedAmine-Bennouna/MRL
 
 # Load Libraries
 import pandas as pd
@@ -311,19 +312,15 @@ class MDP_model:
             random_state=random_state,
         )
         k = df_init["CLUSTER"].nunique()  # initial number of clusters
-        print("n_clusters = ", k)
         # print('df init model.fit', df_init)
 
-        print("Clusters Initialized")
         if verbose:
             print(df_init)
 
         if save_epoch:
-            print("Saving initial df")
             save_path.mkdir(exist_ok=True)
             df_init.to_csv(save_path / f"df_epoch_-1.csv")
 
-        print("start splitter")
         (
             df_new,
             df_incoherences,
@@ -355,19 +352,16 @@ class MDP_model:
             stochastic=stochastic,
         )
 
-        print("end splitter")
         # store all training errors
         self.training_error = training_error
         self.incoherences = df_incoherences
         self.split_scores = split_scores
-        print("stored training errors")
         # storing trained dataset and predict_cluster function, depending on
         # whether optimization was selected
         # incoherence and precision thresholds were already applied
         # within splitter to find best_df and opt_k
         if optimize:
             self.df_trained = best_df
-            print("df_trained = ", self.df_trained["CLUSTER"].nunique())
             # k = self.training_error['Clusters'].iloc[self.training_error['Error'].idxmin()]
             self.opt_k = opt_k
         else:
@@ -375,16 +369,13 @@ class MDP_model:
             self.opt_k = self.training_error["Clusters"].max()
         
         self.df_new = df_new
-        print("set the new df") 
         self.create_model(stochastic=stochastic)
-        print("created the model")
         # self.df_trained.to_csv("data_set_trained.csv", index=False)
         
     def create_model(self, stochastic):
         """
         After MRL is trained. Creates the underlying MDP model by fitting a decision tree 
         to predict clusters, then calculating the empirical transition functions."""
-        # print("print: head = ", self.df_trained.head())
         self.m = predict_cluster(self.df_trained, self.pfeatures)
         pred = self.m.predict(self.df_trained.iloc[:, 2 : 2 + self.pfeatures])
         self.clus_pred_accuracy = accuracy_score(pred, self.df_trained["CLUSTER"])
@@ -404,9 +395,6 @@ class MDP_model:
 
             # nc_predictability is used for robustness
             self.nc_predictability = next_cluster_predictability(self.df_trained,)
-        # print(R_df)
-        # print(type(R_df))
-        # print(P_df)
     # predict() takes a list of features and a time horizon, and returns
     # the predicted value after all actions are taken in order
     def predict(

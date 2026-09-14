@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Mar  1 22:27:02 2020
-
-@author: omars
-"""
+# This file was adapted from the MRL implementation from https://github.com/MohammedAmine-Bennouna/MRL
 
 #################################################################
 # import mdptoolbox, mdptoolbox.example

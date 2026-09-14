@@ -31,15 +31,6 @@ class PACIntervalEstimator:
         self.count()
         self.state_action_state_pairs = self.calculate_intervals()
         
-        # issues = self.check_probability_consistency()
-        
-        # if issues:
-        #     print("Inconsistent intervals detected:")
-        #     for issue in issues:
-        #         print(issue)
-        # else:
-        #     print("All intervals satisfy probability constraints.")
-        
         
     def check_probability_consistency(self):
         """

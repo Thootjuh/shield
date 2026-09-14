@@ -1,3 +1,5 @@
+#adapted from https://github.com/rems75/SPIBB-DQN
+
 import torch
 import torch.nn as nn
 

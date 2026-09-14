@@ -82,8 +82,6 @@ def region2centre(index):
 
 def get_discretized_dataset(trajectories):
         discretized_trajectories = []
-        print("trap region  = ", get_trap_region())
-        print("goal region  = ", get_goal_region())
         for traj in trajectories:
             new_traj = []
 

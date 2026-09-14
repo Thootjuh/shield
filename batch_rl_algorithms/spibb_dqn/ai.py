@@ -1,3 +1,5 @@
+#adapted from https://github.com/rems75/SPIBB-DQN
+
 import numpy as np
 from batch_rl_algorithms.spibb_dqn.models import SmallDenseNetwork, DenseNetwork, Network, LargeNetwork, NatureNetwork
 import torch

@@ -10,7 +10,6 @@ import discretization.constructed.lunarLanderDisc as LLDisc
 
 def infer_action_greedy_cut(state, predictor, policy, gc):
     region = gc.state2region(state, predictor)
-    # print("region = ", region, " withc policy ", policy[region])
     return int(np.random.choice(policy.shape[1], p=policy[region]))
 
 def infer_action_mrl(state, predictor, policy, dimensions):
@@ -33,20 +32,12 @@ def infer_action_CQL_DQN(state, ai):
 def infer_action_grid_CQL_DQN(state, ai, env):
     region = env.state2region(state)
     if region == env.partition["terminal_idx"]:
-        # print("WHAT? You shouldn't be taking an action here")
         return ai.get_action(state, epsilon=0.0)[0]
-    elif  region == env.partition["goal_idx"]:
-        print("And deff not here...")
     centre = env.partition["center"][region]
-    # print(type(state))
-    # print(state)
-    # print(type(centre))
-    # print(centre)
+
     return ai.get_action(centre, epsilon=0.0)[0]
 def infer_action_custom(state, policy):
     region = LLDisc.state2region(state)
-    # print(policy[region])
-    # print(int(np.random.choice(policy.shape[1], p=policy[region])))
     return int(np.random.choice(policy.shape[1], p=policy[region]))
 
 def infer_action_heuristic(state, env):
@@ -75,8 +66,6 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
         gif_path = os.path.join(gif_folder, gif_name)
 
     for episode in range(number_of_episodes):
-        if episode % 100 == 0:
-            print(episode)
         if generate_gif and episode == 0 and render_env is not None:
             current_env = render_env
         else:
@@ -136,8 +125,6 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
             nb_steps += 1
 
         episode_count += 1
-        if nb_steps > max_nb_steps_per_episode:
-            print("AAAAAAAAAAAAAAAAAAAAA")
         if env_name == "cartpole":
             if nb_steps < 50:
                 failure_count += 1
@@ -161,9 +148,6 @@ def evaluate_policy(env, policy, number_of_episodes, max_nb_steps_per_episode,
                 avoid_count += 1
             if reward == 100:
                 success_count += 1
-            if disc_method=='heuristic':
-                if reward != -100 and reward != 100:
-                    print(f"heuristic reward = {reward}")
 
         elif env_name == "frozen_lake_cont":
             if reward < 0:

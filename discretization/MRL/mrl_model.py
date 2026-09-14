@@ -3,7 +3,7 @@ from .testing import predict_cluster, training_value_error, get_MDP, next_cluste
 from .clustering import fit_CV, initializeClusters, splitter
 from sklearn.metrics import accuracy_score
 import pandas as pd
-
+# This file was adapted from the MRL implementation from https://github.com/MohammedAmine-Bennouna/MRL
 
 class MRL_model(MDP_model):
     # fit() takes in the parameters for prediction, and directly fits the model
