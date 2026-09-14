@@ -279,7 +279,7 @@ class AI:
         counts = np.zeros((N, nb_actions), dtype=np.float32)
 
         if N <= max_cdist:
-            # ---- Small dataset: exact full pairwise distances ----
+            # Small dataset: exact full pairwise distances
             dist_matrix = cdist(flat_states, flat_states, metric="euclidean")
             sim_matrix = np.maximum(0, 1 - dist_matrix / param)
 
@@ -287,8 +287,8 @@ class AI:
                 np.add.at(counts[i], actions, sim_matrix[i])
 
         else:
-            # ---- Large dataset: approximate kNN ----
-            nn = NearestNeighbors(n_neighbors=min(k, N), metric="euclidean").fit(flat_states)
+            # Large dataset: approximate kNN
+            nn = NearestNeighbors(n_neighbors=int(N/100), metric="euclidean").fit(flat_states)
             distances, indices = nn.kneighbors(flat_states)
 
             for i in range(N):

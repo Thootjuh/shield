@@ -563,7 +563,7 @@ class ShieldCartpole(Shield):
                 prob = self.shield[state][action]
                 state_action_prob_pairs.append([state, action, prob])
         # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
-        state_action_prob_pairs = [i for i in state_action_prob_pairs if i[2] < 0.95 and i[2]> 0.05] # if i[2] < 0.95 and i[2]> 0
+        state_action_prob_pairs = [i for i in state_action_prob_pairs if i[2] < 0.95] # if i[2] < 0.95 and i[2]> 0
         for pair in state_action_prob_pairs:
             state = pair[0]
             action = pair[1]
@@ -784,7 +784,7 @@ class ShieldLunarLander(Shield):
         calculate the actions allowed by the shield for a given state
         Args:
             state (int): the state for which we want compute the safe actions
-            threshold (float, optional): maximum probability for which we will accept an action. Defaults to 0.2.
+            threshold (float, optional): maximum probability for which we will accept an action. Defaults to 0.0.
             buffer (float, optional): we allow any actions within the buffer of the best action. Defaults to 0.05.
 
         Returns:
@@ -816,7 +816,7 @@ class ShieldLunarLander(Shield):
                 prob = self.shield[state][action]
                 state_action_prob_pairs.append([state, action, prob])
         # state_action_prob_pairs = sorted(state_action_prob_pairs, key=lambda x: x[2])      
-        state_action_prob_pairs = [i for i in state_action_prob_pairs] # if i[2] < 0.95 and i[2]> 0
+        state_action_prob_pairs = [i for i in state_action_prob_pairs if i[2] < 0.95 and i[2]> 0.05]
         for pair in state_action_prob_pairs:
             state = pair[0]
             action = pair[1]

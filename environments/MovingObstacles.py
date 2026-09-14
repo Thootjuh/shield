@@ -6,7 +6,7 @@ import discretization.grid.partition as prt
 from collections import defaultdict
 from collections.abc import Mapping
 import copy
-import pygame   # ADDED
+import pygame 
 
 ACTION_TRANSLATOR = {
     'UP': np.array([0, 0.1]),

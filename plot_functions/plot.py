@@ -111,28 +111,28 @@ def get_method_style_map():
         "grid": (cmap(5), cmap(4)),
     }
 
-    for variant, (spibb_color, baseline_color) in variant_colors.items():
+    for variant, (standard_color, shield_color) in variant_colors.items():
 
         style_map[f"SPIBB_{variant}"] = {
-            "color": spibb_color,
+            "color": standard_color,
             "linestyle": "-",
             "markers": "o"
         }
 
         style_map[f"shield-SPIBB_{variant}"] = {
-            "color": spibb_color,
-            "linestyle": "--",
+            "color": shield_color,
+            "linestyle": "-",
             "markers": "X"
         }
 
         style_map[f"baseline_{variant}"] = {
-            "color": baseline_color,
-            "linestyle": "-",
+            "color": standard_color,
+            "linestyle": "--",
             "markers": "."
         }
 
         style_map[f"shielded_baseline_{variant}"] = {
-            "color": baseline_color,
+            "color": shield_color,
             "linestyle": "--",
             "markers": "x"
         }
@@ -161,14 +161,12 @@ def build_custom_legend(style_map, data):
 
     # SPIBB SECTION
     spibb_base = [
-        ("SPIBB_mrl", "mrl SPIBB"),
-        ("baseline_mrl", "mrl baseline"),
+        ("SPIBB_mrl", "MRL"),
 
-        ("SPIBB_GreedyCut", "GreedyCut SPIBB"),
-        ("baseline_GreedyCut", "GreedyCut baseline"),
+        ("SPIBB_GreedyCut", "GreedyCut"),
 
-        ("SPIBB_grid", "grid SPIBB"),
-        ("baseline_grid", "grid baseline"),
+        ("SPIBB_grid", "Grid"),
+
     ]
 
     spibb_handles = []
@@ -195,8 +193,40 @@ def build_custom_legend(style_map, data):
         handles.append(
             mlines.Line2D([], [], linestyle="None", label="")
         )
+        
+    # SHIELD SECTION
+    spibb_base = [
+        ("shield-SPIBB_mrl", "MRL"),
+        ("shield-SPIBB_GreedyCut", "GreedyCut"),
+        ("shield-SPIBB_grid", "Grid"),
+    ]
 
-    # SHIELDING SECTION
+    spibb_handles = []
+
+    for method, label in spibb_base:
+        if method in present_methods:
+            spibb_handles.append(
+                mlines.Line2D(
+                    [],
+                    [],
+                    color=style_map[method]["color"],
+                    linestyle="-",
+                    linewidth=3,
+                    label=label
+                )
+            )
+
+    if spibb_handles:
+        handles.append(
+            mlines.Line2D([], [], linestyle="None", label="Shielded SPIBB")
+        )
+        handles.extend(spibb_handles)
+
+        handles.append(
+            mlines.Line2D([], [], linestyle="None", label="")
+        )
+
+    # BASELINE SECTION
     shielding_present = any(
         m in present_methods
         for m in [
@@ -212,7 +242,7 @@ def build_custom_legend(style_map, data):
     if shielding_present:
 
         handles.append(
-            mlines.Line2D([], [], linestyle="None", label="SHIELDING")
+            mlines.Line2D([], [], linestyle="None", label="Baseline")
         )
 
         handles.append(
@@ -222,7 +252,7 @@ def build_custom_legend(style_map, data):
                 color="black",
                 linestyle="-",
                 linewidth=3,
-                label="standard"
+                label="SPIBB"
             )
         )
 
@@ -233,7 +263,7 @@ def build_custom_legend(style_map, data):
                 color="black",
                 linestyle="--",
                 linewidth=3,
-                label="shielded"
+                label="Baseline"
             )
         )
 
@@ -249,7 +279,7 @@ def build_custom_legend(style_map, data):
     if dqn_present:
 
         handles.append(
-            mlines.Line2D([], [], linestyle="None", label="DQN")
+            mlines.Line2D([], [], linestyle="None", label="Deep RL")
         )
 
         if "spibb_dqn" in present_methods:
@@ -323,11 +353,11 @@ def create_combined_plot(
     ax_success = axes[1, 0]
     ax_avoid = axes[1, 1]
 
-    fig.suptitle(
-        env_name,
-        fontsize=22,
-        fontweight="bold",
-    )
+    # fig.suptitle(
+    #     env_name,
+    #     fontsize=22,
+    #     fontweight="bold",
+    # )
 
     dqn_methods = [
         "spibb_dqn",
@@ -362,7 +392,7 @@ def create_combined_plot(
             linewidth=2.5,
         )
 
-    ax_perf.set_title("Average Method Performance")
+    ax_perf.set_title("Average SPIBB Performance")
     ax_perf.set_xlabel("Number of Trajectories")
     ax_perf.set_ylabel("Performance")
     ax_perf.grid(True, alpha=0.3)
@@ -394,7 +424,7 @@ def create_combined_plot(
             linewidth=2.5,
         )
 
-    ax_dqn.set_title("DQN Comparison")
+    ax_dqn.set_title("Best SPIBB method compared to Deep RL")
     ax_dqn.set_xlabel("Number of Trajectories")
     ax_dqn.set_ylabel("Performance")
     ax_dqn.grid(True, alpha=0.3)
@@ -462,8 +492,8 @@ def create_combined_plot(
 
     fig.legend(
         handles=handles,
-        loc="center left",
-        bbox_to_anchor=(1.02, 0.5),
+        loc="right",
+        bbox_to_anchor=(1.05, 0.5),
         frameon=True,
         fontsize=14,
     )
