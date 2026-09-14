@@ -223,8 +223,6 @@ class Experiment:
                 self._run_spibb_shielded(key)
             elif key in {Basic_rl.NAME}:
                 self._run_basic_rl(key)
-            else:
-                print("KEY NOT FOUND")
             
     def _run_baseline(self):
         if self.discretization_method=='grid':

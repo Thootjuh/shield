@@ -839,8 +839,6 @@ def splitter(
             if verbose:
                 print("Optimal # of clusters reached")
             break
-    print("best_df = ", best_df["CLUSTER"].nunique())
-    print("new_df = ", df_new["CLUSTER"].nunique())
     # in the case that threshold prevents any values from passing, use backup
     if opt_k == None:
         opt_k = backup_opt_k
