@@ -804,7 +804,6 @@ class LunarLander(gym.Env, EzPickle):
         #     terminated = False
         #     reward = 0
         if self.render_mode == "human":
-            print("rendering")
             self.render()
         # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
         return np.array(state, dtype=np.float32), reward, terminated, False, {}

@@ -160,7 +160,6 @@ class LunarLander:
                 continue
 
             self.env.set_state(state)
-            # print(f"We selected state: {state}")
             return state
 
         raise RuntimeError("Failed to sample strictly physically plausible state.")
@@ -358,11 +357,9 @@ class LunarLander:
         #     return -100
                 
         if cell == self.get_traps():
-            print("set reward for trap")
             return -100
         
         if cell == self.get_goal_state():
-            print("set reward for goal")
             return 100
 
         # Out-of-bounds in x-direction

@@ -143,7 +143,6 @@ class MovingObstacles:
         # Move agent
         old_state = copy.deepcopy(self.state)
         action_coordinates = list(ACTION_TRANSLATOR.values())[action]
-        # print(action_coordinates)
         new_x = min(1.0, max(0.0, old_state[0]+action_coordinates[0]+random.uniform(-0.025, 0.025)))
         new_y = min(1.0, max(0.0, old_state[1]+action_coordinates[1]+random.uniform(-0.025, 0.025)))
         # Move Obstacles
@@ -154,7 +153,6 @@ class MovingObstacles:
         
         new_state = [new_x, new_y, new_offset_1, new_offset_2]
         self.state = new_state
-        # print(new_state)
         # Check if agent is on an obstacle or goal (if both obstacle and goal, its still considered a failure)
         if self.check_trap(new_state):
             self.terminated = True

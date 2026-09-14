@@ -147,9 +147,7 @@ class cartPole:
         states = np.arange(0, self.nb_states)
         states = states[states!=self.partition["terminal_idx"]] 
         assert self.partition["terminal_idx"] not in states
-        # print("FAAAAAAAAAAA")
         return states
-        # return [self.state2region(self.goal)]
     
     def get_init_state(self):
         return self.init, self.state2region(self.init)

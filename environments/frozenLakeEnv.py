@@ -221,7 +221,6 @@ class ContinuousFrozenLakeEnv(Env):
         self.lastaction = a
 
         obs = self._state_to_continuous(s)
-        # print("state = ", s, " obs = ", obs)
         if self.render_mode == "human":
             self.render()
 

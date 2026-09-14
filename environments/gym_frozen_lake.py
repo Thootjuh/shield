@@ -145,7 +145,6 @@ class gymIce:
         return self.init, self.state2region(self.init)
     
     def get_traps(self):
-        print("traps are ", self.traps)
         return self.traps
     
     def get_state_shape(self):
