@@ -6,7 +6,7 @@ import time
 import multiprocessing
 import numpy as np
 
-from experiment import GymCartPoleExperiment, GymCrashingMountainCar, GymMazeExperiment,GymLunarLanderExperiment, GymFrozenLakeExperiment, MovingObstaclesExperiment
+from experiment import GymCartPoleExperiment,GymLunarLanderExperiment, GymFrozenLakeExperiment, MovingObstaclesExperiment
 
 directory = os.path.dirname(os.path.expanduser(__file__))
 sys.path.append(directory)
@@ -39,15 +39,15 @@ def run_experiment(seed):
     if environment == 'cartpole':
         experiment = GymCartPoleExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)
-    elif environment == 'mountaincar':
-        experiment = GymCrashingMountainCar(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
-                                          machine_specific_experiment_directory=machine_specific_experiment_directory)
+    # elif environment == 'mountaincar':
+    #     experiment = GymCrashingMountainCar(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+    #                                       machine_specific_experiment_directory=machine_specific_experiment_directory)
     # elif environment == 'random_mdps':
     #     experiment = RandomMDPsExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
     #                                       machine_specific_experiment_directory=machine_specific_experiment_directory)
-    elif environment == 'maze':
-        experiment = GymMazeExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
-                                          machine_specific_experiment_directory=machine_specific_experiment_directory)
+    # elif environment == 'maze':
+    #     experiment = GymMazeExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
+    #                                       machine_specific_experiment_directory=machine_specific_experiment_directory)
     elif environment == 'lunar_lander':
         experiment = GymLunarLanderExperiment(experiment_config=experiment_config, seed=seed, nb_iterations=nb_iterations,
                                           machine_specific_experiment_directory=machine_specific_experiment_directory)

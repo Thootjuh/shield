@@ -50,7 +50,6 @@ from discretization.MRL.helper_functions import trajToDF, state2region, state2re
 from discretization.MRL.model import MDP_model
 from discretization.MRL.mrl_model import MRL_model
 from discretization.MRL.testing import predict_cluster
-from discretization.MRL_scratch.mrl_scratch import MRL_scratch
 from discretization.greedyCut.greedyCut import GreedyCut
 import discretization.constructed.lunarLanderDisc as LLDisc
 

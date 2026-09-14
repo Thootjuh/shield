@@ -31,12 +31,10 @@ class spibb_dqn:
         minibatch_size = self.ai.minibatch_size
 
         # How many updates per full pass over the dataset
-        print("LENGTH", len(self.dataset))
         updates_per_epoch = len(self.dataset) // minibatch_size
 
         # How many passes we need to hit ~target_updates
         passes_on_dataset = min(10, target_updates // updates_per_epoch)
-        print("passes on dataset = ", passes_on_dataset)
         # passes_on_dataset = 10
         for epoch in range(number_of_epochs):
             begin = time.time()
@@ -71,8 +69,6 @@ class spibb_dqn:
 
         all_rewards = []
         for epoch in range(number_of_epochs):
-            # if epoch % 10 == 0: 
-            #     print("Starting epoch {}".format(epoch), flush=True)
             
             self.env.reset()
             last_state = self.env.get_state()

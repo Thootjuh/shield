@@ -67,9 +67,6 @@ def train_cql_dqn(
         max_updates=100000
     updates_per_epoch = len(dataset) // batch_size
     nb_epochs = min(max(1, max_updates // updates_per_epoch),10)
-    # nb_epochs = 10
-    print(len(dataset))
-    print(nb_epochs)
     # Agent
     agent = CQLAgent(
         state_size=env.get_state_shape(),

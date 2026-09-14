@@ -302,7 +302,6 @@ class AI:
     
     def format_dataset(self, dataset, param = 0.2, episodic=True):
         # dataset = [state, action_choice, next_state, reward, is_done]
-        print("Computing counts. The dataset contains {} transitions.".format(len(dataset)), flush=True)
 
         data = {}
         data['s'] = np.zeros([len(dataset) - 1] +
@@ -322,7 +321,6 @@ class AI:
             data['r'][i] = dataset[i][3]
             data['t'][i] = dataset[i][4]
             data['p'][i] = self.baseline[self.env.state2region(dataset[i][0])]
-        print("computing counts")
         data['c'] = self.compute_counts(
             states=data['s'],
             actions=data['a'],
