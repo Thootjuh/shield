@@ -60,7 +60,6 @@ pillow==11.0.0
 prompt_toolkit==3.0.48
 psutil==7.1.3
 ptyprocess==0.7.0
--e git+https://github.com/moves-rwth/pycarl.git@dc95d40c99258c83f1aece1b85fd1d4633ae1049#egg=pycarl
 pycparser==2.22
 pygame==2.6.1
 Pygments==2.18.0
@@ -75,7 +74,6 @@ scs==3.2.11
 seaborn==0.13.2
 six==1.14.0
 statsmodels==0.14.5
--e git+https://github.com/moves-rwth/stormpy.git@4e91eb18aa7b48f762176e3b323325a757aff4ec#egg=stormpy
 svgpathtools==1.7.0
 svgwrite==1.4.3
 swig==4.4.1
