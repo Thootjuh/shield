@@ -56,8 +56,6 @@ class LunarLander:
 
 
     def reset(self):
-        # The self.env.reset function also resets the overall environment, which is not what we want. 
-        # We probably have to rewrite the code to additionally have a reset_position function
         observation, _ = self.env.reset(seed=self.seed)
         self.state = observation
     
@@ -120,14 +118,13 @@ class LunarLander:
 
             position = (pos_x, pos_y)
 
-            # ---- Reject crash configurations ----
+            #  Reject crash states
             if self.env.lander_body_overlaps_moon(position, angle):
                 continue
 
-            # ---- Check leg contact geometry ----
+            # Check leg contact geometry
             legs_touch = self.env.lander_legs_overlap_moon(position, angle)
 
-            # ---- Enforce consistent configuration ----
             if legs_touch:
                 # Stable landing configuration required
                 if abs(angle) > 0.2:
@@ -155,7 +152,6 @@ class LunarLander:
                 right_leg
             ], dtype=np.float32)
 
-            # Final safety check
             if abs(state[0]) >= 1.0:
                 continue
 
@@ -163,6 +159,7 @@ class LunarLander:
             return state
 
         raise RuntimeError("Failed to sample strictly physically plausible state.")
+    
     def partition_states(self):
         # Non-terminal region definitions for LunarLander
         # (coarse discretization example; adjust as needed)
@@ -366,8 +363,6 @@ class LunarLander:
         if abs(self.partition["center"][cell][0]) >= 1.0:
             return -100
 
-        # ---- Shaping reward at cell center ----
-
         center = self.partition["center"][cell]
 
         x = center[0]
@@ -439,6 +434,7 @@ class LunarLander:
     
     def heuristic(self, s):
         """
+        Copied from the Gymnasium implementation
         The heuristic for
         1. Testing
         2. Demonstration rollout.

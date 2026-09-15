@@ -470,7 +470,7 @@ class MovingObstaclesExperiment(Experiment):
     fixed_params_exp_columns = ['seed', 'gamma']
     def _set_env_params(self):
         """
-        Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
+        Reads in all parameters necessary from self.experiment_config to set up the Moving Obstacles experiment.
         """
         self.generate_gif = True
         self.episodic = True
@@ -840,7 +840,6 @@ class MovingObstaclesExperiment(Experiment):
 
         feature_cols = [f"FEATURE_{i}" for i in range(self.dimensions)]
 
-        # --- build lookup dictionary much faster ---
         features = df[feature_cols].to_numpy()
         clusters = df["CLUSTER"].to_numpy()
 
@@ -916,7 +915,7 @@ class GymCartPoleExperiment(Experiment):
     fixed_params_exp_columns = ['seed', 'gamma']
     def _set_env_params(self):
         """
-        Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
+        Reads in all parameters necessary from self.experiment_config to set up the Cart Pole experiment.
         """
         self.generate_gif = True
         self.episodic = True
@@ -1360,7 +1359,7 @@ class GymLunarLanderExperiment(Experiment):
     fixed_params_exp_columns = ['seed', 'gamma']
     def _set_env_params(self):
         """
-        Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
+        Reads in all parameters necessary from self.experiment_config to set up the Lunar Lander experiment.
         """
         self.generate_gif = True
 
@@ -1861,7 +1860,6 @@ class GymLunarLanderExperiment(Experiment):
 
         feature_cols = [f"FEATURE_{i}" for i in range(8)]
 
-        # --- build lookup dictionary much faster ---
         features = df[feature_cols].to_numpy()
         clusters = df["CLUSTER"].to_numpy()
 
@@ -2020,12 +2018,11 @@ class GymLunarLanderExperiment(Experiment):
         return transition_matrix
     
 class GymFrozenLakeExperiment(Experiment):
-    # Inherits from the base class Experiment to implement the Wet Chicken experiment specifically.
     fixed_params_exp_columns = ['seed', 'gamma']
     
     def _set_env_params(self):
         """
-        Reads in all parameters necessary from self.experiment_config to set up the Wet Chicken experiment.
+        Reads in all parameters necessary from self.experiment_config to set up the Frozen Lake experiment.
         """
         self.generate_gif = True
         self.episodic = True

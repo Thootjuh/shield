@@ -614,9 +614,7 @@ class ShieldLunarLander(Shield):
 
         os.makedirs(export_dir, exist_ok=True)
 
-        # ------------------------------------------------------------
         # Reverse mapping: PRISM state -> original state
-        # ------------------------------------------------------------
         reverse_state_map = {
             prism_state: original_state
             for original_state, prism_state in state_map.items()
@@ -645,9 +643,7 @@ class ShieldLunarLander(Shield):
 
         results_file = os.path.join(export_dir, "state_values.txt")
 
-        # ------------------------------------------------------------
         # Run PRISM
-        # ------------------------------------------------------------
         cmd = (
             f"{prism_executable} -explicit -sparse -gs -javamaxmem {java_mem}g "
             f"{model_file} {prop_file} "
@@ -658,9 +654,7 @@ class ShieldLunarLander(Shield):
 
         subprocess.Popen(cmd, shell=True).wait()
 
-        # ------------------------------------------------------------
         # Parse PRISM output
-        # ------------------------------------------------------------
         state_values = defaultdict(float)
 
         # PRISM format:  "index:(state)=value"
@@ -684,9 +678,7 @@ class ShieldLunarLander(Shield):
                 if original_state is not None:
                     state_values[original_state] = value
 
-        # ------------------------------------------------------------
         # Build transition probabilities
-        # ------------------------------------------------------------
         transition_probs = {}
 
         for (s, a, s_next), (lower, upper) in self.intervals.items():
@@ -703,9 +695,7 @@ class ShieldLunarLander(Shield):
                         state: {"lower": 1.0, "upper": 1.0}
                     }
 
-        # ------------------------------------------------------------
         # Build shield
-        # ------------------------------------------------------------
         for state in range(self.num_states):
             for action in range(self.num_actions):
 
@@ -747,12 +737,10 @@ class ShieldLunarLander(Shield):
                     0.0
                 )
 
-        # ------------------------------------------------------------
         # Cleanup
-        # ------------------------------------------------------------
-        # os.remove(model_file)
-        # os.remove(prop_file)
-        # os.remove(results_file)
+        os.remove(model_file)
+        os.remove(prop_file)
+        os.remove(results_file)
 
         end_total_time = time.time()
         print("Total time needed to create the Shield:", end_total_time - start_total_time)   

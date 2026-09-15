@@ -527,7 +527,6 @@ def encodeLunarLander(transition_matrix, intervals, trap, goal, init):
     # ------------------------------------------------------------------
     # Determine visited states
     # A state is visited if it appears as successor of another state
-    # (excluding self-loops)
     # ------------------------------------------------------------------
     visited_states = set()
 

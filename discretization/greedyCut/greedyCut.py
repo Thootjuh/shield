@@ -15,9 +15,7 @@ class GreedyCut:
 
         self.binary_dims = binary_dims if binary_dims is not None else []
 
-        # --------------------------------------------------
         # Handle bounds
-        # --------------------------------------------------
         if bounds is None:
             all_states = []
             for traj in trajectories:
@@ -40,18 +38,14 @@ class GreedyCut:
         self.ranges = self.highs - self.lows
         self.ranges[self.ranges == 0] = 1e-8
 
-        # --------------------------------------------------
         # Handle initial splits
-        # --------------------------------------------------
         if initial_splits is None:
             initial_splits = [4] * state_dim  # default
 
         assert len(initial_splits) == state_dim, \
             "initial_splits must match state_dim"
 
-        # --------------------------------------------------
         # Initialize G in NORMALIZED space
-        # --------------------------------------------------
         self.G = []
 
         for d in range(state_dim):
@@ -63,9 +57,7 @@ class GreedyCut:
                 grid = np.linspace(0.0, 1.0, n_splits + 1).tolist()
                 self.G.append(grid)
 
-        # --------------------------------------------------
         # Normalize dataset
-        # --------------------------------------------------
         self.dataset = []
         for traj in trajectories:
             for (s, a, ns, r, term, trunc) in traj:
@@ -79,9 +71,6 @@ class GreedyCut:
 
         self.f_cache = {}
 
-    # --------------------------------------------------
-    # Normalization
-    # --------------------------------------------------
     def normalize(self, state):
         state = np.array(state)
         return (state - self.lows) / self.ranges
@@ -90,9 +79,7 @@ class GreedyCut:
         state = np.array(state)
         return state * self.ranges + self.lows
 
-    # --------------------------------------------------
     # Dynamics
-    # --------------------------------------------------
     def f(self, state, action):
         key = (tuple(state), action)
 
@@ -111,9 +98,7 @@ class GreedyCut:
         self.f_cache[key] = best_next
         return best_next
 
-    # --------------------------------------------------
-    # state → region
-    # --------------------------------------------------
+    # state to region
     def state2region(self, state, G=None, return_id=True):
         if G is None:
             G = self.G
@@ -153,9 +138,6 @@ class GreedyCut:
 
         return region_id
 
-    # --------------------------------------------------
-    # f_bar
-    # --------------------------------------------------
     def f_bar(self, state, action, G=None):
         next_state = self.f(state, action)
 
@@ -165,9 +147,7 @@ class GreedyCut:
 
         return self.normalize(centroid)
 
-    # --------------------------------------------------
     # Trajectories
-    # --------------------------------------------------
     def compute_true_trajectory(self, traj):
         states = []
         for (s, a, ns, r, term, trunc) in traj:
@@ -187,16 +167,11 @@ class GreedyCut:
 
         return states
 
-    # --------------------------------------------------
-    # Cost
-    # --------------------------------------------------
+
     def Cost(self, true_traj, disc_traj):
         return sum(np.linalg.norm(xt - xbar) ** 2
                    for xt, xbar in zip(true_traj, disc_traj))
 
-    # --------------------------------------------------
-    # Cut
-    # --------------------------------------------------
     def Cut(self, d, i, G):
         new_G = deepcopy(G)
         grid = new_G[d]
@@ -206,9 +181,6 @@ class GreedyCut:
 
         return new_G
 
-    # --------------------------------------------------
-    # Greedy
-    # --------------------------------------------------
     def Greedy(self):
         G = deepcopy(self.G)
         Theta = self.trajectories
@@ -246,9 +218,6 @@ class GreedyCut:
         self.G = G
         return G
 
-    # --------------------------------------------------
-    # Dataset
-    # --------------------------------------------------
     def get_discretized_dataset(self, return_id=True):
         discretized_trajectories = []
 
@@ -265,9 +234,6 @@ class GreedyCut:
 
         return discretized_trajectories
 
-    # --------------------------------------------------
-    # Num regions
-    # --------------------------------------------------
     def get_num_regions(self, G=None):
         if G is None:
             G = self.G
@@ -278,9 +244,7 @@ class GreedyCut:
 
         return total
 
-    # --------------------------------------------------
-    # region → center
-    # --------------------------------------------------
+    # region to center
     def region2centre(self, region_id, G=None):
         if G is None:
             G = self.G
