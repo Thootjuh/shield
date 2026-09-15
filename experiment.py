@@ -784,6 +784,24 @@ class MovingObstaclesExperiment(Experiment):
         self.transition_matrix = transition_matrix
         
     def discretize_data(self, data, predictor):
+        """
+        Discretizes trajectories using provided discretization function
+
+        Parameters
+        ----------
+        data : list
+            trajectories_cont produced by generate_batch
+            [state, action, next_state, reward, terminated, truncated]
+
+        predictor : 
+            Discretization function that maps a continuous state to their discrete counterpart
+
+        Returns
+        -------
+        data_disc : list
+            discretized trajectories in the form
+            [action, state_region, next_state, reward]
+        """
         data_disc = []
         for trajectory in data:
             traj = []
@@ -855,7 +873,8 @@ class MovingObstaclesExperiment(Experiment):
             for action in range(self.nb_actions):
                 empty_structure[state, action] = np.array([], dtype=int)
                 
-        return empty_structure            
+        return empty_structure          
+      
     def add_trans_from_data(self,structure, data):
         for trajectory in data:
             for transition in trajectory:
@@ -1211,6 +1230,24 @@ class GymCartPoleExperiment(Experiment):
         self.transition_matrix = transition_matrix
         
     def discretize_data(self, data, predictor):
+        """
+        Discretizes trajectories using provided discretization function
+
+        Parameters
+        ----------
+        data : list
+            trajectories_cont produced by generate_batch
+            [state, action, next_state, reward, terminated, truncated]
+
+        predictor : 
+            Discretization function that maps a continuous state to their discrete counterpart
+
+        Returns
+        -------
+        data_disc : list
+            discretized trajectories in the form
+            [action, state_region, next_state, reward]
+        """
         data_disc = []
         for trajectory in data:
             traj = []
@@ -1851,11 +1888,28 @@ class GymLunarLanderExperiment(Experiment):
         return data_disc
 
     def discretize_data(self, data, predictor):
+        """
+        Discretizes trajectories using provided discretization function
+
+        Parameters
+        ----------
+        data : list
+            trajectories_cont produced by generate_batch
+            [state, action, next_state, reward, terminated, truncated]
+
+        predictor : 
+            Discretization function that maps a continuous state to their discrete counterpart
+
+        Returns
+        -------
+        data_disc : list
+            discretized trajectories in the form
+            [action, state_region, next_state, reward]
+        """
         all_states = []
         all_next_states = []
         structure = []  # to rebuild trajectories later
 
-        # Step 1: Collect everything
         for trajectory in data:
             traj_info = []
             for transition in trajectory:
@@ -1865,14 +1919,12 @@ class GymLunarLanderExperiment(Experiment):
                 traj_info.append((a, r))
             structure.append(traj_info)
 
-        # Step 2: Predict ALL at once
         all_states = np.asarray(all_states)
         all_next_states = np.asarray(all_next_states)
 
         s_regions = predictor.predict(all_states)
         ns_regions = predictor.predict(all_next_states)
 
-        # Step 3: Rebuild dataset
         data_disc = []
         idx = 0
 
@@ -1893,6 +1945,7 @@ class GymLunarLanderExperiment(Experiment):
                 empty_structure[state, action] = np.array([], dtype=int)
                 
         return empty_structure            
+    
     def add_trans_from_data(self,structure, data):
         # num_states = len(structure)
         # num_actions = len(structure[0])
@@ -2122,82 +2175,6 @@ class GymFrozenLakeExperiment(Experiment):
                 self.discretization_method = 'CQL-DQN'
                 self.data = self.data_cont
                 self._run_cql_dqn()
-                
-    def plot_trajectories_by_region(self, trajectories, predictor, grid_size=(8, 8)):
-        """
-        trajectories: list of trajectories
-            each trajectory = list of [state, action, next_state, reward, terminated]
-        state2region: function mapping continuous state -> discrete region
-        grid_size: (width, height) of frozen lake
-        """
-
-        # 1. Extract all states
-        states = []
-
-        for traj in trajectories:
-            for i, transition in enumerate(traj):
-                state, action, next_state, reward, terminated, truncated = transition
-                states.append(state)
-
-                # Include final next_state
-                if terminated or truncated:
-                    states.append(next_state)
-
-        states = np.array(states)
-
-        # 2. Map states to regions
-        region_to_states = defaultdict(list)
-
-        for s in states:
-            region = state2region(predictor, s, self.dimensions)
-            region_to_states[region].append(s)
-
-        # 3. Assign colors to regions
-        unique_regions = list(region_to_states.keys())
-        cmap = plt.cm.get_cmap('tab20', len(unique_regions))
-
-        region_colors = {
-            region: cmap(i) for i, region in enumerate(unique_regions)
-        }
-
-        # 4. Plot
-        plt.figure(figsize=(6, 6))
-
-        # Draw Frozen Lake grid background
-        for x in range(grid_size[0] + 1):
-            plt.axvline(x, color='lightgray', linewidth=1)
-        for y in range(grid_size[1] + 1):
-            plt.axhline(y, color='lightgray', linewidth=1)
-
-        # Plot states
-        for region, region_states in region_to_states.items():
-            region_states = np.array(region_states)
-            plt.scatter(
-                region_states[:, 0],
-                region_states[:, 1],
-                s=10,
-                color=region_colors[region],
-                label=str(region),
-                alpha=0.7
-            )
-
-        plt.xlim(0, grid_size[0])
-        plt.ylim(0, grid_size[1])
-
-        plt.gca().set_aspect('equal')
-        plt.gca().invert_yaxis()  # match grid-style orientation (optional)
-
-        plt.title("Continuous States Colored by Discrete Region")
-        plt.xlabel("X")
-        plt.ylabel("Y")
-
-        # Optional legend (can be large if many regions)
-        if len(unique_regions) <= 20:
-            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-
-        plt.tight_layout()
-        plt.savefig("grid_mrl.png")
-        plt.show()
     
     def generate_batch(self, nb_trajectories, env, pi, max_steps=1000):
         """
@@ -2293,6 +2270,24 @@ class GymFrozenLakeExperiment(Experiment):
         return data_disc
     
     def discretize_data(self, data, predictor):
+        """
+        Discretizes trajectories using provided discretization function
+
+        Parameters
+        ----------
+        data : list
+            trajectories_cont produced by generate_batch
+            [state, action, next_state, reward, terminated, truncated]
+
+        predictor : 
+            Discretization function that maps a continuous state to their discrete counterpart
+
+        Returns
+        -------
+        data_disc : list
+            discretized trajectories in the form
+            [action, state_region, next_state, reward]
+        """
         data_disc = []
         for trajectory in data:
             traj = []

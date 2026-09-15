@@ -3,8 +3,6 @@ This repository was adapted from https://github.com/Philipp238/Safe-Policy-Impro
 ## Requirements
 The code is implemented in Python version 3.10 and requires the packages specified in ``requirements.txt``. Additionally [Storm](https://www.stormchecker.org/documentation/obtain-storm/build.html) and [Stormpy](https://github.com/moves-rwth/stormpy) are required. 
 The experiments where performed using Storm and Stormpy version 1.9.0, which also requires you to manually install [Pycarl](https://moves-rwth.github.io/pycarl/index.html).
-Some of the included bechmarks also require stormvogel, which can be found at https://moves-rwth.github.io/stormvogel/index.html
-
 Before running the experiments, you have to create a file named `paths.ini`  which contains the following:
 ````
 [PATHS]
