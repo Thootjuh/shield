@@ -292,7 +292,6 @@ class MDP_model:
         """
 
         df = data.copy()
-        print("copied data")
 
         # save relevant data
         self.df = df

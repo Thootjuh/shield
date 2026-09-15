@@ -324,7 +324,6 @@ def create_combined_plot(
 
     style_map = get_method_style_map()
 
-    # Give the comparison method a default style if needed
     if comparison_method not in style_map:
         cmap = plt.get_cmap("Paired")
         style_map[comparison_method] = {
@@ -369,9 +368,7 @@ def create_combined_plot(
         if m not in dqn_methods
     ]
 
-    #
-    # Top-left: Performance (exclude DQN methods)
-    #
+    # Top-left: Performance
     for method in spibb_methods:
 
         method_data = grouped[
@@ -396,10 +393,8 @@ def create_combined_plot(
     ax_perf.set_xlabel("Number of Trajectories")
     ax_perf.set_ylabel("Performance")
     ax_perf.grid(True, alpha=0.3)
-
-    #
-    # Top-right: DQN comparison
-    #
+    
+    # Top-right: DQN 
     for method in [
         "spibb_dqn",
         "cql_dqn",
@@ -429,9 +424,7 @@ def create_combined_plot(
     ax_dqn.set_ylabel("Performance")
     ax_dqn.grid(True, alpha=0.3)
 
-    #
-    # Bottom-left: Success Rate (all methods)
-    #
+    # Bottom-left: Success Rate
     for method in allowed:
 
         method_data = grouped[
@@ -457,9 +450,7 @@ def create_combined_plot(
     ax_success.set_ylabel("Success Rate")
     ax_success.grid(True, alpha=0.3)
 
-    #
-    # Bottom-right: Avoid Rate (all methods)
-    #
+    # Bottom-right: Avoid Rate
     for method in allowed:
 
         method_data = grouped[
@@ -520,7 +511,6 @@ def create_discounted_performance_plot(data, output_file, env_name):
         )
         return
 
-    # Keep only supported methods
     data = data[
         data["method"].isin(ALLOWED_METHODS)
     ].copy()

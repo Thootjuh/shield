@@ -91,8 +91,6 @@ def encodeMovingObstacles(transition_matrix, intervals, trap, goal):
                 ]               
             elif len(valid_next_states) > 1:
                 state_has_successor = True
-                # print(f"state {state} is not like the other states")
-                # print(valid_next_states, " ", len(valid_next_states), " >1")
                 default_interval = (4.999999999999449e-05, 0.9999999)
                 probabilities = [
                     f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
@@ -178,8 +176,6 @@ def encodeCartPole(transition_matrix, intervals, trap):
                 ]               
             elif len(valid_next_states) > 1:
                 state_has_successor = True
-                # print(f"state {state} is not like the other states")
-                # print(valid_next_states, " ", len(valid_next_states), " >1")
                 default_interval = (4.999999999999449e-05, 0.9999999)
                 probabilities = [
                     f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
@@ -249,7 +245,6 @@ def encodeMaze(transition_matrix, intervals, trap, goal):
             #     # Uniform probability for each next state
             #     # uniform_prob = 1 / len(valid_next_states)
             if len(valid_next_states) == 1:
-                # print(valid_next_states, " ", len(valid_next_states), " 1")
                 default_interval = (1.0, 1.0)
                 probabilities = [
                     f"[{default_interval[0]}," 
@@ -257,7 +252,6 @@ def encodeMaze(transition_matrix, intervals, trap, goal):
                     for next_state in valid_next_states
                 ]               
             elif len(valid_next_states) > 1:
-                # print(valid_next_states, " ", len(valid_next_states), " >1")
                 default_interval = (4.999999999999449e-05, 0.9999999)
                 probabilities = [
                     f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
@@ -321,7 +315,6 @@ def encodeFrozenLake(transition_matrix, intervals, trap, goal):
             #     # Uniform probability for each next state
             #     # uniform_prob = 1 / len(valid_next_states)
             if len(valid_next_states) == 1:
-                # print(valid_next_states, " ", len(valid_next_states), " 1")
                 default_interval = (1.0, 1.0)
                 probabilities = [
                     f"[{default_interval[0]}," 
@@ -329,7 +322,6 @@ def encodeFrozenLake(transition_matrix, intervals, trap, goal):
                     for next_state in valid_next_states
                 ]               
             elif len(valid_next_states) > 1:
-                # print(valid_next_states, " ", len(valid_next_states), " >1")
                 default_interval = (4.999999999999449e-05, 0.9999999)
                 probabilities = [
                     f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
@@ -394,7 +386,6 @@ def encodeCrashingMountainCar(transition_matrix, intervals, initial_state, trap,
             #     # Uniform probability for each next state
             #     # uniform_prob = 1 / len(valid_next_states)
             if len(valid_next_states) == 1:
-                # print(valid_next_states, " ", len(valid_next_states), " 1")
                 default_interval = (1.0, 1.0)
                 probabilities = [
                     f"[{default_interval[0]}," 
@@ -402,7 +393,6 @@ def encodeCrashingMountainCar(transition_matrix, intervals, initial_state, trap,
                     for next_state in valid_next_states
                 ]               
             elif len(valid_next_states) > 1:
-                # print(valid_next_states, " ", len(valid_next_states), " >1")
                 default_interval = (4.999999999999449e-05, 0.9999999)
                 probabilities = [
                     f"[{intervals.get((state, action, next_state), default_interval)[0]}," 
@@ -781,10 +771,6 @@ def compute_initial_states(transition_matrix, relevant_states):
                 if v not in visited:
                     visited.add(v)
                     queue.append(v)
-
-    # select states without relevant predecessors
-    print("total relevant states = ", len(relevant_states))
-    print("The total number of initial states in therefore = ",len(initial_states))
 
     return sorted(initial_states)
     
